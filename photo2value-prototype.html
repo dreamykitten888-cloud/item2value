@@ -18,6 +18,7 @@
   }
   h1,h2,h3,h4,h5,h6 { font-family: 'Sora', system-ui, sans-serif; }
   input, select { font-family: 'DM Sans', system-ui, sans-serif; }
+  .form-input:focus { border-color: rgba(212,168,83,0.5) !important; outline: none; }
 
   @keyframes slideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
   @keyframes slideRight { from { opacity:0; transform:translateX(-24px); } to { opacity:1; transform:translateX(0); } }
@@ -226,7 +227,9 @@ const App = () => {
   const [marketInput, setMarketInput] = useState('');
   const [addForm, setAddForm] = useState({name:'',brand:'',model:'',category:'Fashion',condition:'Good',cost:'',asking:'',market:'',notes:'',emoji:'📦',photos:[]});
   const [addingComp, setAddingComp] = useState(false);
+  const [editingCompId, setEditingCompId] = useState(null);
   const [compForm, setCompForm] = useState({title:'',url:'',price:'',source:'eBay',condition:'Good'});
+  const updateCompForm = (key, val) => setCompForm(prev => ({...prev, [key]: val}));
   const scrollRef = useRef(null);
 
   // Save to localStorage whenever items change
@@ -308,7 +311,7 @@ const App = () => {
 
   const fmt = (n) => '$' + n.toLocaleString();
   const inputStyle = {width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'12px 14px',color:'#fff',fontSize:14,outline:'none',fontFamily:'DM Sans, sans-serif'};
-  const inputFocusStyle = '1px solid rgba(212,168,83,0.5)';
+  // Focus styles handled via CSS .form-input:focus class
 
   const GainBadge = ({gain, size='sm'}) => {
     const isUp = gain >= 0;
@@ -586,7 +589,7 @@ const App = () => {
   const categoryOptions = ['Fashion','Electronics','Home','Watches','Art','Sports','Other'];
   const conditionOptions = ['New','Like New','Excellent','Very Good','Good','Fair'];
 
-  const updateForm = (key, val) => setAddForm({...addForm, [key]: val});
+  const updateForm = (key, val) => setAddForm(prev => ({...prev, [key]: val}));
 
   const FormField = ({label, required, children, tip}) => (
     <div style={{marginBottom:16}}>
@@ -649,16 +652,16 @@ const App = () => {
 
         {/* Item name */}
         <FormField label="Item Name" required>
-          <input value={addForm.name} onChange={e => updateForm('name',e.target.value)} placeholder="e.g. Louis Vuitton Neverfull MM" style={inputStyle} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+          <input className="form-input" value={addForm.name} onChange={e => updateForm('name',e.target.value)} placeholder="e.g. Louis Vuitton Neverfull MM" style={inputStyle}/>
         </FormField>
 
         {/* Brand + Model row */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
           <FormField label="Brand">
-            <input value={addForm.brand} onChange={e => updateForm('brand',e.target.value)} placeholder="e.g. Nike" style={inputStyle} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+            <input className="form-input" value={addForm.brand} onChange={e => updateForm('brand',e.target.value)} placeholder="e.g. Nike" style={inputStyle}/>
           </FormField>
           <FormField label="Model">
-            <input value={addForm.model} onChange={e => updateForm('model',e.target.value)} placeholder="e.g. Dunk Low" style={inputStyle} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+            <input className="form-input" value={addForm.model} onChange={e => updateForm('model',e.target.value)} placeholder="e.g. Dunk Low" style={inputStyle}/>
           </FormField>
         </div>
 
@@ -684,7 +687,7 @@ const App = () => {
         <FormField label="What I Paid" required tip="The total amount you spent to acquire this item, including tax and shipping.">
           <div style={{position:'relative'}}>
             <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#64748b',fontSize:14,fontWeight:600}}>$</span>
-            <input type="number" value={addForm.cost} onChange={e => updateForm('cost',e.target.value)} placeholder="0.00" style={{...inputStyle,paddingLeft:28}} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+            <input className="form-input" type="number" value={addForm.cost} onChange={e => updateForm('cost',e.target.value)} placeholder="0.00" style={{...inputStyle,paddingLeft:28}}/>
           </div>
         </FormField>
 
@@ -692,7 +695,7 @@ const App = () => {
         <FormField label="My Asking Price" tip="The price you'd list this item for if you sold it today. Leave blank to auto-set to market value.">
           <div style={{position:'relative'}}>
             <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#64748b',fontSize:14,fontWeight:600}}>$</span>
-            <input type="number" value={addForm.asking} onChange={e => updateForm('asking',e.target.value)} placeholder="Optional" style={{...inputStyle,paddingLeft:28}} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+            <input className="form-input" type="number" value={addForm.asking} onChange={e => updateForm('asking',e.target.value)} placeholder="Optional" style={{...inputStyle,paddingLeft:28}}/>
           </div>
         </FormField>
 
@@ -700,7 +703,7 @@ const App = () => {
         <FormField label="Estimated Market Value" tip="What you think this item is worth based on your research. You can update this anytime.">
           <div style={{position:'relative'}}>
             <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#64748b',fontSize:14,fontWeight:600}}>$</span>
-            <input type="number" value={addForm.market} onChange={e => updateForm('market',e.target.value)} placeholder="Optional" style={{...inputStyle,paddingLeft:28}} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+            <input className="form-input" type="number" value={addForm.market} onChange={e => updateForm('market',e.target.value)} placeholder="Optional" style={{...inputStyle,paddingLeft:28}}/>
           </div>
         </FormField>
 
@@ -982,19 +985,62 @@ const App = () => {
           {/* Comps */}
           <div className="glass" style={{borderRadius:16,padding:20,marginBottom:20}}>
             <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:16}}>Comparable Listings</h3>
+            {getComps(selected.id).length === 0 && !addingComp && (
+              <p className="text-dim" style={{fontSize:13,textAlign:'center',padding:'12px 0'}}>No comparables yet. Add one below.</p>
+            )}
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               {getComps(selected.id).map(c => (
-                <div key={c.id} className="glass glass-hover" style={{borderRadius:12,padding:14,cursor:'pointer'}}>
-                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
-                    <span className="text-dim" style={{fontSize:11,textTransform:'uppercase',letterSpacing:0.5}}>{c.source}</span>
-                    <span className="text-gold" style={{fontWeight:700,fontSize:14}}>{fmt(c.price)}</span>
+                editingCompId === c.id ? (
+                  <div key={c.id} className="glass anim-fade" style={{borderRadius:12,padding:14}}>
+                    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                      <input className="form-input" value={compForm.title} onChange={e => updateCompForm('title',e.target.value)} placeholder="Listing title" style={inputStyle}/>
+                      <input className="form-input" value={compForm.url} onChange={e => updateCompForm('url',e.target.value)} placeholder="URL" style={inputStyle}/>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                        <div style={{position:'relative'}}>
+                          <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#64748b',fontSize:14,fontWeight:600}}>$</span>
+                          <input className="form-input" type="number" value={compForm.price} onChange={e => updateCompForm('price',e.target.value)} placeholder="Price" style={{...inputStyle,paddingLeft:28}}/>
+                        </div>
+                        <select value={compForm.source} onChange={e => updateCompForm('source',e.target.value)} style={{...inputStyle,cursor:'pointer'}}>
+                          {['eBay','Poshmark','Mercari','StockX','Facebook Marketplace','Craigslist','The RealReal','Vestiaire','Other'].map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                      <select value={compForm.condition} onChange={e => updateCompForm('condition',e.target.value)} style={{...inputStyle,cursor:'pointer'}}>
+                        {['New','Like New','Excellent','Very Good','Good','Fair'].map(co => <option key={co} value={co}>{co}</option>)}
+                      </select>
+                      <div style={{display:'flex',gap:8}}>
+                        <button onClick={() => {
+                          if (!compForm.title || !compForm.price) return;
+                          setItems(prev => prev.map(it => it.id === selected.id ? {...it, comps: (it.comps||[]).map(comp => comp.id === c.id ? {...comp, title:compForm.title, url:compForm.url, price:parseFloat(compForm.price), source:compForm.source, condition:compForm.condition} : comp)} : it));
+                          setEditingCompId(null);
+                          setCompForm({title:'',url:'',price:'',source:'eBay',condition:'Good'});
+                        }} className="gradient-amber" style={{flex:1,border:'none',borderRadius:10,padding:'10px 0',fontSize:13,fontWeight:700,color:'#000',cursor:'pointer'}}>Save</button>
+                        <button onClick={() => {setEditingCompId(null);setCompForm({title:'',url:'',price:'',source:'eBay',condition:'Good'});}} style={{flex:1,background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:10,padding:'10px 0',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>Cancel</button>
+                      </div>
+                    </div>
                   </div>
-                  <p className="truncate" style={{color:'#fff',fontSize:13,marginBottom:6}}>{c.title}</p>
-                  <div style={{display:'flex',justifyContent:'space-between'}}>
-                    <span className="text-dim" style={{fontSize:11}}>{c.condition}</span>
-                    <span className="text-dim" style={{fontSize:11}}>{c.date}</span>
+                ) : (
+                  <div key={c.id} className="glass glass-hover" style={{borderRadius:12,padding:14,position:'relative'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                      <span className="text-dim" style={{fontSize:11,textTransform:'uppercase',letterSpacing:0.5}}>{c.source}</span>
+                      <span className="text-gold" style={{fontWeight:700,fontSize:14}}>{fmt(c.price)}</span>
+                    </div>
+                    <p className="truncate" style={{color:'#fff',fontSize:13,marginBottom:6}}>{c.title}</p>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div>
+                        <span className="text-dim" style={{fontSize:11}}>{c.condition}</span>
+                        <span className="text-dim" style={{fontSize:11,marginLeft:8}}>{c.date}</span>
+                      </div>
+                      <div style={{display:'flex',gap:6}}>
+                        <button onClick={(e) => {e.stopPropagation();setEditingCompId(c.id);setCompForm({title:c.title,url:c.url||'',price:String(c.price),source:c.source,condition:c.condition});}} style={{background:'rgba(255,255,255,0.08)',border:'none',borderRadius:6,padding:'4px 8px',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+                          <Icons.Edit size={12} color="#94a3b8"/><span style={{fontSize:10,color:'#94a3b8'}}>Edit</span>
+                        </button>
+                        <button onClick={(e) => {e.stopPropagation();if(confirm('Delete this comparable?')){setItems(prev => prev.map(it => it.id === selected.id ? {...it, comps: (it.comps||[]).filter(comp => comp.id !== c.id)} : it));}}} style={{background:'rgba(239,68,68,0.1)',border:'none',borderRadius:6,padding:'4px 8px',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+                          <span style={{fontSize:10,color:'#f87171'}}>Delete</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )
               ))}
             </div>
 
@@ -1003,19 +1049,19 @@ const App = () => {
               <div className="glass anim-fade" style={{borderRadius:12,padding:16,marginTop:10}}>
                 <p style={{fontSize:13,fontWeight:600,color:'#fff',marginBottom:12}}>Add Comparable Listing</p>
                 <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                  <input value={compForm.title} onChange={e => setCompForm({...compForm, title: e.target.value})} placeholder="Listing title (e.g. Sony A7III Body Only)" style={inputStyle} />
-                  <input value={compForm.url} onChange={e => setCompForm({...compForm, url: e.target.value})} placeholder="URL (paste eBay/Poshmark link)" style={inputStyle} />
+                  <input className="form-input" value={compForm.title} onChange={e => updateCompForm('title',e.target.value)} placeholder="Listing title (e.g. Sony A7III Body Only)" style={inputStyle}/>
+                  <input className="form-input" value={compForm.url} onChange={e => updateCompForm('url',e.target.value)} placeholder="URL (paste eBay/Poshmark link)" style={inputStyle}/>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                     <div style={{position:'relative'}}>
                       <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#64748b',fontSize:14,fontWeight:600}}>$</span>
-                      <input type="number" value={compForm.price} onChange={e => setCompForm({...compForm, price: e.target.value})} placeholder="Price" style={{...inputStyle,paddingLeft:28}} />
+                      <input className="form-input" type="number" value={compForm.price} onChange={e => updateCompForm('price',e.target.value)} placeholder="Price" style={{...inputStyle,paddingLeft:28}}/>
                     </div>
-                    <select value={compForm.source} onChange={e => setCompForm({...compForm, source: e.target.value})} style={{...inputStyle,cursor:'pointer'}}>
+                    <select value={compForm.source} onChange={e => updateCompForm('source',e.target.value)} style={{...inputStyle,cursor:'pointer'}}>
                       {['eBay','Poshmark','Mercari','StockX','Facebook Marketplace','Craigslist','The RealReal','Vestiaire','Other'].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
-                  <select value={compForm.condition} onChange={e => setCompForm({...compForm, condition: e.target.value})} style={{...inputStyle,cursor:'pointer'}}>
-                    {['New','Like New','Excellent','Very Good','Good','Fair'].map(c => <option key={c} value={c}>{c}</option>)}
+                  <select value={compForm.condition} onChange={e => updateCompForm('condition',e.target.value)} style={{...inputStyle,cursor:'pointer'}}>
+                    {['New','Like New','Excellent','Very Good','Good','Fair'].map(co => <option key={co} value={co}>{co}</option>)}
                   </select>
                   <div style={{display:'flex',gap:10}}>
                     <button onClick={() => {
@@ -1035,14 +1081,14 @@ const App = () => {
                     }} className="gradient-amber" style={{flex:1,border:'none',borderRadius:10,padding:'12px 0',fontSize:13,fontWeight:700,color:'#000',cursor:'pointer'}}>
                       Save Comp
                     </button>
-                    <button onClick={() => setAddingComp(false)} style={{flex:1,background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:10,padding:'12px 0',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                    <button onClick={() => {setAddingComp(false);setCompForm({title:'',url:'',price:'',source:'eBay',condition:'Good'});}} style={{flex:1,background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:10,padding:'12px 0',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
                       Cancel
                     </button>
                   </div>
                 </div>
               </div>
             ) : (
-              <button onClick={() => setAddingComp(true)} className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,padding:'14px 0',fontSize:13,fontWeight:600,color:'#d4a853',cursor:'pointer',background:'rgba(255,255,255,0.04)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:10}}>
+              <button onClick={() => {setAddingComp(true);setEditingCompId(null);setCompForm({title:'',url:'',price:'',source:'eBay',condition:'Good'});}} className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,padding:'14px 0',fontSize:13,fontWeight:600,color:'#d4a853',cursor:'pointer',background:'rgba(255,255,255,0.04)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:10}}>
                 <Icons.Plus size={16} color="#d4a853"/>Add Comparable
               </button>
             )}
