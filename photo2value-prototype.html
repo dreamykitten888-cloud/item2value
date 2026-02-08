@@ -240,6 +240,13 @@ const App = () => {
   const [askingInput, setAskingInput] = useState('');
   const [marketInput, setMarketInput] = useState('');
   const [earningsInput, setEarningsInput] = useState('');
+  const [editFormUI, setEditFormUI] = useState({category:'Fashion',condition:'Good',emoji:'📦',photos:[]});
+  const editRefs = {
+    name: useRef(null),
+    brand: useRef(null),
+    model: useRef(null),
+    notes: useRef(null),
+  };
   const [addingComp, setAddingComp] = useState(false);
   const [editingCompId, setEditingCompId] = useState(null);
   const [compForm, setCompForm] = useState({title:'',url:'',price:'',source:'eBay',condition:'Good'});
@@ -878,6 +885,128 @@ const App = () => {
     </div>
   );
 
+  const initEditForm = (item) => {
+    setEditFormUI({category:item.category,condition:item.condition,emoji:item.emoji,photos:item.photos||[]});
+    setTimeout(() => {
+      if (editRefs.name.current) editRefs.name.current.value = item.name || '';
+      if (editRefs.brand.current) editRefs.brand.current.value = item.brand || '';
+      if (editRefs.model.current) editRefs.model.current.value = item.model || '';
+      if (editRefs.notes.current) editRefs.notes.current.value = item.notes || '';
+    }, 50);
+  };
+
+  const EditItemScreen = () => {
+    if (!selected) return null;
+    return (
+    <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px',position:'sticky',top:0,background:'linear-gradient(180deg,#0a0a0f 80%,transparent)',zIndex:20}}>
+        <button onClick={() => setScreen('detail')} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.ArrowLeft size={24}/></button>
+        <h1 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Edit Item</h1>
+        <div style={{width:24}}/>
+      </div>
+
+      <div style={{padding:'0 24px'}}>
+        {/* Emoji picker */}
+        <FormField label="Icon">
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {emojiOptions.map(e => (
+              <button key={e} onClick={() => setEditFormUI(prev => ({...prev,emoji:e}))} style={{width:44,height:44,borderRadius:10,fontSize:22,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',border: editFormUI.emoji===e ? '2px solid #d4a853' : '1px solid rgba(255,255,255,0.1)',background: editFormUI.emoji===e ? 'rgba(212,168,83,0.15)' : 'rgba(255,255,255,0.04)'}}>{e}</button>
+            ))}
+          </div>
+        </FormField>
+
+        {/* Photo Management */}
+        <FormField label={`Photos (${editFormUI.photos.length}/5)`} tip="Add up to 5 photos. First photo becomes the cover image.">
+          <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+            {editFormUI.photos.map((photo,idx) => (
+              <div key={idx} style={{width:72,height:72,borderRadius:12,overflow:'hidden',position:'relative',border:'1px solid rgba(255,255,255,0.1)'}}>
+                <img src={photo} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                {idx===0 && <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(212,168,83,0.9)',padding:'2px 0',textAlign:'center'}}><span style={{fontSize:8,fontWeight:700,color:'#000',textTransform:'uppercase',letterSpacing:0.5}}>Cover</span></div>}
+                <button onClick={() => setEditFormUI(prev => ({...prev,photos:prev.photos.filter((_,i)=>i!==idx)}))} style={{position:'absolute',top:4,right:4,width:20,height:20,borderRadius:10,background:'rgba(0,0,0,0.7)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+              </div>
+            ))}
+            {editFormUI.photos.length < 5 && (
+              <label style={{width:72,height:72,borderRadius:12,border:'2px dashed rgba(255,255,255,0.15)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',background:'rgba(255,255,255,0.03)',gap:4}}>
+                <Icons.Camera size={20} color="#64748b"/>
+                <span style={{fontSize:9,color:'#64748b',fontWeight:600}}>Add</span>
+                <input type="file" accept="image/*" multiple style={{display:'none'}} onChange={e => {
+                  const files = Array.from(e.target.files).slice(0, 5 - editFormUI.photos.length);
+                  files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = async (ev) => {
+                      const compressed = await compressPhoto(ev.target.result);
+                      setEditFormUI(prev => ({...prev, photos: [...prev.photos, compressed].slice(0,5)}));
+                    };
+                    reader.readAsDataURL(file);
+                  });
+                  e.target.value = '';
+                }}/>
+              </label>
+            )}
+          </div>
+        </FormField>
+
+        {/* Item name */}
+        <FormField label="Item Name" required>
+          <input ref={editRefs.name} className="form-input" defaultValue="" placeholder="e.g. Louis Vuitton Neverfull MM" style={inputStyle}/>
+        </FormField>
+
+        {/* Brand + Model row */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <FormField label="Brand">
+            <input ref={editRefs.brand} className="form-input" defaultValue="" placeholder="e.g. Nike" style={inputStyle}/>
+          </FormField>
+          <FormField label="Model">
+            <input ref={editRefs.model} className="form-input" defaultValue="" placeholder="e.g. Dunk Low" style={inputStyle}/>
+          </FormField>
+        </div>
+
+        {/* Category + Condition row */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <FormField label="Category" required>
+            <select value={editFormUI.category} onChange={e => setEditFormUI(prev => ({...prev,category:e.target.value}))} style={{...inputStyle,cursor:'pointer'}}>
+              {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Condition">
+            <select value={editFormUI.condition} onChange={e => setEditFormUI(prev => ({...prev,condition:e.target.value}))} style={{...inputStyle,cursor:'pointer'}}>
+              {conditionOptions.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </FormField>
+        </div>
+
+        {/* Notes */}
+        <FormField label="Notes">
+          <textarea ref={editRefs.notes} className="form-input" defaultValue="" placeholder="Any extra details, serial numbers, where you bought it..." rows={3} style={{...inputStyle,resize:'vertical',minHeight:60}}/>
+        </FormField>
+
+        {/* Save */}
+        <button onClick={() => {
+          const name = editRefs.name.current?.value?.trim() || '';
+          if (!name) { alert('Item name is required.'); return; }
+          setItems(prev => prev.map(it => it.id === selected.id ? {
+            ...it,
+            name,
+            brand: editRefs.brand.current?.value?.trim() || '',
+            model: editRefs.model.current?.value?.trim() || '',
+            category: editFormUI.category,
+            condition: editFormUI.condition,
+            emoji: editFormUI.emoji,
+            notes: editRefs.notes.current?.value?.trim() || '',
+            photos: editFormUI.photos,
+          } : it));
+          setScreen('detail');
+        }} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12}}>
+          Save Changes
+        </button>
+        <button onClick={() => setScreen('detail')} style={{width:'100%',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+          Cancel
+        </button>
+      </div>
+    </div>
+    );
+  };
+
   const InventoryScreen = () => (
     <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
       {/* Header */}
@@ -1276,8 +1405,8 @@ const App = () => {
           <button onClick={() => setScreen('pricing')} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12}}>
             Refresh Price
           </button>
-          <button onClick={() => alert('Edit Item is coming soon! For now, you can edit prices directly by tapping the price boxes above.')} className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#94a3b8',cursor:'pointer',background:'rgba(255,255,255,0.03)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
-            <Icons.Edit size={16} color="#94a3b8"/>Edit Item <span style={{fontSize:10,background:'rgba(212,168,83,0.15)',color:'#d4a853',padding:'2px 6px',borderRadius:4,fontWeight:700}}>SOON</span>
+          <button onClick={() => { initEditForm(selected); setScreen('edit-item'); }} className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#fff',cursor:'pointer',background:'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
+            <Icons.Edit size={16}/>Edit Item
           </button>
           <button onClick={() => {
             if (confirm('Delete this item from your inventory?')) {
@@ -1712,6 +1841,7 @@ const App = () => {
       case 'add-item': return AddItemScreen();
       case 'inventory': return InventoryScreen();
       case 'detail': return DetailScreen();
+      case 'edit-item': return EditItemScreen();
       case 'pricing': return PricingScreen();
       case 'sold-items': return SoldItemsScreen();
       case 'alerts': return AlertsScreen();
@@ -1725,7 +1855,7 @@ const App = () => {
     if (analyzing || aiDone) setScreen('ai');
   }, [analyzing, aiDone]);
 
-  const showTabs = !['scan','add-item','setup'].includes(screen);
+  const showTabs = !['scan','add-item','edit-item','setup'].includes(screen);
   const tabs = [
     {id:'home',icon:'Home',label:'Home'},
     {id:'inventory',icon:'Package',label:'Inventory'},
@@ -1745,7 +1875,7 @@ const App = () => {
             <div style={{display:'flex',justifyContent:'space-around',alignItems:'center'}}>
               {tabs.map(tab => {
                 const Ic = Icons[tab.icon];
-                const active = screen === tab.id || (tab.id === 'home' && ['home','sold-items'].includes(screen)) || (tab.id === 'inventory' && ['inventory','detail','pricing'].includes(screen));
+                const active = screen === tab.id || (tab.id === 'home' && ['home','sold-items'].includes(screen)) || (tab.id === 'inventory' && ['inventory','detail','edit-item','pricing'].includes(screen));
                 return (
                   <button key={tab.id} onClick={() => {
                     if (tab.id === 'scan') { setScanning(false); setAnalyzing(false); setAiDone(false); }
