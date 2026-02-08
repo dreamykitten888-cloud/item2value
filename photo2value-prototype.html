@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -57,6 +58,70 @@
 
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
+
+/* ── Supabase Client ── */
+const SUPABASE_URL = 'https://tzasuddushojjurbzqfe.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6YXN1ZGR1c2hvamp1cmJ6cWZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjU1MTUsImV4cCI6MjA4NjE0MTUxNX0.vKGMXcTkddpCwzH-zRPPzbVNWCvx5UNHNxdtvFZNZIM';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ── Supabase Sync Helpers ── */
+const syncProfile = async (profile) => {
+  if (!profile || !profile.email) return null;
+  try {
+    // Check if profile exists by email
+    const { data: existing } = await supabase.from('profiles').select('id').eq('email', profile.email).single();
+    if (existing) {
+      await supabase.from('profiles').update({ name: profile.name }).eq('id', existing.id);
+      return existing.id;
+    } else {
+      const { data: created } = await supabase.from('profiles').insert({ name: profile.name, email: profile.email }).select('id').single();
+      await logEvent(created?.id, 'user_signup', { name: profile.name });
+      return created?.id || null;
+    }
+  } catch(e) { console.log('Sync profile error:', e); return null; }
+};
+
+const syncItem = async (item, userId) => {
+  if (!userId) return;
+  try {
+    const row = {
+      id: item.id, user_id: userId, name: item.name, brand: item.brand || '', model: item.model || '',
+      category: item.category || 'Other', condition: item.condition || 'Good',
+      cost: item.cost || 0, asking: item.asking || 0, value: item.value || 0,
+      earnings: item.earnings || null, emoji: item.emoji || '📦', notes: item.notes || '',
+      date_purchased: item.datePurchased || null, date_sold: item.dateSold || null,
+      photos: JSON.stringify(item.photos || []), comps: JSON.stringify(item.comps || []),
+      price_history: JSON.stringify(item.priceHistory || []),
+    };
+    await supabase.from('items').upsert(row, { onConflict: 'id' });
+  } catch(e) { console.log('Sync item error:', e); }
+};
+
+const syncDeleteItem = async (itemId) => {
+  try { await supabase.from('items').delete().eq('id', itemId); } catch(e) { console.log('Delete sync error:', e); }
+};
+
+const syncAllItems = async (items, userId) => {
+  if (!userId || items.length === 0) return;
+  try {
+    const rows = items.map(item => ({
+      id: item.id, user_id: userId, name: item.name, brand: item.brand || '', model: item.model || '',
+      category: item.category || 'Other', condition: item.condition || 'Good',
+      cost: item.cost || 0, asking: item.asking || 0, value: item.value || 0,
+      earnings: item.earnings || null, emoji: item.emoji || '📦', notes: item.notes || '',
+      date_purchased: item.datePurchased || null, date_sold: item.dateSold || null,
+      photos: JSON.stringify(item.photos || []), comps: JSON.stringify(item.comps || []),
+      price_history: JSON.stringify(item.priceHistory || []),
+    }));
+    await supabase.from('items').upsert(rows, { onConflict: 'id' });
+  } catch(e) { console.log('Bulk sync error:', e); }
+};
+
+const logEvent = async (userId, eventType, metadata = {}) => {
+  try {
+    await supabase.from('analytics_events').insert({ user_id: userId, event_type: eventType, metadata });
+  } catch(e) { console.log('Event log error:', e); }
+};
 
 /* ── Inline SVG Icons ── */
 const Icon = ({d, size=20, color="currentColor", strokeWidth=2}) => (
@@ -256,6 +321,8 @@ const App = () => {
   const updateCompForm = (key, val) => setCompForm(prev => ({...prev, [key]: val}));
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const scrollRef = useRef(null);
+  const supabaseUserIdRef = useRef(null);
+  const syncTimerRef = useRef(null);
 
   // Save to localStorage whenever items or profile change (with overflow protection)
   useEffect(() => {
@@ -264,10 +331,35 @@ const App = () => {
     } catch(e) {
       alert('Storage is almost full! Your latest change may not have saved. Go to Profile > Export Backup to save your data, then try removing some photos.');
     }
+    // Debounced sync to Supabase (waits 2s after last change to avoid spamming)
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      if (supabaseUserIdRef.current && items.length > 0) {
+        syncAllItems(items, supabaseUserIdRef.current);
+      }
+    }, 2000);
   }, [items]);
   useEffect(() => {
     if (profile) localStorage.setItem('item2value_profile', JSON.stringify(profile));
   }, [profile]);
+
+  // On app load: sync profile to Supabase and get userId
+  useEffect(() => {
+    const initSync = async () => {
+      const p = loadProfile();
+      if (p && p.email) {
+        const userId = await syncProfile(p);
+        if (userId) {
+          supabaseUserIdRef.current = userId;
+          logEvent(userId, 'app_open', { name: p.name });
+          // Sync any existing local items on first load
+          const localItems = loadItems();
+          if (localItems.length > 0) syncAllItems(localItems, userId);
+        }
+      }
+    };
+    initSync();
+  }, []);
 
   // Record a price history snapshot (dedupes same-day entries)
   const recordPriceSnapshot = (itemId, value) => {
@@ -465,6 +557,10 @@ const App = () => {
           const newProfile = { name, email, createdAt: new Date().toISOString() };
           setProfile(newProfile);
           setScreen('home');
+          // Sync new profile to Supabase
+          syncProfile(newProfile).then(userId => {
+            if (userId) { supabaseUserIdRef.current = userId; }
+          });
         }} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:16,fontWeight:700,color:'#000',cursor:'pointer',marginTop:8}}>
           Get Started
         </button>
@@ -917,6 +1013,10 @@ const App = () => {
             priceHistory: [{date: new Date().toISOString().slice(0,10), value: parseFloat(formRefs.market.current?.value) || parseFloat(formRefs.asking.current?.value) || parseFloat(cost) || 0, cost: parseFloat(cost) || 0, asking: parseFloat(formRefs.asking.current?.value) || 0}],
           };
           setItems(prev => [newItem, ...prev]);
+          if (supabaseUserIdRef.current) {
+            syncItem(newItem, supabaseUserIdRef.current);
+            logEvent(supabaseUserIdRef.current, 'item_added', { name: newItem.name, category: newItem.category, cost: newItem.cost });
+          }
           resetAddForm();
           setScreen('inventory');
         }} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12}}>
@@ -1271,6 +1371,9 @@ const App = () => {
                     const v = parseFloat(earningsInput);
                     if (!isNaN(v) && v >= 0) {
                       setItems(prev => prev.map(it => it.id === selected.id ? {...it, earnings: v} : it));
+                      if (v > 0 && supabaseUserIdRef.current) {
+                        logEvent(supabaseUserIdRef.current, 'item_sold', { name: selected.name, earnings: v, cost: selected.cost, profit: v - (selected.cost || 0) });
+                      }
                     } else if (earningsInput === '' || earningsInput === '0') {
                       setItems(prev => prev.map(it => it.id === selected.id ? {...it, earnings: null} : it));
                     }
@@ -1498,6 +1601,7 @@ const App = () => {
                       };
                       setItems(prev => prev.map(it => it.id === selected.id ? {...it, comps: [...(it.comps||[]), newComp]} : it));
                       setTimeout(() => recalcMarketFromComps(selected.id), 50);
+                      if (supabaseUserIdRef.current) logEvent(supabaseUserIdRef.current, 'comp_added', { itemName: selected.name, compTitle: newComp.title, price: newComp.price, source: newComp.source });
                       setCompForm({title:'',url:'',price:'',source:'eBay',condition:'Good'});
                       setAddingComp(false);
                     }} className="gradient-amber" style={{flex:1,border:'none',borderRadius:10,padding:'12px 0',fontSize:13,fontWeight:700,color:'#000',cursor:'pointer'}}>
@@ -1525,7 +1629,13 @@ const App = () => {
           </button>
           <button onClick={() => {
             if (confirm('Delete this item from your inventory?')) {
-              setItems(prev => prev.filter(it => it.id !== selected.id));
+              const delId = selected.id;
+              const delName = selected.name;
+              setItems(prev => prev.filter(it => it.id !== delId));
+              if (supabaseUserIdRef.current) {
+                syncDeleteItem(delId);
+                logEvent(supabaseUserIdRef.current, 'item_deleted', { name: delName });
+              }
               setScreen('inventory');
             }
           }} style={{width:'100%',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#f87171',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
@@ -1895,8 +2005,10 @@ const App = () => {
 
         <button onClick={() => {
           if (confirm('Sign out? This will clear your profile but your inventory data stays on this device. You can sign back in by entering your name and email.')) {
+            if (supabaseUserIdRef.current) logEvent(supabaseUserIdRef.current, 'user_signout', {});
             localStorage.removeItem('item2value_profile');
             setProfile(null);
+            supabaseUserIdRef.current = null;
             setScreen('setup');
           }
         }} style={{width:'100%',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:12,padding:'14px 0',color:'#f87171',fontSize:15,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
@@ -1922,8 +2034,13 @@ const App = () => {
                 const email = profileEmailRef.current?.value?.trim() || '';
                 if (!name) { alert('Please enter your name.'); return; }
                 if (!email) { alert('Please enter your email.'); return; }
-                setProfile(prev => ({...prev, name, email}));
+                const updatedProfile = {...profile, name, email};
+                setProfile(updatedProfile);
                 setEditingProfile(false);
+                // Re-sync profile to Supabase
+                syncProfile(updatedProfile).then(userId => {
+                  if (userId) supabaseUserIdRef.current = userId;
+                });
               }} className="gradient-amber" style={{flex:1,padding:'12px 0',borderRadius:12,border:'none',fontSize:14,fontWeight:700,color:'#000',cursor:'pointer'}}>Save</button>
             </div>
           </div>
