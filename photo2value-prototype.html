@@ -247,6 +247,9 @@ const App = () => {
     model: useRef(null),
     notes: useRef(null),
   };
+  const [soldFilter, setSoldFilter] = useState('All');
+  const [soldSearch, setSoldSearch] = useState('');
+  const [soldSort, setSoldSort] = useState('recent');
   const [addingComp, setAddingComp] = useState(false);
   const [editingCompId, setEditingCompId] = useState(null);
   const [compForm, setCompForm] = useState({title:'',url:'',price:'',source:'eBay',condition:'Good'});
@@ -265,6 +268,46 @@ const App = () => {
   useEffect(() => {
     if (profile) localStorage.setItem('item2value_profile', JSON.stringify(profile));
   }, [profile]);
+
+  // Record a price history snapshot (dedupes same-day entries)
+  const recordPriceSnapshot = (itemId, value) => {
+    const today = new Date().toISOString().slice(0,10);
+    setItems(prev => prev.map(it => {
+      if (it.id !== itemId) return it;
+      const history = it.priceHistory || [];
+      // If there's already a snapshot today, update it instead of adding duplicate
+      const existing = history.findIndex(h => h.date === today);
+      if (existing >= 0) {
+        const updated = [...history];
+        updated[existing] = {...updated[existing], value, cost: it.cost, asking: it.asking};
+        return {...it, priceHistory: updated};
+      }
+      return {...it, priceHistory: [...history, {date: today, value, cost: it.cost, asking: it.asking}]};
+    }));
+  };
+
+  // Auto-update market value from comps (average of all comp prices)
+  const recalcMarketFromComps = (itemId) => {
+    setItems(prev => prev.map(it => {
+      if (it.id !== itemId) return it;
+      const comps = it.comps || [];
+      const prices = comps.map(c => c.price).filter(p => p > 0);
+      if (prices.length === 0) return it;
+      const avg = Math.round(prices.reduce((s,p) => s+p, 0) / prices.length);
+      // Also record price history snapshot
+      const today = new Date().toISOString().slice(0,10);
+      const history = it.priceHistory || [];
+      const existing = history.findIndex(h => h.date === today);
+      let newHistory;
+      if (existing >= 0) {
+        newHistory = [...history];
+        newHistory[existing] = {...newHistory[existing], value: avg, cost: it.cost, asking: it.asking};
+      } else {
+        newHistory = [...history, {date: today, value: avg, cost: it.cost, asking: it.asking}];
+      }
+      return {...it, value: avg, priceHistory: newHistory};
+    }));
+  };
 
   const getItemCost = (item) => item.cost;
   const getItemAsking = (item) => item.asking;
@@ -446,7 +489,7 @@ const App = () => {
           {[
             {label:'Total Items',val:String(items.length),icon:'Package',grad:'linear-gradient(135deg,#3b82f6,#2563eb)'},
             {label:'Total Value',val:fmt(totalValue),icon:'Dollar',grad:'linear-gradient(135deg,#d4a853,#b8860b)',tip:'The combined market value of all items currently in your inventory.'},
-            {label:'Total Earnings',val: totalEarnings > 0 ? fmt(totalEarnings) : '--',icon:'BarChart',grad:'linear-gradient(135deg,#a855f7,#7c3aed)',tip:'Total revenue from items you\'ve sold. Tap to see all sold items.',onClick:() => alert('Sold Items dashboard is coming soon! Enter earnings on any item to start tracking.')},
+            {label:'Total Earnings',val: totalEarnings > 0 ? fmt(totalEarnings) : '--',icon:'BarChart',grad:'linear-gradient(135deg,#a855f7,#7c3aed)',tip:'Total revenue from items you\'ve sold. Tap to see all sold items.',onClick:() => setScreen('sold-items')},
             {label:'Top Gainer',val: topGainer ? `+${getItemGain(topGainer)}%` : '--',icon:'TrendUp',grad:'linear-gradient(135deg,#22c55e,#16a34a)',tip: topGainer ? `Your best performing item by % gain. Currently: ${topGainer.name}` : 'Add items to see your top performer.'},
           ].map((c,i) => {
             const Ic = Icons[c.icon];
@@ -871,6 +914,7 @@ const App = () => {
             datePurchased: formRefs.datePurchased.current?.value || null,
             earnings: null,
             dateSold: null,
+            priceHistory: [{date: new Date().toISOString().slice(0,10), value: parseFloat(formRefs.market.current?.value) || parseFloat(formRefs.asking.current?.value) || parseFloat(cost) || 0, cost: parseFloat(cost) || 0, asking: parseFloat(formRefs.asking.current?.value) || 0}],
           };
           setItems(prev => [newItem, ...prev]);
           resetAddForm();
@@ -1012,7 +1056,10 @@ const App = () => {
       {/* Header */}
       <div style={{padding:'20px 24px 0',position:'sticky',top:0,background:'linear-gradient(180deg,#0a0a0f 80%,transparent)',zIndex:20,paddingBottom:16}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-          <h1 style={{fontSize:24,fontWeight:700,color:'#fff'}}>Inventory</h1>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <h1 style={{fontSize:24,fontWeight:700,color:'#fff'}}>Inventory</h1>
+            {items.length > 0 && <span style={{background:'rgba(212,168,83,0.15)',color:'#d4a853',fontSize:12,fontWeight:700,padding:'4px 10px',borderRadius:20}}>{items.length}</span>}
+          </div>
           <button onClick={() => setViewMode(viewMode==='grid'?'list':'grid')} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}>
             {viewMode==='grid' ? <Icons.List size={22}/> : <Icons.Grid size={22}/>}
           </button>
@@ -1055,7 +1102,10 @@ const App = () => {
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             {filtered.map((item,i) => (
               <div key={item.id} onClick={() => goItem(item.id)} className="glass glass-hover anim-up" style={{borderRadius:16,overflow:'hidden',cursor:'pointer',animationDelay:`${i*0.06}s`}}>
-                <div style={{width:'100%',height:120,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:44}}>{item.emoji}</div>
+                <div style={{width:'100%',height:120,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:44,overflow:'hidden',position:'relative'}}>
+                  {item.photos && item.photos.length > 0 ? <img src={item.photos[0]} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : item.emoji}
+                  {item.earnings && item.earnings > 0 && <div style={{position:'absolute',top:6,right:6,background:'rgba(34,197,94,0.9)',borderRadius:6,padding:'2px 6px',fontSize:9,fontWeight:700,color:'#fff'}}>SOLD</div>}
+                </div>
                 <div style={{padding:12}}>
                   <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:13}}>{item.name}</p>
                   <p className="text-dim" style={{fontSize:11,marginTop:3}}>{item.condition}</p>
@@ -1071,7 +1121,9 @@ const App = () => {
           <div style={{display:'flex',flexDirection:'column',gap:10}}>
             {filtered.map((item,i) => (
               <div key={item.id} onClick={() => goItem(item.id)} className="glass glass-hover anim-right" style={{borderRadius:14,padding:16,display:'flex',alignItems:'center',gap:14,cursor:'pointer',animationDelay:`${i*0.04}s`}}>
-                <div style={{width:56,height:56,borderRadius:12,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,flexShrink:0}}>{item.emoji}</div>
+                <div style={{width:56,height:56,borderRadius:12,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,flexShrink:0,overflow:'hidden'}}>
+                  {item.photos && item.photos.length > 0 ? <img src={item.photos[0]} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : item.emoji}
+                </div>
                 <div style={{flex:1,minWidth:0}}>
                   <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:14}}>{item.name}</p>
                   <p className="text-dim" style={{fontSize:12,marginTop:3}}>{item.condition}</p>
@@ -1143,7 +1195,10 @@ const App = () => {
         </div>
 
         <div style={{padding:'0 24px'}}>
-          <h2 style={{fontSize:22,fontWeight:700,color:'#fff',marginBottom:4}}>{selected.name}</h2>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
+            <h2 style={{fontSize:22,fontWeight:700,color:'#fff'}}>{selected.name}</h2>
+            {selected.earnings && selected.earnings > 0 && <span style={{background:'rgba(34,197,94,0.15)',color:'#22c55e',fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:6}}>SOLD</span>}
+          </div>
           <p className="text-muted" style={{fontSize:13,marginBottom:24}}>{selected.category} · {selected.condition}</p>
 
           {/* Valuation */}
@@ -1207,6 +1262,7 @@ const App = () => {
                     const v = parseFloat(marketInput);
                     if (!isNaN(v) && v >= 0) {
                       setItems(prev => prev.map(it => it.id === selected.id ? {...it, value: v} : it));
+                      recordPriceSnapshot(selected.id, v);
                     }
                     setEditingMarket(false);
                   }}/>
@@ -1280,13 +1336,70 @@ const App = () => {
             );
           })()}
 
-          {/* Chart - Coming Soon */}
+          {/* Price History Chart */}
           <div className="glass" style={{borderRadius:16,padding:20,marginBottom:16}}>
             <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:12}}>Price History</h3>
-            <div style={{padding:'20px 0',textAlign:'center'}}>
-              <Icons.Clock size={28} color="#475569"/>
-              <p className="text-dim" style={{fontSize:12,marginTop:8}}>Price trend tracking coming soon. Add comps over time to build your history.</p>
-            </div>
+            {(() => {
+              const history = selected.priceHistory || [];
+              if (history.length < 2) {
+                return (
+                  <div style={{padding:'20px 0',textAlign:'center'}}>
+                    <Icons.Clock size={28} color="#475569"/>
+                    <p className="text-dim" style={{fontSize:12,marginTop:8}}>{history.length === 0 ? 'No price history yet. Update market value to start tracking.' : 'Update market value again to see your price trend. Each change is recorded.'}</p>
+                  </div>
+                );
+              }
+              // SVG line chart
+              const W = 300, H = 120, padX = 40, padY = 16;
+              const values = history.map(h => h.value);
+              const minV = Math.min(...values) * 0.95;
+              const maxV = Math.max(...values) * 1.05;
+              const rangeV = maxV - minV || 1;
+              const points = history.map((h, i) => {
+                const x = padX + (i / (history.length - 1)) * (W - padX - 8);
+                const y = padY + (1 - (h.value - minV) / rangeV) * (H - padY * 2);
+                return {x, y, ...h};
+              });
+              const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+              const areaPath = linePath + ` L${points[points.length-1].x},${H-padY} L${points[0].x},${H-padY} Z`;
+              const isUp = values[values.length-1] >= values[0];
+              const lineColor = isUp ? '#4ade80' : '#f87171';
+              return (
+                <div>
+                  <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',height:'auto'}}>
+                    {/* Grid lines */}
+                    {[0,0.25,0.5,0.75,1].map((pct,i) => {
+                      const y = padY + pct * (H - padY * 2);
+                      const val = Math.round(maxV - pct * rangeV);
+                      return <React.Fragment key={i}>
+                        <line x1={padX} y1={y} x2={W-8} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth="0.5"/>
+                        {i % 2 === 0 && <text x={padX-4} y={y+3} fill="#475569" fontSize="7" textAnchor="end" fontFamily="DM Sans">${val.toLocaleString()}</text>}
+                      </React.Fragment>;
+                    })}
+                    {/* Area fill */}
+                    <path d={areaPath} fill={`${lineColor}12`}/>
+                    {/* Line */}
+                    <path d={linePath} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    {/* Dots */}
+                    {points.map((p, i) => (
+                      <circle key={i} cx={p.x} cy={p.y} r={i === points.length-1 ? 4 : 2.5} fill={i === points.length-1 ? lineColor : '#1e293b'} stroke={lineColor} strokeWidth="1.5"/>
+                    ))}
+                  </svg>
+                  {/* Date labels */}
+                  <div style={{display:'flex',justifyContent:'space-between',marginTop:4,paddingLeft:40}}>
+                    <span className="text-dim" style={{fontSize:9}}>{new Date(history[0].date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
+                    <span className="text-dim" style={{fontSize:9}}>{new Date(history[history.length-1].date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
+                  </div>
+                  {/* Summary */}
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:10,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+                    <span className="text-dim" style={{fontSize:11}}>{history.length} data point{history.length>1?'s':''}</span>
+                    <span style={{fontSize:12,fontWeight:600,color:lineColor}}>
+                      {isUp?'+':''}{Math.round(((values[values.length-1]-values[0])/values[0])*100)}% overall
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Comps */}
@@ -1318,6 +1431,7 @@ const App = () => {
                         <button onClick={() => {
                           if (!compForm.title || !compForm.price) return;
                           setItems(prev => prev.map(it => it.id === selected.id ? {...it, comps: (it.comps||[]).map(comp => comp.id === c.id ? {...comp, title:compForm.title, url:compForm.url, price:parseFloat(compForm.price), source:compForm.source, condition:compForm.condition} : comp)} : it));
+                          setTimeout(() => recalcMarketFromComps(selected.id), 50);
                           setEditingCompId(null);
                           setCompForm({title:'',url:'',price:'',source:'eBay',condition:'Good'});
                         }} className="gradient-amber" style={{flex:1,border:'none',borderRadius:10,padding:'10px 0',fontSize:13,fontWeight:700,color:'#000',cursor:'pointer'}}>Save</button>
@@ -1341,7 +1455,7 @@ const App = () => {
                         <button onClick={(e) => {e.stopPropagation();setEditingCompId(c.id);setCompForm({title:c.title,url:c.url||'',price:String(c.price),source:c.source,condition:c.condition});}} style={{background:'rgba(255,255,255,0.08)',border:'none',borderRadius:6,padding:'4px 8px',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
                           <Icons.Edit size={12} color="#94a3b8"/><span style={{fontSize:10,color:'#94a3b8'}}>Edit</span>
                         </button>
-                        <button onClick={(e) => {e.stopPropagation();if(confirm('Delete this comparable?')){setItems(prev => prev.map(it => it.id === selected.id ? {...it, comps: (it.comps||[]).filter(comp => comp.id !== c.id)} : it));}}} style={{background:'rgba(239,68,68,0.1)',border:'none',borderRadius:6,padding:'4px 8px',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+                        <button onClick={(e) => {e.stopPropagation();if(confirm('Delete this comparable?')){setItems(prev => prev.map(it => it.id === selected.id ? {...it, comps: (it.comps||[]).filter(comp => comp.id !== c.id)} : it));setTimeout(() => recalcMarketFromComps(selected.id), 50);}}} style={{background:'rgba(239,68,68,0.1)',border:'none',borderRadius:6,padding:'4px 8px',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
                           <span style={{fontSize:10,color:'#f87171'}}>Delete</span>
                         </button>
                       </div>
@@ -1383,6 +1497,7 @@ const App = () => {
                         url: compForm.url,
                       };
                       setItems(prev => prev.map(it => it.id === selected.id ? {...it, comps: [...(it.comps||[]), newComp]} : it));
+                      setTimeout(() => recalcMarketFromComps(selected.id), 50);
                       setCompForm({title:'',url:'',price:'',source:'eBay',condition:'Good'});
                       setAddingComp(false);
                     }} className="gradient-amber" style={{flex:1,border:'none',borderRadius:10,padding:'12px 0',fontSize:13,fontWeight:700,color:'#000',cursor:'pointer'}}>
@@ -1512,9 +1627,6 @@ const App = () => {
   );
 
   const SoldItemsScreen = () => {
-    const [soldFilter, setSoldFilter] = useState('All');
-    const [soldSearch, setSoldSearch] = useState('');
-    const [soldSort, setSoldSort] = useState('recent');
     const sold = soldItems
       .filter(i => (soldFilter === 'All' || i.category === soldFilter) && i.name.toLowerCase().includes(soldSearch.toLowerCase()))
       .sort((a,b) => {
@@ -1781,8 +1893,14 @@ const App = () => {
           </button>
         </div>
 
-        <button onClick={() => alert('Sign Out is coming soon! Accounts are not yet enabled.')} style={{width:'100%',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:12,padding:'14px 0',color:'#64748b',fontSize:15,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:0.6}}>
-          <Icons.LogOut size={16} color="#64748b"/>Sign Out <span style={{fontSize:9,background:'rgba(212,168,83,0.12)',color:'#d4a853',padding:'2px 6px',borderRadius:4,fontWeight:700}}>SOON</span>
+        <button onClick={() => {
+          if (confirm('Sign out? This will clear your profile but your inventory data stays on this device. You can sign back in by entering your name and email.')) {
+            localStorage.removeItem('item2value_profile');
+            setProfile(null);
+            setScreen('setup');
+          }
+        }} style={{width:'100%',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:12,padding:'14px 0',color:'#f87171',fontSize:15,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <Icons.LogOut size={16} color="#f87171"/>Sign Out
         </button>
       </div>
 
