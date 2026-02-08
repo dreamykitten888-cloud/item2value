@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Photo2Value</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: #06060b;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,h2,h3,h4,h5,h6 { font-family: 'Sora', system-ui, sans-serif; }
+  input, select { font-family: 'DM Sans', system-ui, sans-serif; }
+
+  @keyframes slideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideRight { from { opacity:0; transform:translateX(-24px); } to { opacity:1; transform:translateX(0); } }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes scanLine { 0%,100% { top:8%; } 50% { top:88%; } }
+  @keyframes pulse { 0%,100% { opacity:0.4; } 50% { opacity:0.8; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes spinReverse { to { transform: rotate(-360deg); } }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+  .anim-up { animation: slideUp 0.5s ease-out both; }
+  .anim-right { animation: slideRight 0.5s ease-out both; }
+  .anim-fade { animation: fadeIn 0.4s ease-out both; }
+
+  .scroll-hide::-webkit-scrollbar { display: none; }
+  .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .glass { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(16px); }
+  .glass-hover:hover { background: rgba(255,255,255,0.08); }
+
+  .gradient-amber { background: linear-gradient(135deg, #d4a853, #b8860b); }
+  .gradient-dark { background: linear-gradient(180deg, #0a0a0f 0%, #0d0d14 50%, #0a0a0f 100%); }
+
+  .text-gold { color: #d4a853; }
+  .text-muted { color: #64748b; }
+  .text-dim { color: #475569; }
+  .bg-gold { background-color: #d4a853; }
+
+  .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  select option { background: #1e293b; color: white; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+/* ── Inline SVG Icons ── */
+const Icon = ({d, size=20, color="currentColor", strokeWidth=2}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d}/>
+  </svg>
+);
+
+const Icons = {
+  Home: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  Camera: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+  Search: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  Bell: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
+  User: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  ArrowLeft: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+  Grid: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
+  List: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
+  TrendUp: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  TrendDown: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>,
+  ChevronRight: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
+  Plus: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  Upload: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>,
+  Filter: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
+  Shield: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  Download: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+  Help: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  LogOut: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+  Share: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+  Refresh: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>,
+  Edit: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,
+  Zap: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+  Package: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
+  Dollar: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>,
+  BarChart: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>,
+  Clock: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  Info: ({size=20,color="currentColor"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
+};
+
+/* ── Data ── */
+const inventoryItems = [
+  { id:1, name:'Louis Vuitton Neverfull MM', category:'Fashion', cost:1270, asking:1500, value:1420, gain:12, emoji:'👜', condition:'Excellent', brand:'Louis Vuitton', model:'Neverfull MM', color:'Monogram', material:'Canvas & Leather' },
+  { id:2, name:'Nike Dunk Low Panda', category:'Fashion', cost:147, asking:160, value:135, gain:-8, emoji:'👟', condition:'Good', brand:'Nike', model:'Dunk Low', color:'White/Black' },
+  { id:3, name:'Herman Miller Aeron Chair', category:'Home', cost:850, asking:950, value:890, gain:5, emoji:'🪑', condition:'Like New', brand:'Herman Miller', model:'Aeron', color:'Graphite' },
+  { id:4, name:'Sony A7III Camera', category:'Electronics', cost:1185, asking:1200, value:1150, gain:-3, emoji:'📷', condition:'Excellent', brand:'Sony', model:'A7III', color:'Black' },
+  { id:5, name:'Vintage Rolex Datejust', category:'Watches', cost:4600, asking:6500, value:6200, gain:34, emoji:'⌚', condition:'Very Good', brand:'Rolex', model:'Datejust 1601', color:'Steel' },
+  { id:6, name:'Le Creuset Dutch Oven', category:'Home', cost:275, asking:300, value:280, gain:2, emoji:'🍲', condition:'Excellent', brand:'Le Creuset', model:'Round 5.5qt', color:'Flame' },
+  { id:7, name:'iPad Pro 12.9" M2', category:'Electronics', cost:880, asking:800, value:750, gain:-15, emoji:'📱', condition:'Good', brand:'Apple', model:'iPad Pro M2', color:'Space Gray' },
+  { id:8, name:'MCM Stark Backpack', category:'Fashion', cost:453, asking:520, value:485, gain:7, emoji:'🎒', condition:'Excellent', brand:'MCM', model:'Stark', color:'Cognac Visetos' },
+];
+
+const priceHistory = [
+  {m:'Sep',v:1270},{m:'Oct',v:1285},{m:'Nov',v:1310},{m:'Dec',v:1350},{m:'Jan',v:1385},{m:'Feb',v:1420}
+];
+
+const comparablesMap = {
+  1: [
+    { id:1, source:'Vestiaire Collective', title:'Louis Vuitton Neverfull MM Damier', price:1410, condition:'Excellent', date:'2 days ago' },
+    { id:2, source:'Rebag', title:'LV Neverfull MM Monogram', price:1520, condition:'Like New', date:'1 week ago' },
+    { id:3, source:'The RealReal', title:'Louis Vuitton Neverfull Tote', price:1310, condition:'Good', date:'3 days ago' },
+  ],
+  2: [
+    { id:1, source:'StockX', title:'Nike Dunk Low Retro White Black', price:128, condition:'New', date:'1 day ago' },
+    { id:2, source:'GOAT', title:'Nike Dunk Low Panda 2024', price:140, condition:'New', date:'3 days ago' },
+    { id:3, source:'eBay', title:'Nike Dunk Low Panda Size 10', price:119, condition:'Used', date:'5 days ago' },
+  ],
+  3: [
+    { id:1, source:'eBay', title:'Herman Miller Aeron Size B Graphite', price:875, condition:'Like New', date:'2 days ago' },
+    { id:2, source:'Facebook Marketplace', title:'Aeron Chair Fully Loaded', price:920, condition:'Excellent', date:'4 days ago' },
+    { id:3, source:'Craigslist', title:'Herman Miller Aeron Remastered', price:810, condition:'Good', date:'1 week ago' },
+  ],
+  4: [
+    { id:1, source:'eBay', title:'Sony A7III Body Only Low Shutter', price:1120, condition:'Excellent', date:'1 day ago' },
+    { id:2, source:'KEH Camera', title:'Sony Alpha a7 III Mirrorless', price:1189, condition:'Like New', date:'3 days ago' },
+    { id:3, source:'MPB', title:'Sony A7III Body 24.2MP', price:1095, condition:'Good', date:'5 days ago' },
+  ],
+  5: [
+    { id:1, source:'Chrono24', title:'Rolex Datejust 1601 Vintage Steel', price:6100, condition:'Very Good', date:'1 day ago' },
+    { id:2, source:'Bob\'s Watches', title:'Rolex Datejust 1601 Silver Dial', price:6450, condition:'Excellent', date:'4 days ago' },
+    { id:3, source:'Crown & Caliber', title:'Vintage Rolex Datejust SS', price:5890, condition:'Good', date:'1 week ago' },
+  ],
+  6: [
+    { id:1, source:'eBay', title:'Le Creuset Dutch Oven 5.5 Qt Flame', price:275, condition:'Excellent', date:'2 days ago' },
+    { id:2, source:'Poshmark', title:'Le Creuset Round French Oven', price:290, condition:'Like New', date:'5 days ago' },
+    { id:3, source:'Mercari', title:'Le Creuset 5.5 Quart Orange', price:245, condition:'Good', date:'1 week ago' },
+  ],
+  7: [
+    { id:1, source:'Swappa', title:'iPad Pro 12.9 M2 256GB WiFi', price:740, condition:'Good', date:'1 day ago' },
+    { id:2, source:'eBay', title:'Apple iPad Pro 12.9" 6th Gen M2', price:769, condition:'Excellent', date:'3 days ago' },
+    { id:3, source:'Back Market', title:'iPad Pro 12.9 M2 Refurbished', price:699, condition:'Refurbished', date:'2 days ago' },
+  ],
+  8: [
+    { id:1, source:'Vestiaire Collective', title:'MCM Stark Backpack Cognac Visetos', price:479, condition:'Excellent', date:'2 days ago' },
+    { id:2, source:'The RealReal', title:'MCM Visetos Stark Backpack Medium', price:510, condition:'Very Good', date:'5 days ago' },
+    { id:3, source:'Rebag', title:'MCM Stark Side Studs Backpack', price:445, condition:'Good', date:'1 week ago' },
+  ],
+};
+const getComps = (itemId) => comparablesMap[itemId] || comparablesMap[1];
+
+const alerts = [
+  { id:1, type:'Price Spike', msg:'Vintage Rolex value up 8%', time:'2 hours ago', iconKey:'Zap' },
+  { id:2, type:'New Comp Found', msg:'3 new listings for Neverfull MM', time:'5 hours ago', iconKey:'TrendUp' },
+  { id:3, type:'Market Alert', msg:'Herman Miller Aeron trending up', time:'1 day ago', iconKey:'BarChart' },
+];
+
+/* ── Mini Chart Component ── */
+const PriceChart = ({ data, width=320, height=160 }) => {
+  const vals = data.map(d => d.v);
+  const min = Math.min(...vals) - 20;
+  const max = Math.max(...vals) + 20;
+  const range = max - min;
+  const pad = { top:12, right:12, bottom:28, left:48 };
+  const cw = width - pad.left - pad.right;
+  const ch = height - pad.top - pad.bottom;
+
+  const pts = data.map((d, i) => ({
+    x: pad.left + (i / (data.length - 1)) * cw,
+    y: pad.top + ch - ((d.v - min) / range) * ch,
+  }));
+
+  const linePath = pts.map((p,i) => `${i===0?'M':'L'}${p.x},${p.y}`).join(' ');
+  const areaPath = linePath + ` L${pts[pts.length-1].x},${pad.top+ch} L${pts[0].x},${pad.top+ch} Z`;
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{display:'block'}}>
+      <defs>
+        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#d4a853" stopOpacity="0.3"/>
+          <stop offset="100%" stopColor="#d4a853" stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      {/* Grid lines */}
+      {[0,0.25,0.5,0.75,1].map((pct,i) => {
+        const y = pad.top + ch * (1 - pct);
+        const val = Math.round(min + range * pct);
+        return <g key={i}>
+          <line x1={pad.left} y1={y} x2={width-pad.right} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
+          <text x={pad.left-8} y={y+4} fill="#64748b" fontSize="10" textAnchor="end" fontFamily="DM Sans">${val}</text>
+        </g>;
+      })}
+      {/* X labels */}
+      {data.map((d,i) => (
+        <text key={i} x={pts[i].x} y={height-6} fill="#64748b" fontSize="10" textAnchor="middle" fontFamily="DM Sans">{d.m}</text>
+      ))}
+      {/* Area + Line */}
+      <path d={areaPath} fill="url(#areaGrad)"/>
+      <path d={linePath} fill="none" stroke="#d4a853" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Dots */}
+      {pts.map((p,i) => <circle key={i} cx={p.x} cy={p.y} r="4" fill="#0a0a0f" stroke="#d4a853" strokeWidth="2"/>)}
+    </svg>
+  );
+};
+
+/* ── Main App ── */
+const App = () => {
+  const [screen, setScreen] = useState('home');
+  const [selectedId, setSelectedId] = useState(null);
+  const [viewMode, setViewMode] = useState('grid');
+  const [filter, setFilter] = useState('All');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('value-high');
+  const [scanning, setScanning] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiDone, setAiDone] = useState(false);
+  const [customCosts, setCustomCosts] = useState({});
+  const [customAsking, setCustomAsking] = useState({});
+  const [editingCost, setEditingCost] = useState(false);
+  const [editingAsking, setEditingAsking] = useState(false);
+  const [costInput, setCostInput] = useState('');
+  const [askingInput, setAskingInput] = useState('');
+  const [addForm, setAddForm] = useState({name:'',brand:'',model:'',category:'Fashion',condition:'Good',cost:'',asking:'',notes:'',emoji:'📦',photos:[]});
+  const scrollRef = useRef(null);
+
+  const getItemCost = (item) => customCosts[item.id] !== undefined ? customCosts[item.id] : item.cost;
+  const getItemAsking = (item) => customAsking[item.id] !== undefined ? customAsking[item.id] : item.asking;
+  const getItemGain = (item) => {
+    const cost = getItemCost(item);
+    if (cost === 0) return 0;
+    return Math.round(((item.value - cost) / cost) * 100);
+  };
+
+  const totalValue = inventoryItems.reduce((s,i) => s + i.value, 0);
+  const avgValue = Math.round(totalValue / inventoryItems.length);
+  const topGainer = inventoryItems.reduce((m,i) => getItemGain(i) > getItemGain(m) ? i : m);
+  const selected = inventoryItems.find(i => i.id === selectedId);
+
+  /* Tooltip component */
+  const InfoTip = ({text, align}) => {
+    const [show, setShow] = useState(false);
+    const ref = React.useRef(null);
+    const [pos, setPos] = useState('center');
+    React.useEffect(() => {
+      if (show && ref.current) {
+        const rect = ref.current.getBoundingClientRect();
+        if (rect.right + 90 > window.innerWidth) setPos('right');
+        else if (rect.left - 90 < 0) setPos('left');
+        else setPos('center');
+      }
+    }, [show]);
+    const tipPos = align || pos;
+    const tipStyle = tipPos === 'right'
+      ? {right:0, transform:'none'}
+      : tipPos === 'left'
+      ? {left:0, transform:'none'}
+      : {left:'50%', transform:'translateX(-50%)'};
+    const arrowStyle = tipPos === 'right'
+      ? {right:12, transform:'rotate(45deg)'}
+      : tipPos === 'left'
+      ? {left:12, transform:'rotate(45deg)'}
+      : {left:'50%', transform:'translateX(-50%) rotate(45deg)'};
+    return (
+      <div ref={ref} style={{position:'relative',display:'inline-flex',marginLeft:6}} onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={(e) => {e.stopPropagation();setShow(!show);}}>
+        <Icons.Info size={14} color="#64748b"/>
+        {show && (
+          <div className="anim-fade" style={{position:'absolute',bottom:'calc(100% + 8px)',...tipStyle,background:'#1e293b',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#cbd5e1',whiteSpace:'normal',width:180,zIndex:50,boxShadow:'0 8px 24px rgba(0,0,0,0.5)',lineHeight:1.5,fontFamily:'DM Sans, sans-serif'}}>
+            {text}
+            <div style={{position:'absolute',bottom:-5,...arrowStyle,width:10,height:10,background:'#1e293b',borderRight:'1px solid rgba(255,255,255,0.15)',borderBottom:'1px solid rgba(255,255,255,0.15)'}}/>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const filtered = inventoryItems
+    .filter(i => (filter === 'All' || i.category === filter) && i.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a,b) => {
+      if (sortBy === 'value-high') return b.value - a.value;
+      if (sortBy === 'value-low') return a.value - b.value;
+      if (sortBy === 'gain') return b.gain - a.gain;
+      return 0;
+    });
+
+  const goItem = (id) => { setSelectedId(id); setScreen('detail'); };
+  const takePhoto = () => {
+    setScanning(true);
+    setTimeout(() => { setScanning(false); setAnalyzing(true);
+      setTimeout(() => { setAnalyzing(false); setAiDone(true); }, 2200);
+    }, 900);
+  };
+
+  const fmt = (n) => '$' + n.toLocaleString();
+  const GainBadge = ({gain, size='sm'}) => {
+    const isUp = gain >= 0;
+    const Ic = isUp ? Icons.TrendUp : Icons.TrendDown;
+    const color = isUp ? '#4ade80' : '#f87171';
+    const sz = size === 'sm' ? 12 : 16;
+    return <span style={{display:'inline-flex',alignItems:'center',gap:3,color,fontSize: size==='sm'?12:15,fontWeight:600}}>
+      <Ic size={sz} color={color}/>{isUp?'+':''}{gain}%
+    </span>;
+  };
+
+  /* ════════════════════════ SCREENS ════════════════════════ */
+
+  const HomeScreen = () => (
+    <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
+      {/* Header */}
+      <div style={{padding:'32px 24px 8px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:28}}>
+          <div>
+            <p className="text-dim" style={{fontSize:13,letterSpacing:1,textTransform:'uppercase'}}>Good Evening</p>
+            <h1 style={{fontSize:28,fontWeight:700,color:'#fff',marginTop:4}}>Kitty</h1>
+          </div>
+          <div className="gradient-amber" style={{width:44,height:44,borderRadius:22,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:700,color:'#000'}}>K</div>
+        </div>
+
+        {/* Stats Grid */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          {[
+            {label:'Total Items',val:'47',icon:'Package',grad:'linear-gradient(135deg,#3b82f6,#2563eb)'},
+            {label:'Total Value',val:fmt(totalValue),icon:'Dollar',grad:'linear-gradient(135deg,#d4a853,#b8860b)',tip:'The combined market value of all items currently in your inventory.'},
+            {label:'Avg Value',val:fmt(avgValue),icon:'BarChart',grad:'linear-gradient(135deg,#a855f7,#7c3aed)',tip:'The average market value across all items in your inventory.'},
+            {label:'Top Gainer',val:`+${getItemGain(topGainer)}%`,icon:'TrendUp',grad:'linear-gradient(135deg,#22c55e,#16a34a)',tip:`Your best performing item by % gain. Currently: ${topGainer.name}`},
+          ].map((c,i) => {
+            const Ic = Icons[c.icon];
+            return <div key={i} className="glass anim-up" style={{borderRadius:16,padding:16,animationDelay:`${i*0.08}s`,cursor:'default',overflow:'visible',position:'relative'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                <div>
+                  <div style={{display:'flex',alignItems:'center'}}>
+                    <p className="text-dim" style={{fontSize:11,textTransform:'uppercase',letterSpacing:1}}>{c.label}</p>
+                    {c.tip && <InfoTip text={c.tip}/>}
+                  </div>
+                  <p style={{fontSize:22,fontWeight:700,color:'#fff',marginTop:6}}>{c.val}</p>
+                </div>
+                <div style={{width:40,height:40,borderRadius:10,background:c.grad,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Ic size={20} color="#fff"/>
+                </div>
+              </div>
+            </div>;
+          })}
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div style={{padding:'20px 24px',display:'flex',gap:12}}>
+        <button onClick={() => setScreen('scan')} className="gradient-amber" style={{flex:1,border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#000',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <Icons.Camera size={20} color="#000"/>Scan Item
+        </button>
+        <button onClick={() => setScreen('add-item')} className="glass glass-hover" style={{flex:1,border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'rgba(255,255,255,0.06)'}}>
+          <Icons.Plus size={20}/>Add Manual
+        </button>
+      </div>
+
+      {/* Portfolio by Sector */}
+      {(() => {
+        const categories = {};
+        inventoryItems.forEach(item => {
+          if (!categories[item.category]) categories[item.category] = {items:[], totalValue:0, totalCost:0};
+          categories[item.category].items.push(item);
+          categories[item.category].totalValue += item.value;
+          categories[item.category].totalCost += getItemCost(item);
+        });
+        const sectorIcons = {Fashion:'👜',Electronics:'📱',Home:'🏠',Watches:'⌚'};
+        const sectorColors = {Fashion:'#e879f9',Electronics:'#3b82f6',Home:'#f59e0b',Watches:'#22c55e'};
+        const sectors = Object.entries(categories).map(([cat, data]) => {
+          const dayChange = data.totalValue * (Math.random() * 0.06 - 0.02);
+          const dayPct = (dayChange / data.totalValue) * 100;
+          return {cat, ...data, dayChange, dayPct};
+        });
+        return (
+          <div style={{padding:'12px 24px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+              <h2 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Portfolio</h2>
+              <div style={{display:'flex',alignItems:'center',gap:4}}>
+                <div style={{width:6,height:6,borderRadius:3,background:'#4ade80',animation:'pulse 2s ease-in-out infinite'}}/>
+                <span className="text-dim" style={{fontSize:11}}>Live</span>
+              </div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {sectors.map((s,i) => {
+                const isUp = s.dayChange >= 0;
+                return (
+                  <div key={s.cat} className="glass glass-hover anim-right" style={{borderRadius:14,padding:16,cursor:'pointer',animationDelay:`${i*0.06}s`}} onClick={() => {setFilter(s.cat);setScreen('inventory');}}>
+                    <div style={{display:'flex',alignItems:'center',gap:12}}>
+                      <div style={{width:44,height:44,borderRadius:12,background:`${sectorColors[s.cat]}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>{sectorIcons[s.cat]||'📦'}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                          <p style={{fontWeight:600,color:'#fff',fontSize:14}}>{s.cat}</p>
+                          <p className="text-gold" style={{fontWeight:700,fontSize:15}}>{fmt(s.totalValue)}</p>
+                        </div>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:4}}>
+                          <p className="text-dim" style={{fontSize:12}}>{s.items.length} item{s.items.length>1?'s':''}</p>
+                          <span style={{fontSize:13,fontWeight:600,color:isUp?'#4ade80':'#f87171',display:'flex',alignItems:'center',gap:3}}>
+                            {isUp?<Icons.TrendUp size={13} color="#4ade80"/>:<Icons.TrendDown size={13} color="#f87171"/>}
+                            {isUp?'+':''}{s.dayPct.toFixed(2)}% ({isUp?'+':''}${Math.abs(Math.round(s.dayChange)).toLocaleString()})
+                          </span>
+                        </div>
+                        {/* Mini bar showing value allocation */}
+                        <div style={{marginTop:8,height:4,borderRadius:2,background:'rgba(255,255,255,0.06)',overflow:'hidden'}}>
+                          <div style={{height:'100%',borderRadius:2,background:sectorColors[s.cat],width:`${Math.min(100,(s.totalValue/totalValue)*100)}%`,transition:'width 0.5s ease'}}/>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Watchlist: Biggest Movers */}
+      {(() => {
+        const sorted = [...inventoryItems].sort((a,b) => Math.abs(b.gain) - Math.abs(a.gain));
+        return (
+          <div style={{padding:'16px 24px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <h2 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Watchlist</h2>
+                <InfoTip text="Your items ranked by biggest market moves. Updates as new comparable listings appear across marketplaces."/>
+              </div>
+              <button onClick={() => setScreen('inventory')} style={{background:'none',border:'none',color:'#d4a853',fontSize:13,fontWeight:600,cursor:'pointer'}}>View All</button>
+            </div>
+            {/* Table header */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'0 4px 8px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+              <span className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1}}>Item</span>
+              <span className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:70}}>Mkt Value</span>
+              <span className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:80}}>Daily Chg</span>
+            </div>
+            <div style={{display:'flex',flexDirection:'column'}}>
+              {sorted.map((item,i) => {
+                const dailyDollar = item.value * (item.gain / 100) * 0.1;
+                const dailyPct = (item.gain * 0.1);
+                const isUp = dailyPct >= 0;
+                return (
+                  <div key={item.id} onClick={() => goItem(item.id)} className="anim-right" style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'12px 4px',borderBottom:'1px solid rgba(255,255,255,0.04)',cursor:'pointer',alignItems:'center',animationDelay:`${i*0.04}s`}}>
+                    <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0}}>
+                      <span style={{fontSize:20}}>{item.emoji}</span>
+                      <div style={{minWidth:0}}>
+                        <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:13}}>{item.name}</p>
+                        <p className="text-dim" style={{fontSize:11}}>{item.category}</p>
+                      </div>
+                    </div>
+                    <p style={{fontWeight:600,color:'#fff',fontSize:14,textAlign:'right',minWidth:70}}>{fmt(item.value)}</p>
+                    <div style={{textAlign:'right',minWidth:80}}>
+                      <p style={{fontSize:13,fontWeight:600,color:isUp?'#4ade80':'#f87171'}}>{isUp?'+':''}{dailyPct.toFixed(2)}%</p>
+                      <p style={{fontSize:11,color:isUp?'#4ade80':'#f87171',opacity:0.8}}>{isUp?'+':''}${Math.abs(Math.round(dailyDollar)).toLocaleString()}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+
+  const ScanScreen = () => (
+    <div style={{height:'100%',background:'#000',display:'flex',flexDirection:'column',position:'relative'}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px',position:'relative',zIndex:10}}>
+        <button onClick={() => {setScreen('home');setScanning(false);setAnalyzing(false);setAiDone(false);}} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.ArrowLeft size={24}/></button>
+        <h1 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Scan Item</h1>
+        <div style={{width:24}}/>
+      </div>
+
+      {/* Viewfinder */}
+      <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{width:260,height:320,borderRadius:24,border:'3px solid rgba(255,255,255,0.2)',position:'relative',overflow:'hidden',background:'linear-gradient(180deg,#0a0a0f,#1a1a2e)'}}>
+          {/* Corner brackets */}
+          {['top:0;left:0','top:0;right:0','bottom:0;left:0','bottom:0;right:0'].map((pos,i) => {
+            const s = pos.split(';').reduce((o,p) => {const [k,v]=p.split(':');o[k]=v;return o;},{});
+            return <div key={i} style={{position:'absolute',...s,width:28,height:28,borderColor:'rgba(255,255,255,0.5)',borderStyle:'solid',borderWidth: i<2?(i%2===0?'2px 0 0 2px':'2px 2px 0 0'):(i%2===0?'0 0 2px 2px':'0 2px 2px 0')}}/>;
+          })}
+          {/* Scan line animation */}
+          {scanning && <>
+            <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg,transparent,rgba(212,168,83,0.15),transparent)',animation:'pulse 1.5s ease-in-out infinite'}}/>
+            <div style={{position:'absolute',left:0,right:0,height:2,background:'linear-gradient(90deg,transparent,#d4a853,transparent)',animation:'scanLine 2s ease-in-out infinite'}}/>
+          </>}
+          {/* Center icon */}
+          {!scanning && <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',opacity:0.3}}>
+            <Icons.Camera size={48} color="#fff"/>
+          </div>}
+        </div>
+      </div>
+
+      {/* Bottom controls */}
+      <div style={{padding:'0 24px 48px',display:'flex',flexDirection:'column',alignItems:'center',gap:16,position:'relative',zIndex:10}}>
+        <button onClick={takePhoto} disabled={scanning} style={{width:72,height:72,borderRadius:36,background: scanning ? 'rgba(212,168,83,0.5)' : 'linear-gradient(135deg,#d4a853,#b8860b)',border:'none',cursor: scanning?'default':'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 40px rgba(212,168,83,0.3)'}}>
+          <Icons.Camera size={30} color="#000"/>
+        </button>
+        <button style={{width:'100%',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <Icons.Upload size={16}/>Upload from Gallery
+        </button>
+      </div>
+    </div>
+  );
+
+  const AIScreen = () => (
+    <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px'}}>
+        <button onClick={() => {setScreen('scan');setAnalyzing(false);setAiDone(false);}} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.ArrowLeft size={24}/></button>
+        <h1 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Item Analysis</h1>
+        <div style={{width:24}}/>
+      </div>
+
+      {/* Photo */}
+      <div style={{padding:'0 24px 24px'}}>
+        <div style={{width:'100%',height:240,borderRadius:20,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:80,position:'relative',overflow:'hidden'}}>
+          👜
+          <div style={{position:'absolute',bottom:0,left:0,right:0,height:'40%',background:'linear-gradient(to top,rgba(10,10,15,0.6),transparent)'}}/>
+        </div>
+      </div>
+
+      {analyzing ? (
+        <div className="anim-fade" style={{padding:'40px 24px',textAlign:'center'}}>
+          <div style={{position:'relative',width:64,height:64,margin:'0 auto 20px'}}>
+            <div style={{position:'absolute',inset:0,border:'2px solid transparent',borderTopColor:'#d4a853',borderRadius:'50%',animation:'spin 1s linear infinite'}}/>
+            <div style={{position:'absolute',inset:8,border:'2px solid transparent',borderRightColor:'#b8860b',borderRadius:'50%',animation:'spinReverse 0.8s linear infinite'}}/>
+          </div>
+          <p style={{fontSize:20,fontWeight:600,color:'#fff'}}>Analyzing...</p>
+          <p className="text-muted" style={{fontSize:14,marginTop:8}}>AI is identifying your item</p>
+          <div style={{marginTop:20,height:4,borderRadius:2,background:'rgba(255,255,255,0.06)',overflow:'hidden'}}>
+            <div style={{height:'100%',width:'60%',borderRadius:2,background:'linear-gradient(90deg,#d4a853,#b8860b,#d4a853)',backgroundSize:'200% 100%',animation:'shimmer 1.5s ease-in-out infinite'}}/>
+          </div>
+        </div>
+      ) : aiDone ? (
+        <div className="anim-up" style={{padding:'0 24px'}}>
+          {/* Prediction card */}
+          <div className="glass" style={{borderRadius:16,padding:20,marginBottom:16}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+              <h3 style={{fontSize:18,fontWeight:700,color:'#fff',flex:1,marginRight:12}}>Louis Vuitton Neverfull MM</h3>
+              <div style={{background:'rgba(34,197,94,0.15)',border:'1px solid rgba(34,197,94,0.25)',borderRadius:8,padding:'4px 10px',flexShrink:0}}>
+                <span style={{fontSize:12,fontWeight:600,color:'#4ade80'}}>94% Match</span>
+              </div>
+            </div>
+            <p className="text-muted" style={{fontSize:14}}>Damier Ebene Pattern</p>
+          </div>
+
+          {/* Details */}
+          <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:24}}>
+            {[['Category','Handbags & Purses'],['Brand','Louis Vuitton'],['Model','Neverfull MM'],['Material','Canvas & Leather'],['Condition','Excellent']].map(([k,v],i) => (
+              <div key={i} className="glass" style={{borderRadius:12,padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <span className="text-muted" style={{fontSize:13}}>{k}</span>
+                <span style={{fontWeight:600,color:'#fff',fontSize:14}}>{v}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Actions */}
+          <button onClick={() => {setSelectedId(1);setScreen('pricing');}} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12}}>
+            Search Comps
+          </button>
+          <button onClick={() => {setScreen('inventory');setAiDone(false);}} className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#fff',cursor:'pointer',background:'rgba(255,255,255,0.06)'}}>
+            Save to Inventory
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  /* ── Add Item Form ── */
+  const emojiOptions = ['📦','👜','👟','🪑','📷','⌚','🍲','📱','🎒','🎮','💻','🖼️','🎸','💎','🧥'];
+  const categoryOptions = ['Fashion','Electronics','Home','Watches','Art','Sports','Other'];
+  const conditionOptions = ['New','Like New','Excellent','Very Good','Good','Fair'];
+
+  const updateForm = (key, val) => setAddForm({...addForm, [key]: val});
+
+  const FormField = ({label, required, children, tip}) => (
+    <div style={{marginBottom:16}}>
+      <div style={{display:'flex',alignItems:'center',marginBottom:6}}>
+        <label style={{fontSize:12,fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:0.5}}>{label}{required && <span style={{color:'#d4a853'}}> *</span>}</label>
+        {tip && <InfoTip text={tip}/>}
+      </div>
+      {children}
+    </div>
+  );
+
+  const inputStyle = {width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'12px 14px',color:'#fff',fontSize:14,outline:'none',fontFamily:'DM Sans, sans-serif'};
+  const inputFocusStyle = '1px solid rgba(212,168,83,0.5)';
+
+  const AddItemScreen = () => (
+    <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px',position:'sticky',top:0,background:'linear-gradient(180deg,#0a0a0f 80%,transparent)',zIndex:20}}>
+        <button onClick={() => setScreen('home')} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.ArrowLeft size={24}/></button>
+        <h1 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Add Item</h1>
+        <div style={{width:24}}/>
+      </div>
+
+      <div style={{padding:'0 24px'}}>
+        {/* Emoji picker */}
+        <FormField label="Icon">
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {emojiOptions.map(e => (
+              <button key={e} onClick={() => updateForm('emoji',e)} style={{width:44,height:44,borderRadius:10,fontSize:22,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',border: addForm.emoji===e ? '2px solid #d4a853' : '1px solid rgba(255,255,255,0.1)',background: addForm.emoji===e ? 'rgba(212,168,83,0.15)' : 'rgba(255,255,255,0.04)'}}>{e}</button>
+            ))}
+          </div>
+        </FormField>
+
+        {/* Photo Upload */}
+        <FormField label={`Photos (${addForm.photos.length}/5)`} tip="Add up to 5 photos. First photo becomes the cover image shown in your inventory.">
+          <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+            {addForm.photos.map((photo,idx) => (
+              <div key={idx} style={{width:72,height:72,borderRadius:12,overflow:'hidden',position:'relative',border:'1px solid rgba(255,255,255,0.1)'}}>
+                <img src={photo} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                {idx===0 && <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(212,168,83,0.9)',padding:'2px 0',textAlign:'center'}}><span style={{fontSize:8,fontWeight:700,color:'#000',textTransform:'uppercase',letterSpacing:0.5}}>Cover</span></div>}
+                <button onClick={() => {const p=[...addForm.photos];p.splice(idx,1);updateForm('photos',p);}} style={{position:'absolute',top:4,right:4,width:20,height:20,borderRadius:10,background:'rgba(0,0,0,0.7)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+              </div>
+            ))}
+            {addForm.photos.length < 5 && (
+              <label style={{width:72,height:72,borderRadius:12,border:'2px dashed rgba(255,255,255,0.15)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',background:'rgba(255,255,255,0.03)',gap:4}}>
+                <Icons.Camera size={20} color="#64748b"/>
+                <span style={{fontSize:9,color:'#64748b',fontWeight:600}}>Add</span>
+                <input type="file" accept="image/*" multiple style={{display:'none'}} onChange={e => {
+                  const files = Array.from(e.target.files).slice(0, 5 - addForm.photos.length);
+                  files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      setAddForm(prev => ({...prev, photos: [...prev.photos, ev.target.result].slice(0,5)}));
+                    };
+                    reader.readAsDataURL(file);
+                  });
+                  e.target.value = '';
+                }}/>
+              </label>
+            )}
+          </div>
+        </FormField>
+
+        {/* Item name */}
+        <FormField label="Item Name" required>
+          <input value={addForm.name} onChange={e => updateForm('name',e.target.value)} placeholder="e.g. Louis Vuitton Neverfull MM" style={inputStyle} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+        </FormField>
+
+        {/* Brand + Model row */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <FormField label="Brand">
+            <input value={addForm.brand} onChange={e => updateForm('brand',e.target.value)} placeholder="e.g. Nike" style={inputStyle} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+          </FormField>
+          <FormField label="Model">
+            <input value={addForm.model} onChange={e => updateForm('model',e.target.value)} placeholder="e.g. Dunk Low" style={inputStyle} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+          </FormField>
+        </div>
+
+        {/* Category + Condition row */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <FormField label="Category" required>
+            <select value={addForm.category} onChange={e => updateForm('category',e.target.value)} style={{...inputStyle,cursor:'pointer'}}>
+              {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Condition">
+            <select value={addForm.condition} onChange={e => updateForm('condition',e.target.value)} style={{...inputStyle,cursor:'pointer'}}>
+              {conditionOptions.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </FormField>
+        </div>
+
+        {/* Divider */}
+        <div style={{borderTop:'1px solid rgba(255,255,255,0.08)',margin:'8px 0 20px'}}/>
+        <h3 style={{fontSize:14,fontWeight:700,color:'#fff',marginBottom:16}}>Pricing</h3>
+
+        {/* What I Paid */}
+        <FormField label="What I Paid" required tip="The total amount you spent to acquire this item, including tax and shipping.">
+          <div style={{position:'relative'}}>
+            <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#64748b',fontSize:14,fontWeight:600}}>$</span>
+            <input type="number" value={addForm.cost} onChange={e => updateForm('cost',e.target.value)} placeholder="0.00" style={{...inputStyle,paddingLeft:28}} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+          </div>
+        </FormField>
+
+        {/* My Asking Price */}
+        <FormField label="My Asking Price" tip="The price you'd list this item for if you sold it today. Leave blank to auto-set to market value.">
+          <div style={{position:'relative'}}>
+            <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#64748b',fontSize:14,fontWeight:600}}>$</span>
+            <input type="number" value={addForm.asking} onChange={e => updateForm('asking',e.target.value)} placeholder="Optional" style={{...inputStyle,paddingLeft:28}} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+          </div>
+        </FormField>
+
+        {/* Notes */}
+        <FormField label="Notes">
+          <textarea value={addForm.notes} onChange={e => updateForm('notes',e.target.value)} placeholder="Any extra details, serial numbers, where you bought it..." rows={3} style={{...inputStyle,resize:'vertical',minHeight:60}}/>
+        </FormField>
+
+        {/* Live preview */}
+        {addForm.name && addForm.cost && (
+          <div className="glass anim-fade" style={{borderRadius:14,padding:16,marginBottom:16}}>
+            <p className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1,marginBottom:8}}>Preview</p>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <div style={{width:44,height:44,borderRadius:10,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>{addForm.emoji}</div>
+              <div style={{flex:1}}>
+                <p style={{fontWeight:600,color:'#fff',fontSize:14}}>{addForm.name}</p>
+                <p className="text-dim" style={{fontSize:11,marginTop:2}}>{addForm.category} · {addForm.condition}</p>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <p style={{fontWeight:600,color:'#fff',fontSize:13}}>Paid {fmt(parseFloat(addForm.cost)||0)}</p>
+                {addForm.asking && <p className="text-gold" style={{fontSize:12,marginTop:2}}>Asking {fmt(parseFloat(addForm.asking)||0)}</p>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Submit */}
+        <button onClick={() => {setScreen('inventory');setAddForm({name:'',brand:'',model:'',category:'Fashion',condition:'Good',cost:'',asking:'',notes:'',emoji:'📦',photos:[]});}} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12,opacity: addForm.name&&addForm.cost ? 1 : 0.4}}>
+          Save to Inventory
+        </button>
+        <button onClick={() => setScreen('home')} style={{width:'100%',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+
+  const InventoryScreen = () => (
+    <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
+      {/* Header */}
+      <div style={{padding:'20px 24px 0',position:'sticky',top:0,background:'linear-gradient(180deg,#0a0a0f 80%,transparent)',zIndex:20,paddingBottom:16}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+          <h1 style={{fontSize:24,fontWeight:700,color:'#fff'}}>Inventory</h1>
+          <button onClick={() => setViewMode(viewMode==='grid'?'list':'grid')} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}>
+            {viewMode==='grid' ? <Icons.List size={22}/> : <Icons.Grid size={22}/>}
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="glass" style={{borderRadius:12,padding:'12px 14px',display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+          <Icons.Search size={16} color="#64748b"/>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items..." style={{background:'none',border:'none',outline:'none',color:'#fff',fontSize:14,width:'100%'}}/>
+        </div>
+
+        {/* Filters */}
+        <div className="scroll-hide" style={{display:'flex',gap:8,overflowX:'auto',marginBottom:12}}>
+          {['All','Fashion','Electronics','Home','Watches'].map(f => (
+            <button key={f} onClick={() => setFilter(f)} style={{padding:'8px 16px',borderRadius:10,fontSize:13,fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',border: filter===f?'none':'1px solid rgba(255,255,255,0.1)',background: filter===f?'linear-gradient(135deg,#d4a853,#b8860b)':'rgba(255,255,255,0.04)',color: filter===f?'#000':'#fff'}}>{f}</button>
+          ))}
+        </div>
+
+        {/* Sort */}
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <Icons.Filter size={14} color="#64748b"/>
+          <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',color:'#fff',fontSize:13,borderRadius:8,padding:'6px 10px',outline:'none'}}>
+            <option value="value-high">Value: High to Low</option>
+            <option value="value-low">Value: Low to High</option>
+            <option value="gain">Biggest Gains</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Items */}
+      <div style={{padding:'12px 24px'}}>
+        {viewMode === 'grid' ? (
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            {filtered.map((item,i) => (
+              <div key={item.id} onClick={() => goItem(item.id)} className="glass glass-hover anim-up" style={{borderRadius:16,overflow:'hidden',cursor:'pointer',animationDelay:`${i*0.06}s`}}>
+                <div style={{width:'100%',height:120,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:44}}>{item.emoji}</div>
+                <div style={{padding:12}}>
+                  <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:13}}>{item.name}</p>
+                  <p className="text-dim" style={{fontSize:11,marginTop:3}}>{item.condition}</p>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:10}}>
+                    <span className="text-gold" style={{fontWeight:700,fontSize:14}}>{fmt(item.value)}</span>
+                    <GainBadge gain={getItemGain(item)}/>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {filtered.map((item,i) => (
+              <div key={item.id} onClick={() => goItem(item.id)} className="glass glass-hover anim-right" style={{borderRadius:14,padding:16,display:'flex',alignItems:'center',gap:14,cursor:'pointer',animationDelay:`${i*0.04}s`}}>
+                <div style={{width:56,height:56,borderRadius:12,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,flexShrink:0}}>{item.emoji}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:14}}>{item.name}</p>
+                  <p className="text-dim" style={{fontSize:12,marginTop:3}}>{item.condition}</p>
+                </div>
+                <div style={{textAlign:'right',flexShrink:0}}>
+                  <p className="text-gold" style={{fontWeight:700,fontSize:15}}>{fmt(item.value)}</p>
+                  <div style={{marginTop:3}}><GainBadge gain={getItemGain(item)}/></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const DetailScreen = () => {
+    if (!selected) return null;
+    const currentCost = getItemCost(selected);
+    const profit = selected.value - currentCost;
+    const gainPct = currentCost === 0 ? 0 : Math.round(((selected.value - currentCost) / currentCost) * 100);
+    return (
+      <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
+        {/* Header */}
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px',position:'sticky',top:0,background:'linear-gradient(180deg,#0a0a0f 80%,transparent)',zIndex:20}}>
+          <button onClick={() => {setScreen('inventory');setEditingCost(false);}} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.ArrowLeft size={24}/></button>
+          <h1 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Details</h1>
+          <button style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.Share size={22}/></button>
+        </div>
+
+        {/* Photo */}
+        <div style={{padding:'0 24px 20px'}}>
+          <div style={{width:'100%',height:280,borderRadius:24,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:80,position:'relative',overflow:'hidden'}}>
+            {selected.emoji}
+            <div style={{position:'absolute',bottom:0,left:0,right:0,height:'30%',background:'linear-gradient(to top,rgba(10,10,15,0.5),transparent)'}}/>
+            {/* Dots */}
+            <div style={{position:'absolute',bottom:16,left:'50%',transform:'translateX(-50%)',display:'flex',gap:6}}>
+              <div style={{width:24,height:6,borderRadius:3,background:'#fff'}}/>
+              <div style={{width:6,height:6,borderRadius:3,background:'rgba(255,255,255,0.3)'}}/>
+              <div style={{width:6,height:6,borderRadius:3,background:'rgba(255,255,255,0.3)'}}/>
+            </div>
+          </div>
+        </div>
+
+        <div style={{padding:'0 24px'}}>
+          <h2 style={{fontSize:22,fontWeight:700,color:'#fff',marginBottom:4}}>{selected.name}</h2>
+          <p className="text-muted" style={{fontSize:13,marginBottom:24}}>{selected.category} · {selected.condition}</p>
+
+          {/* Valuation */}
+          {(() => {
+            const currentAsking = getItemAsking(selected);
+            const investProfit = currentAsking - currentCost;
+            const investPct = currentCost === 0 ? 0 : Math.round((investProfit / currentCost) * 100);
+            const resaleDiff = currentAsking - selected.value;
+            const resalePct = selected.value === 0 ? 0 : Math.round((resaleDiff / selected.value) * 100);
+            const netProfit = currentAsking - currentCost;
+            const netPct = currentCost === 0 ? 0 : Math.round((netProfit / currentCost) * 100);
+
+            const EditableBox = ({label, value, editing, setEditing, input, setInput, onSave, tip, color='#fff'}) => (
+              <div className="glass" style={{borderRadius:12,padding:'12px 8px',textAlign:'center',cursor:'pointer',border: editing ? '1px solid rgba(212,168,83,0.5)' : '1px solid rgba(255,255,255,0.08)',minWidth:0,boxSizing:'border-box'}} onClick={() => {if(!editing){setEditing(true);setInput(String(value));}}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:3}}>
+                  <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8,whiteSpace:'nowrap'}}>{label}</p>
+                  <Icons.Edit size={8} color="#475569"/>
+                  {tip && <InfoTip text={tip}/>}
+                </div>
+                {editing ? (
+                  <div style={{marginTop:6,display:'flex',alignItems:'center',justifyContent:'center',gap:3}}>
+                    <span style={{fontSize:18,fontWeight:700,color:'#d4a853'}}>$</span>
+                    <input autoFocus type="number" value={input} onChange={e => setInput(e.target.value)}
+                      onKeyDown={e => { if(e.key==='Enter'){onSave();} if(e.key==='Escape'){setEditing(false);} }}
+                      onBlur={onSave}
+                      style={{width:70,fontSize:18,fontWeight:700,color:'#fff',background:'transparent',border:'none',borderBottom:'2px solid #d4a853',outline:'none',textAlign:'center',fontFamily:'DM Sans, sans-serif'}}
+                      onClick={e => e.stopPropagation()}/>
+                  </div>
+                ) : (
+                  <p style={{fontSize:18,fontWeight:700,color,marginTop:6}}>{fmt(value)}</p>
+                )}
+                {!editing && <p className="text-dim" style={{fontSize:8,marginTop:3}}>tap to edit</p>}
+              </div>
+            );
+
+            return (
+            <div className="glass" style={{borderRadius:16,padding:16,marginBottom:16}}>
+              <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:14}}>Valuation</h3>
+              {/* 3 price boxes */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:10,marginBottom:16,width:'100%',boxSizing:'border-box'}}>
+                <EditableBox label="What I Paid" value={currentCost} editing={editingCost} setEditing={setEditingCost} input={costInput} setInput={setCostInput} tip="Total you spent acquiring this item."
+                  onSave={() => {const v=parseFloat(costInput);if(!isNaN(v)&&v>=0)setCustomCosts({...customCosts,[selected.id]:v});setEditingCost(false);}}/>
+                <EditableBox label="Asking Price" value={currentAsking} editing={editingAsking} setEditing={setEditingAsking} input={askingInput} setInput={setAskingInput} tip="The price you'd list this at if you sold today." color="#d4a853"
+                  onSave={() => {const v=parseFloat(askingInput);if(!isNaN(v)&&v>=0)setCustomAsking({...customAsking,[selected.id]:v});setEditingAsking(false);}}/>
+                <div className="glass" style={{borderRadius:12,padding:'12px 8px',textAlign:'center',minWidth:0,boxSizing:'border-box',border:'1px solid rgba(255,255,255,0.08)'}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:3}}>
+                    <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8}}>Market</p>
+                    <InfoTip text="Average selling price based on recent comparable listings."/>
+                  </div>
+                  <p style={{fontSize:18,fontWeight:700,color:'#94a3b8',marginTop:6}}>{fmt(selected.value)}</p>
+                </div>
+              </div>
+
+              {/* Metrics */}
+              <div style={{borderTop:'1px solid rgba(255,255,255,0.08)',paddingTop:14,display:'flex',flexDirection:'column',gap:10}}>
+                {/* Investment Return: asking vs paid */}
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:4}}>
+                    <span className="text-muted" style={{fontSize:12}}>Investment Return</span>
+                    <InfoTip text="Your return if you sell at your asking price. (Asking Price - What You Paid) / What You Paid."/>
+                  </div>
+                  <span style={{fontSize:14,fontWeight:700,color:investProfit>=0?'#4ade80':'#f87171',display:'flex',alignItems:'center',gap:4}}>
+                    {investProfit>=0?<Icons.TrendUp size={14} color="#4ade80"/>:<Icons.TrendDown size={14} color="#f87171"/>}
+                    {investProfit>=0?'+':''}{investPct}% ({investProfit>=0?'+':''}${Math.abs(investProfit).toLocaleString()})
+                  </span>
+                </div>
+                {/* Resale Premium: asking vs market */}
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:4}}>
+                    <span className="text-muted" style={{fontSize:12}}>Resale Premium</span>
+                    <InfoTip text="How your asking price compares to market. Positive = you're priced above market."/>
+                  </div>
+                  <span style={{fontSize:14,fontWeight:700,color:resaleDiff>=0?'#4ade80':'#f87171',display:'flex',alignItems:'center',gap:4}}>
+                    {resaleDiff>=0?<Icons.TrendUp size={14} color="#4ade80"/>:<Icons.TrendDown size={14} color="#f87171"/>}
+                    {resaleDiff>=0?'+':''}{resalePct}% ({resaleDiff>=0?'+':''}${Math.abs(resaleDiff).toLocaleString()})
+                  </span>
+                </div>
+                {/* Net Profit: asking vs paid */}
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderTop:'1px solid rgba(255,255,255,0.06)',paddingTop:10}}>
+                  <div style={{display:'flex',alignItems:'center',gap:4}}>
+                    <span style={{fontSize:13,fontWeight:600,color:'#cbd5e1'}}>Net Profit if Sold</span>
+                    <InfoTip text="Your asking price minus what you paid. This is your actual profit if someone buys at your price."/>
+                  </div>
+                  <span style={{fontSize:15,fontWeight:700,color:netProfit>=0?'#4ade80':'#f87171',display:'flex',alignItems:'center',gap:4}}>
+                    {netProfit>=0?<Icons.TrendUp size={16} color="#4ade80"/>:<Icons.TrendDown size={16} color="#f87171"/>}
+                    {netProfit>=0?'+':''}${Math.abs(netProfit).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+            );
+          })()}
+
+          {/* Chart */}
+          <div className="glass" style={{borderRadius:16,padding:20,marginBottom:16}}>
+            <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:16}}>Price History</h3>
+            <PriceChart data={priceHistory}/>
+          </div>
+
+          {/* Comps */}
+          <div className="glass" style={{borderRadius:16,padding:20,marginBottom:20}}>
+            <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:16}}>Comparable Listings</h3>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {getComps(selected.id).map(c => (
+                <div key={c.id} className="glass glass-hover" style={{borderRadius:12,padding:14,cursor:'pointer'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                    <span className="text-dim" style={{fontSize:11,textTransform:'uppercase',letterSpacing:0.5}}>{c.source}</span>
+                    <span className="text-gold" style={{fontWeight:700,fontSize:14}}>{fmt(c.price)}</span>
+                  </div>
+                  <p className="truncate" style={{color:'#fff',fontSize:13,marginBottom:6}}>{c.title}</p>
+                  <div style={{display:'flex',justifyContent:'space-between'}}>
+                    <span className="text-dim" style={{fontSize:11}}>{c.condition}</span>
+                    <span className="text-dim" style={{fontSize:11}}>{c.date}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <button onClick={() => setScreen('pricing')} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12}}>
+            Refresh Price
+          </button>
+          <button className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#fff',cursor:'pointer',background:'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+            <Icons.Edit size={16}/>Edit Item
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const PricingScreen = () => (
+    <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px'}}>
+        <button onClick={() => selected ? setScreen('detail') : setScreen('home')} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.ArrowLeft size={24}/></button>
+        <h1 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Market Analysis</h1>
+        <div style={{width:24}}/>
+      </div>
+
+      <div style={{padding:'0 24px'}}>
+        {/* Item summary */}
+        {selected && (
+          <div className="glass" style={{borderRadius:14,padding:16,display:'flex',alignItems:'center',gap:14,marginBottom:20}}>
+            <div style={{width:48,height:48,borderRadius:10,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24}}>{selected.emoji}</div>
+            <div>
+              <p style={{fontWeight:600,color:'#fff',fontSize:14}}>{selected.name}</p>
+              <p className="text-dim" style={{fontSize:12,marginTop:2}}>{selected.condition}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Price Range */}
+        <div className="glass" style={{borderRadius:16,padding:20,marginBottom:16}}>
+          <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:16}}>Estimated Market Range</h3>
+          {/* Range bar */}
+          <div style={{height:8,borderRadius:4,background:'linear-gradient(90deg,#f87171,#d4a853,#4ade80)',marginBottom:20,position:'relative'}}>
+            <div style={{position:'absolute',top:-4,left:'45%',width:16,height:16,borderRadius:8,background:'#fff',border:'3px solid #d4a853',boxShadow:'0 0 12px rgba(212,168,83,0.4)'}}/>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+            {[{l:'Low',p:1180,c:'#f87171'},{l:'Typical',p:1420,c:'#d4a853'},{l:'High',p:1780,c:'#4ade80'}].map((r,i) => (
+              <div key={i} className="glass" style={{borderRadius:12,padding:12,textAlign:'center'}}>
+                <p className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1}}>{r.l}</p>
+                <p style={{fontSize:18,fontWeight:700,color:r.c,marginTop:6}}>{fmt(r.p)}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Confidence */}
+          <div style={{marginTop:16,paddingTop:16,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span className="text-muted" style={{fontSize:13}}>Confidence Score</span>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{width:80,height:6,borderRadius:3,background:'rgba(255,255,255,0.08)',overflow:'hidden'}}>
+                  <div style={{width:'87%',height:'100%',borderRadius:3,background:'linear-gradient(90deg,#d4a853,#b8860b)'}}/>
+                </div>
+                <span className="text-gold" style={{fontWeight:700,fontSize:13}}>87%</span>
+              </div>
+            </div>
+            <p className="text-dim" style={{fontSize:11,marginTop:6}}>Based on 23 recent comps</p>
+          </div>
+        </div>
+
+        {/* Comps */}
+        <div className="glass" style={{borderRadius:16,padding:20,marginBottom:20}}>
+          <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:16}}>Comparable Listings</h3>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {(selected ? getComps(selected.id) : getComps(1)).map(c => (
+              <div key={c.id} className="glass glass-hover" style={{borderRadius:12,padding:14,cursor:'pointer'}}>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                  <span style={{fontWeight:600,color:'#fff',fontSize:13}}>{c.source}</span>
+                  <span className="text-gold" style={{fontWeight:700,fontSize:14}}>{fmt(c.price)}</span>
+                </div>
+                <p className="truncate text-muted" style={{fontSize:12,marginBottom:6}}>{c.title}</p>
+                <div style={{display:'flex',justifyContent:'space-between'}}>
+                  <span className="text-dim" style={{fontSize:11}}>{c.condition}</span>
+                  <span className="text-dim" style={{fontSize:11}}>{c.date}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <Icons.Bell size={16} color="#000"/>Set Price Alert
+        </button>
+      </div>
+    </div>
+  );
+
+  const AlertsScreen = () => (
+    <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
+      <div style={{padding:'20px 24px'}}>
+        <h1 style={{fontSize:24,fontWeight:700,color:'#fff',marginBottom:20}}>Alerts</h1>
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          {alerts.map((a,i) => {
+            const Ic = Icons[a.iconKey];
+            return (
+              <div key={a.id} className="glass glass-hover anim-right" style={{borderRadius:14,padding:16,cursor:'pointer',animationDelay:`${i*0.08}s`}}>
+                <div style={{display:'flex',alignItems:'flex-start',gap:14}}>
+                  <div className="gradient-amber" style={{width:40,height:40,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <Ic size={18} color="#000"/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <p style={{fontWeight:600,color:'#fff',fontSize:14}}>{a.type}</p>
+                    <p className="text-muted" style={{fontSize:13,marginTop:3}}>{a.msg}</p>
+                    <p className="text-dim" style={{fontSize:11,marginTop:6}}>{a.time}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  const ProfileScreen = () => (
+    <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
+      <div style={{padding:'20px 24px'}}>
+        <h1 style={{fontSize:24,fontWeight:700,color:'#fff',marginBottom:20}}>Profile</h1>
+
+        {/* User card */}
+        <div className="glass" style={{borderRadius:16,padding:24,textAlign:'center',marginBottom:20}}>
+          <div className="gradient-amber" style={{width:72,height:72,borderRadius:36,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,fontWeight:700,color:'#000',margin:'0 auto 14px'}}>K</div>
+          <h2 style={{fontSize:22,fontWeight:700,color:'#fff'}}>Kitty</h2>
+          <p className="text-muted" style={{fontSize:13,marginTop:6}}>kittyisrando@gmail.com</p>
+        </div>
+
+        {/* Stats */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
+          {[['Member Since','Jan 2026'],['Items Tracked','47'],['Total Value',fmt(totalValue)],['Avg Value',fmt(avgValue)]].map(([k,v],i) => (
+            <div key={i} className="glass" style={{borderRadius:12,padding:14,textAlign:'center'}}>
+              <p className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1}}>{k}</p>
+              <p style={{fontSize:18,fontWeight:700,color:'#fff',marginTop:6}}>{v}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Settings */}
+        <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20}}>
+          {[['Bell','Notification Preferences'],['Dollar','Default Currency'],['Download','Data Export'],['Shield','Privacy & Security'],['Help','Help & Support']].map(([ic,label],i) => {
+            const Ic = Icons[ic];
+            return (
+              <button key={i} className="glass glass-hover" style={{width:'100%',borderRadius:12,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.04)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:12}}>
+                  <Ic size={18} color="#d4a853"/>
+                  <span style={{fontWeight:600,color:'#fff',fontSize:14}}>{label}</span>
+                </div>
+                <Icons.ChevronRight size={18} color="#475569"/>
+              </button>
+            );
+          })}
+        </div>
+
+        <button style={{width:'100%',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:12,padding:'14px 0',color:'#f87171',fontSize:15,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <Icons.LogOut size={16} color="#f87171"/>Sign Out
+        </button>
+      </div>
+    </div>
+  );
+
+  /* ════════════════════════ RENDER ════════════════════════ */
+  const screens = { home: HomeScreen, scan: ScanScreen, ai: AIScreen, 'add-item': AddItemScreen, inventory: InventoryScreen, detail: DetailScreen, pricing: PricingScreen, alerts: AlertsScreen, profile: ProfileScreen };
+  const CurrentScreen = screens[screen] || HomeScreen;
+
+  // After camera scan animation, go to AI screen
+  useEffect(() => {
+    if (analyzing || aiDone) setScreen('ai');
+  }, [analyzing, aiDone]);
+
+  const showTabs = !['scan','add-item'].includes(screen);
+  const tabs = [
+    {id:'home',icon:'Home',label:'Home'},
+    {id:'inventory',icon:'Package',label:'Inventory'},
+    {id:'scan',icon:'Camera',label:'Scan',primary:true},
+    {id:'alerts',icon:'Bell',label:'Alerts'},
+    {id:'profile',icon:'User',label:'Profile'},
+  ];
+
+  return (
+    <div style={{width:'100%',height:'100vh',display:'flex',justifyContent:'center',background:'#06060b'}}>
+      <div style={{width:'100%',maxWidth:390,height:'100%',position:'relative',overflow:'hidden',background:'linear-gradient(180deg,#0a0a0f,#0d0d14,#0a0a0f)'}}>
+        <CurrentScreen/>
+
+        {/* Tab Bar */}
+        {showTabs && (
+          <div style={{position:'absolute',bottom:0,left:0,right:0,background:'linear-gradient(to top,#0a0a0f 70%,transparent)',borderTop:'1px solid rgba(255,255,255,0.06)',padding:'8px 12px 16px',zIndex:30}}>
+            <div style={{display:'flex',justifyContent:'space-around',alignItems:'center'}}>
+              {tabs.map(tab => {
+                const Ic = Icons[tab.icon];
+                const active = screen === tab.id || (tab.id === 'home' && screen === 'home') || (tab.id === 'inventory' && ['inventory','detail','pricing'].includes(screen));
+                return (
+                  <button key={tab.id} onClick={() => {
+                    if (tab.id === 'scan') { setScanning(false); setAnalyzing(false); setAiDone(false); }
+                    setScreen(tab.id);
+                  }} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',cursor:'pointer',padding:'6px 12px',borderRadius:10}}>
+                    <div style={{padding:6,borderRadius:8,background: active?'rgba(212,168,83,0.15)':'transparent'}}>
+                      <Ic size={20} color={active?'#d4a853':'#475569'}/>
+                    </div>
+                    <span style={{fontSize:10,fontWeight:600,color: active?'#d4a853':'#475569'}}>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.render(<App/>, document.getElementById('root'));
+</script>
+</body>
+</html>
