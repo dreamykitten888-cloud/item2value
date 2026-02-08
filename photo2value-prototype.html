@@ -209,8 +209,20 @@ const App = () => {
     } catch(e) { return []; }
   };
 
+  const loadProfile = () => {
+    try {
+      const saved = localStorage.getItem('item2value_profile');
+      if (saved) return JSON.parse(saved);
+      return null;
+    } catch(e) { return null; }
+  };
+
+  const [profile, setProfile] = useState(loadProfile);
   const [items, setItems] = useState(loadItems);
-  const [screen, setScreen] = useState('home');
+  const [screen, setScreen] = useState(loadProfile() ? 'home' : 'setup');
+  const [editingProfile, setEditingProfile] = useState(false);
+  const profileNameRef = useRef(null);
+  const profileEmailRef = useRef(null);
   const [selectedId, setSelectedId] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [filter, setFilter] = useState('All');
@@ -232,10 +244,13 @@ const App = () => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const scrollRef = useRef(null);
 
-  // Save to localStorage whenever items change
+  // Save to localStorage whenever items or profile change
   useEffect(() => {
     localStorage.setItem('item2value_items', JSON.stringify(items));
   }, [items]);
+  useEffect(() => {
+    if (profile) localStorage.setItem('item2value_profile', JSON.stringify(profile));
+  }, [profile]);
 
   const getItemCost = (item) => item.cost;
   const getItemAsking = (item) => item.asking;
@@ -273,6 +288,15 @@ const App = () => {
   };
 
   const fmt = (n) => '$' + n.toLocaleString();
+  const userName = profile ? profile.name : 'there';
+  const userEmail = profile ? profile.email : '';
+  const userInitial = userName.charAt(0).toUpperCase();
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
   // Generate real alerts from actual inventory data
   const generateAlerts = () => {
@@ -339,16 +363,45 @@ const App = () => {
 
   /* ════════════════════════ SCREENS ════════════════════════ */
 
+  const SetupScreen = () => (
+    <div style={{height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32}}>
+      <div style={{width:80,height:80,borderRadius:20,background:'linear-gradient(135deg,#d4a853,#b8860b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,marginBottom:24}}>💎</div>
+      <h1 style={{fontSize:26,fontWeight:700,color:'#fff',marginBottom:6}}>Welcome to item2value</h1>
+      <p className="text-muted" style={{fontSize:14,textAlign:'center',marginBottom:32,lineHeight:1.5}}>Track your inventory, monitor market values, and maximize your returns.</p>
+
+      <div style={{width:'100%',maxWidth:320}}>
+        <FormField label="Your Name" required>
+          <input ref={profileNameRef} className="form-input" defaultValue="" placeholder="e.g. Jordan" style={inputStyle}/>
+        </FormField>
+        <FormField label="Email" required>
+          <input ref={profileEmailRef} className="form-input" type="email" defaultValue="" placeholder="e.g. you@email.com" style={inputStyle}/>
+        </FormField>
+
+        <button onClick={() => {
+          const name = profileNameRef.current?.value?.trim() || '';
+          const email = profileEmailRef.current?.value?.trim() || '';
+          if (!name) { alert('Please enter your name.'); return; }
+          if (!email) { alert('Please enter your email.'); return; }
+          const newProfile = { name, email, createdAt: new Date().toISOString() };
+          setProfile(newProfile);
+          setScreen('home');
+        }} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:16,fontWeight:700,color:'#000',cursor:'pointer',marginTop:8}}>
+          Get Started
+        </button>
+      </div>
+    </div>
+  );
+
   const HomeScreen = () => (
     <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
       {/* Header */}
       <div style={{padding:'32px 24px 8px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:28}}>
           <div>
-            <p className="text-dim" style={{fontSize:13,letterSpacing:1,textTransform:'uppercase'}}>Good Evening</p>
-            <h1 style={{fontSize:28,fontWeight:700,color:'#fff',marginTop:4}}>Kitty</h1>
+            <p className="text-dim" style={{fontSize:13,letterSpacing:1,textTransform:'uppercase'}}>{getGreeting()}</p>
+            <h1 style={{fontSize:28,fontWeight:700,color:'#fff',marginTop:4}}>{userName}</h1>
           </div>
-          <div className="gradient-amber" style={{width:44,height:44,borderRadius:22,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:700,color:'#000'}}>K</div>
+          <div className="gradient-amber" style={{width:44,height:44,borderRadius:22,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:700,color:'#000'}}>{userInitial}</div>
         </div>
 
         {/* Stats Grid */}
@@ -1286,14 +1339,15 @@ const App = () => {
 
         {/* User card */}
         <div className="glass" style={{borderRadius:16,padding:24,textAlign:'center',marginBottom:20}}>
-          <div className="gradient-amber" style={{width:72,height:72,borderRadius:36,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,fontWeight:700,color:'#000',margin:'0 auto 14px'}}>K</div>
-          <h2 style={{fontSize:22,fontWeight:700,color:'#fff'}}>Kitty</h2>
-          <p className="text-muted" style={{fontSize:13,marginTop:6}}>kittyisrando@gmail.com</p>
+          <div className="gradient-amber" style={{width:72,height:72,borderRadius:36,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,fontWeight:700,color:'#000',margin:'0 auto 14px'}}>{userInitial}</div>
+          <h2 style={{fontSize:22,fontWeight:700,color:'#fff'}}>{userName}</h2>
+          <p className="text-muted" style={{fontSize:13,marginTop:6}}>{userEmail}</p>
+          <button onClick={() => setEditingProfile(true)} style={{background:'none',border:'none',color:'#d4a853',fontSize:13,fontWeight:600,cursor:'pointer',marginTop:8}}>Edit Profile</button>
         </div>
 
         {/* Stats */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
-          {[['Member Since','Jan 2026'],['Items Tracked',String(items.length)],['Total Value',fmt(totalValue)],['Avg Value',fmt(avgValue)]].map(([k,v],i) => (
+          {[['Member Since', profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '--'],['Items Tracked',String(items.length)],['Total Value',fmt(totalValue)],['Avg Value',fmt(avgValue)]].map(([k,v],i) => (
             <div key={i} className="glass" style={{borderRadius:12,padding:14,textAlign:'center'}}>
               <p className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1}}>{k}</p>
               <p style={{fontSize:18,fontWeight:700,color:'#fff',marginTop:6}}>{v}</p>
@@ -1333,6 +1387,32 @@ const App = () => {
         </button>
       </div>
 
+      {/* Edit Profile Modal */}
+      {editingProfile && (
+        <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.7)',backdropFilter:'blur(8px)',zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',padding:24}} onClick={() => setEditingProfile(false)}>
+          <div onClick={e => e.stopPropagation()} style={{background:'#1a1a2e',border:'1px solid rgba(255,255,255,0.12)',borderRadius:20,padding:28,maxWidth:340,width:'100%'}}>
+            <h3 style={{fontSize:18,fontWeight:700,color:'#fff',marginBottom:20,textAlign:'center'}}>Edit Profile</h3>
+            <FormField label="Name" required>
+              <input ref={profileNameRef} className="form-input" defaultValue={userName} style={inputStyle}/>
+            </FormField>
+            <FormField label="Email" required>
+              <input ref={profileEmailRef} className="form-input" type="email" defaultValue={userEmail} style={inputStyle}/>
+            </FormField>
+            <div style={{display:'flex',gap:10,marginTop:8}}>
+              <button onClick={() => setEditingProfile(false)} style={{flex:1,padding:'12px 0',borderRadius:12,border:'1px solid rgba(255,255,255,0.15)',background:'rgba(255,255,255,0.06)',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer'}}>Cancel</button>
+              <button onClick={() => {
+                const name = profileNameRef.current?.value?.trim() || '';
+                const email = profileEmailRef.current?.value?.trim() || '';
+                if (!name) { alert('Please enter your name.'); return; }
+                if (!email) { alert('Please enter your email.'); return; }
+                setProfile(prev => ({...prev, name, email}));
+                setEditingProfile(false);
+              }} className="gradient-amber" style={{flex:1,padding:'12px 0',borderRadius:12,border:'none',fontSize:14,fontWeight:700,color:'#000',cursor:'pointer'}}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Clear All Confirmation Modal */}
       {showClearConfirm && (
         <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.7)',backdropFilter:'blur(8px)',zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',padding:24}} onClick={() => setShowClearConfirm(false)}>
@@ -1355,6 +1435,7 @@ const App = () => {
   /* ════════════════════════ RENDER ════════════════════════ */
   const renderScreen = () => {
     switch(screen) {
+      case 'setup': return SetupScreen();
       case 'home': return HomeScreen();
       case 'scan': return ScanScreen();
       case 'ai': return AIScreen();
@@ -1373,7 +1454,7 @@ const App = () => {
     if (analyzing || aiDone) setScreen('ai');
   }, [analyzing, aiDone]);
 
-  const showTabs = !['scan','add-item'].includes(screen);
+  const showTabs = !['scan','add-item','setup'].includes(screen);
   const tabs = [
     {id:'home',icon:'Home',label:'Home'},
     {id:'inventory',icon:'Package',label:'Inventory'},
