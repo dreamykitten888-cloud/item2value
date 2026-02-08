@@ -1219,8 +1219,20 @@ const App = () => {
   );
 
   /* ════════════════════════ RENDER ════════════════════════ */
-  const screens = { home: HomeScreen, scan: ScanScreen, ai: AIScreen, 'add-item': AddItemScreen, inventory: InventoryScreen, detail: DetailScreen, pricing: PricingScreen, alerts: AlertsScreen, profile: ProfileScreen };
-  const CurrentScreen = screens[screen] || HomeScreen;
+  const renderScreen = () => {
+    switch(screen) {
+      case 'home': return HomeScreen();
+      case 'scan': return ScanScreen();
+      case 'ai': return AIScreen();
+      case 'add-item': return AddItemScreen();
+      case 'inventory': return InventoryScreen();
+      case 'detail': return DetailScreen();
+      case 'pricing': return PricingScreen();
+      case 'alerts': return AlertsScreen();
+      case 'profile': return ProfileScreen();
+      default: return HomeScreen();
+    }
+  };
 
   // After camera scan animation, go to AI screen
   useEffect(() => {
@@ -1239,7 +1251,7 @@ const App = () => {
   return (
     <div style={{width:'100%',height:'100vh',display:'flex',justifyContent:'center',background:'#06060b'}}>
       <div style={{width:'100%',maxWidth:390,height:'100%',position:'relative',overflow:'hidden',background:'linear-gradient(180deg,#0a0a0f,#0d0d14,#0a0a0f)'}}>
-        <CurrentScreen/>
+        {renderScreen()}
 
         {/* Tab Bar */}
         {showTabs && (
