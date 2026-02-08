@@ -234,9 +234,11 @@ const App = () => {
   const [editingCost, setEditingCost] = useState(false);
   const [editingAsking, setEditingAsking] = useState(false);
   const [editingMarket, setEditingMarket] = useState(false);
+  const [editingEarnings, setEditingEarnings] = useState(false);
   const [costInput, setCostInput] = useState('');
   const [askingInput, setAskingInput] = useState('');
   const [marketInput, setMarketInput] = useState('');
+  const [earningsInput, setEarningsInput] = useState('');
   const [addingComp, setAddingComp] = useState(false);
   const [editingCompId, setEditingCompId] = useState(null);
   const [compForm, setCompForm] = useState({title:'',url:'',price:'',source:'eBay',condition:'Good'});
@@ -272,6 +274,8 @@ const App = () => {
   const totalValue = items.reduce((s,i) => s + i.value, 0);
   const avgValue = items.length > 0 ? Math.round(totalValue / items.length) : 0;
   const topGainer = items.length > 0 ? items.reduce((m,i) => getItemGain(i) > getItemGain(m) ? i : m) : null;
+  const soldItems = items.filter(i => i.earnings && i.earnings > 0);
+  const totalEarnings = soldItems.reduce((s,i) => s + i.earnings, 0);
   const selected = items.find(i => i.id === selectedId);
 
   const filtered = items
@@ -434,11 +438,11 @@ const App = () => {
           {[
             {label:'Total Items',val:String(items.length),icon:'Package',grad:'linear-gradient(135deg,#3b82f6,#2563eb)'},
             {label:'Total Value',val:fmt(totalValue),icon:'Dollar',grad:'linear-gradient(135deg,#d4a853,#b8860b)',tip:'The combined market value of all items currently in your inventory.'},
-            {label:'Avg Value',val:fmt(avgValue),icon:'BarChart',grad:'linear-gradient(135deg,#a855f7,#7c3aed)',tip:'The average market value across all items in your inventory.'},
+            {label:'Total Earnings',val: totalEarnings > 0 ? fmt(totalEarnings) : '--',icon:'BarChart',grad:'linear-gradient(135deg,#a855f7,#7c3aed)',tip:'Total revenue from items you\'ve sold. Tap to see all sold items.',onClick:() => setScreen('sold-items')},
             {label:'Top Gainer',val: topGainer ? `+${getItemGain(topGainer)}%` : '--',icon:'TrendUp',grad:'linear-gradient(135deg,#22c55e,#16a34a)',tip: topGainer ? `Your best performing item by % gain. Currently: ${topGainer.name}` : 'Add items to see your top performer.'},
           ].map((c,i) => {
             const Ic = Icons[c.icon];
-            return <div key={i} className="glass anim-up" style={{borderRadius:16,padding:16,animationDelay:`${i*0.08}s`,cursor:'default',overflow:'visible',position:'relative'}}>
+            return <div key={i} className="glass anim-up" style={{borderRadius:16,padding:16,animationDelay:`${i*0.08}s`,cursor:c.onClick?'pointer':'default',overflow:'visible',position:'relative'}} onClick={c.onClick || undefined}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
                 <div>
                   <div style={{display:'flex',alignItems:'center'}}>
@@ -706,6 +710,7 @@ const App = () => {
     brand: useRef(null),
     model: useRef(null),
     cost: useRef(null),
+    datePurchased: useRef(null),
     asking: useRef(null),
     market: useRef(null),
     notes: useRef(null),
@@ -809,6 +814,11 @@ const App = () => {
           </div>
         </FormField>
 
+        {/* Date Purchased */}
+        <FormField label="Date Purchased" tip="When you bought or acquired this item.">
+          <input ref={formRefs.datePurchased} className="form-input" type="date" defaultValue="" style={{...inputStyle,colorScheme:'dark'}}/>
+        </FormField>
+
         {/* My Asking Price */}
         <FormField label="My Asking Price" tip="The price you'd list this item for if you sold it today. Leave blank to auto-set to market value.">
           <div style={{position:'relative'}}>
@@ -850,6 +860,9 @@ const App = () => {
             photos: addFormUI.photos,
             comps: [],
             createdAt: new Date().toISOString(),
+            datePurchased: formRefs.datePurchased.current?.value || null,
+            earnings: null,
+            dateSold: null,
           };
           setItems(prev => [newItem, ...prev]);
           resetAddForm();
@@ -984,15 +997,17 @@ const App = () => {
           {/* Valuation */}
           {(() => {
             const currentAsking = getItemAsking(selected);
+            const currentEarnings = selected.earnings || 0;
+            const hasSold = currentEarnings > 0;
             const investProfit = currentAsking - currentCost;
             const investPct = currentCost === 0 ? 0 : Math.round((investProfit / currentCost) * 100);
             const resaleDiff = currentAsking - selected.value;
             const resalePct = selected.value === 0 ? 0 : Math.round((resaleDiff / selected.value) * 100);
-            const netProfit = currentAsking - currentCost;
+            const netProfit = hasSold ? (currentEarnings - currentCost) : (currentAsking - currentCost);
             const netPct = currentCost === 0 ? 0 : Math.round((netProfit / currentCost) * 100);
 
-            const EditableBox = ({label, value, editing, setEditing, input, setInput, onSave, tip, color='#fff'}) => (
-              <div className="glass" style={{borderRadius:12,padding:'12px 8px',textAlign:'center',cursor:'pointer',border: editing ? '1px solid rgba(212,168,83,0.5)' : '1px solid rgba(255,255,255,0.08)',minWidth:0,boxSizing:'border-box'}} onClick={() => {if(!editing){setEditing(true);setInput(String(value));}}}>
+            const EditableBox = ({label, value, editing, setEditing, input, setInput, onSave, tip, color='#fff', placeholder}) => (
+              <div className="glass" style={{borderRadius:12,padding:'12px 8px',textAlign:'center',cursor:'pointer',border: editing ? '1px solid rgba(212,168,83,0.5)' : '1px solid rgba(255,255,255,0.08)',minWidth:0,boxSizing:'border-box'}} onClick={() => {if(!editing){setEditing(true);setInput(value != null ? String(value) : '');}}}>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:3}}>
                   <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8,whiteSpace:'nowrap'}}>{label}</p>
                   <Icons.Edit size={8} color="#475569"/>
@@ -1008,7 +1023,7 @@ const App = () => {
                       onClick={e => e.stopPropagation()}/>
                   </div>
                 ) : (
-                  <p style={{fontSize:18,fontWeight:700,color,marginTop:6}}>{fmt(value)}</p>
+                  <p style={{fontSize:18,fontWeight:700,color,marginTop:6}}>{value != null ? fmt(value) : (placeholder || '--')}</p>
                 )}
                 {!editing && <p className="text-dim" style={{fontSize:8,marginTop:3}}>tap to edit</p>}
               </div>
@@ -1017,8 +1032,8 @@ const App = () => {
             return (
             <div className="glass" style={{borderRadius:16,padding:16,marginBottom:16}}>
               <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:14}}>Valuation</h3>
-              {/* 3 price boxes */}
-              <div style={{display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:10,marginBottom:16,width:'100%',boxSizing:'border-box'}}>
+              {/* 2x2 price boxes */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:10,marginBottom:12,width:'100%',boxSizing:'border-box'}}>
                 <EditableBox label="What I Paid" value={currentCost} editing={editingCost} setEditing={setEditingCost} input={costInput} setInput={setCostInput} tip="Total you spent acquiring this item."
                   onSave={() => {
                     const v = parseFloat(costInput);
@@ -1043,6 +1058,34 @@ const App = () => {
                     }
                     setEditingMarket(false);
                   }}/>
+                <EditableBox label="Earnings" value={currentEarnings || null} editing={editingEarnings} setEditing={setEditingEarnings} input={earningsInput} setInput={setEarningsInput} tip="What you actually sold this item for, including any fees or deductions." color="#22c55e" placeholder="--"
+                  onSave={() => {
+                    const v = parseFloat(earningsInput);
+                    if (!isNaN(v) && v >= 0) {
+                      setItems(prev => prev.map(it => it.id === selected.id ? {...it, earnings: v} : it));
+                    } else if (earningsInput === '' || earningsInput === '0') {
+                      setItems(prev => prev.map(it => it.id === selected.id ? {...it, earnings: null} : it));
+                    }
+                    setEditingEarnings(false);
+                  }}/>
+              </div>
+
+              {/* Date fields */}
+              <div style={{display:'grid',gridTemplateColumns: hasSold ? '1fr 1fr' : '1fr',gap:10,marginBottom:16}}>
+                <div>
+                  <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8,marginBottom:4}}>Date Purchased</p>
+                  <input type="date" value={selected.datePurchased || ''} onChange={e => {
+                    setItems(prev => prev.map(it => it.id === selected.id ? {...it, datePurchased: e.target.value || null} : it));
+                  }} style={{width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:12,outline:'none',fontFamily:'DM Sans, sans-serif',colorScheme:'dark'}}/>
+                </div>
+                {hasSold && (
+                  <div>
+                    <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8,marginBottom:4}}>Date Sold</p>
+                    <input type="date" value={selected.dateSold || ''} onChange={e => {
+                      setItems(prev => prev.map(it => it.id === selected.id ? {...it, dateSold: e.target.value || null} : it));
+                    }} style={{width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:12,outline:'none',fontFamily:'DM Sans, sans-serif',colorScheme:'dark'}}/>
+                  </div>
+                )}
               </div>
 
               {/* Metrics */}
@@ -1069,11 +1112,11 @@ const App = () => {
                     {resaleDiff>=0?'+':''}{resalePct}% ({resaleDiff>=0?'+':''}${Math.abs(resaleDiff).toLocaleString()})
                   </span>
                 </div>
-                {/* Net Profit: asking vs paid */}
+                {/* Net Profit: conditional based on whether item sold */}
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderTop:'1px solid rgba(255,255,255,0.06)',paddingTop:10}}>
                   <div style={{display:'flex',alignItems:'center',gap:4}}>
-                    <span style={{fontSize:13,fontWeight:600,color:'#cbd5e1'}}>Net Profit if Sold</span>
-                    <InfoTip text="Your asking price minus what you paid. This is your actual profit if someone buys at your price."/>
+                    <span style={{fontSize:13,fontWeight:600,color:'#cbd5e1'}}>{hasSold ? 'Net Profit' : 'Net Profit if Sold'}</span>
+                    <InfoTip text={hasSold ? "Your actual profit: what you earned minus what you paid." : "Your asking price minus what you paid. This is your projected profit if someone buys at your price."}/>
                   </div>
                   <span style={{fontSize:15,fontWeight:700,color:netProfit>=0?'#4ade80':'#f87171',display:'flex',alignItems:'center',gap:4}}>
                     {netProfit>=0?<Icons.TrendUp size={16} color="#4ade80"/>:<Icons.TrendDown size={16} color="#f87171"/>}
@@ -1316,6 +1359,129 @@ const App = () => {
     </div>
   );
 
+  const SoldItemsScreen = () => {
+    const [soldFilter, setSoldFilter] = useState('All');
+    const [soldSearch, setSoldSearch] = useState('');
+    const [soldSort, setSoldSort] = useState('recent');
+    const sold = soldItems
+      .filter(i => (soldFilter === 'All' || i.category === soldFilter) && i.name.toLowerCase().includes(soldSearch.toLowerCase()))
+      .sort((a,b) => {
+        if (soldSort === 'recent') return (b.dateSold || b.createdAt || '').localeCompare(a.dateSold || a.createdAt || '');
+        if (soldSort === 'profit') return ((b.earnings - b.cost) - (a.earnings - a.cost));
+        if (soldSort === 'fastest') {
+          const daysA = a.dateSold && (a.datePurchased || a.createdAt) ? Math.round((new Date(a.dateSold) - new Date(a.datePurchased || a.createdAt)) / (1000*60*60*24)) : 9999;
+          const daysB = b.dateSold && (b.datePurchased || b.createdAt) ? Math.round((new Date(b.dateSold) - new Date(b.datePurchased || b.createdAt)) / (1000*60*60*24)) : 9999;
+          return daysA - daysB;
+        }
+        return 0;
+      });
+    const totalSoldProfit = soldItems.reduce((s,i) => s + (i.earnings - i.cost), 0);
+    const avgDaysToSell = (() => {
+      const withDates = soldItems.filter(i => i.dateSold && (i.datePurchased || i.createdAt));
+      if (withDates.length === 0) return '--';
+      const total = withDates.reduce((s,i) => s + Math.round((new Date(i.dateSold) - new Date(i.datePurchased || i.createdAt)) / (1000*60*60*24)), 0);
+      return Math.round(total / withDates.length);
+    })();
+    const getDaysToSell = (item) => {
+      if (!item.dateSold || !(item.datePurchased || item.createdAt)) return '--';
+      return Math.round((new Date(item.dateSold) - new Date(item.datePurchased || item.createdAt)) / (1000*60*60*24));
+    };
+    return (
+    <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px',position:'sticky',top:0,background:'linear-gradient(180deg,#0a0a0f 80%,transparent)',zIndex:20}}>
+        <button onClick={() => setScreen('home')} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.ArrowLeft size={24}/></button>
+        <h1 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Sold Items</h1>
+        <div style={{width:24}}/>
+      </div>
+
+      <div style={{padding:'0 24px'}}>
+        {/* Summary stats */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:16}}>
+          <div className="glass" style={{borderRadius:12,padding:12,textAlign:'center'}}>
+            <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8}}>Earnings</p>
+            <p style={{fontSize:16,fontWeight:700,color:'#22c55e',marginTop:4}}>{totalEarnings > 0 ? fmt(totalEarnings) : '--'}</p>
+          </div>
+          <div className="glass" style={{borderRadius:12,padding:12,textAlign:'center'}}>
+            <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8}}>Items Sold</p>
+            <p style={{fontSize:16,fontWeight:700,color:'#fff',marginTop:4}}>{soldItems.length}</p>
+          </div>
+          <div className="glass" style={{borderRadius:12,padding:12,textAlign:'center'}}>
+            <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8}}>Avg Days</p>
+            <p style={{fontSize:16,fontWeight:700,color:'#d4a853',marginTop:4}}>{avgDaysToSell}{avgDaysToSell !== '--' ? 'd' : ''}</p>
+          </div>
+        </div>
+
+        {/* Net profit banner */}
+        <div className="glass" style={{borderRadius:12,padding:14,marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span className="text-muted" style={{fontSize:13}}>Net Profit (all sold)</span>
+          <span style={{fontSize:16,fontWeight:700,color:totalSoldProfit>=0?'#4ade80':'#f87171'}}>
+            {totalSoldProfit>=0?'+':''}${Math.abs(totalSoldProfit).toLocaleString()}
+          </span>
+        </div>
+
+        {/* Search */}
+        <div className="glass" style={{borderRadius:12,padding:'12px 14px',display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+          <Icons.Search size={16} color="#64748b"/>
+          <input value={soldSearch} onChange={e => setSoldSearch(e.target.value)} placeholder="Search sold items..." style={{background:'none',border:'none',outline:'none',color:'#fff',fontSize:14,width:'100%'}}/>
+        </div>
+
+        {/* Filters */}
+        <div className="scroll-hide" style={{display:'flex',gap:8,overflowX:'auto',marginBottom:12}}>
+          {['All', ...categoryOptions.filter(cat => soldItems.some(i => i.category === cat))].map(f => (
+            <button key={f} onClick={() => setSoldFilter(f)} style={{padding:'8px 16px',borderRadius:10,fontSize:13,fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',border: soldFilter===f?'none':'1px solid rgba(255,255,255,0.1)',background: soldFilter===f?'linear-gradient(135deg,#d4a853,#b8860b)':'rgba(255,255,255,0.04)',color: soldFilter===f?'#000':'#fff'}}>{f}</button>
+          ))}
+        </div>
+
+        {/* Sort */}
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16}}>
+          <Icons.Filter size={14} color="#64748b"/>
+          <select value={soldSort} onChange={e => setSoldSort(e.target.value)} style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',color:'#fff',fontSize:13,borderRadius:8,padding:'6px 10px',outline:'none'}}>
+            <option value="recent">Most Recent Sale</option>
+            <option value="profit">Highest Profit</option>
+            <option value="fastest">Fastest Sale</option>
+          </select>
+        </div>
+
+        {/* Sold items list */}
+        {sold.length === 0 ? (
+          <div style={{textAlign:'center',padding:'48px 24px'}}>
+            <p style={{fontSize:48,marginBottom:12}}>💰</p>
+            <p style={{fontSize:16,fontWeight:600,color:'#fff',marginBottom:6}}>{soldItems.length === 0 ? 'No sold items yet' : 'No matches found'}</p>
+            <p className="text-muted" style={{fontSize:13,lineHeight:1.5}}>{soldItems.length === 0 ? 'Enter earnings on any item to mark it as sold and track your velocity.' : 'Try a different search or filter.'}</p>
+          </div>
+        ) : (
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {sold.map((item,i) => {
+              const profit = item.earnings - item.cost;
+              const days = getDaysToSell(item);
+              return (
+                <div key={item.id} onClick={() => goItem(item.id)} className="glass glass-hover anim-right" style={{borderRadius:14,padding:16,cursor:'pointer',animationDelay:`${i*0.04}s`}}>
+                  <div style={{display:'flex',alignItems:'center',gap:14}}>
+                    <div style={{width:48,height:48,borderRadius:12,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,flexShrink:0}}>{item.emoji}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:14}}>{item.name}</p>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginTop:4}}>
+                        <span className="text-dim" style={{fontSize:11}}>Cost: {fmt(item.cost)}</span>
+                        <span style={{color:'#475569'}}>→</span>
+                        <span style={{fontSize:11,color:'#22c55e',fontWeight:600}}>Sold: {fmt(item.earnings)}</span>
+                      </div>
+                    </div>
+                    <div style={{textAlign:'right',flexShrink:0}}>
+                      <p style={{fontWeight:700,fontSize:14,color:profit>=0?'#4ade80':'#f87171'}}>{profit>=0?'+':''}${Math.abs(profit).toLocaleString()}</p>
+                      <p className="text-dim" style={{fontSize:11,marginTop:3}}>{days !== '--' ? `${days}d` : '--'}</p>
+                    </div>
+                  </div>
+                  {item.dateSold && <p className="text-dim" style={{fontSize:10,marginTop:8}}>Sold {new Date(item.dateSold).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</p>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+    );
+  };
+
   const AlertsScreen = () => {
     const alertColors = {'Below Cost':'#f87171','Underpriced':'#fbbf24','Priced High':'#f97316','Needs Comps':'#3b82f6','Set Market Value':'#8b5cf6','Strong Performer':'#4ade80','New Item Added':'#d4a853'};
     return (
@@ -1524,6 +1690,7 @@ const App = () => {
       case 'inventory': return InventoryScreen();
       case 'detail': return DetailScreen();
       case 'pricing': return PricingScreen();
+      case 'sold-items': return SoldItemsScreen();
       case 'alerts': return AlertsScreen();
       case 'profile': return ProfileScreen();
       default: return HomeScreen();
@@ -1555,7 +1722,7 @@ const App = () => {
             <div style={{display:'flex',justifyContent:'space-around',alignItems:'center'}}>
               {tabs.map(tab => {
                 const Ic = Icons[tab.icon];
-                const active = screen === tab.id || (tab.id === 'home' && screen === 'home') || (tab.id === 'inventory' && ['inventory','detail','pricing'].includes(screen));
+                const active = screen === tab.id || (tab.id === 'home' && ['home','sold-items'].includes(screen)) || (tab.id === 'inventory' && ['inventory','detail','pricing'].includes(screen));
                 return (
                   <button key={tab.id} onClick={() => {
                     if (tab.id === 'scan') { setScanning(false); setAnalyzing(false); setAiDone(false); }
