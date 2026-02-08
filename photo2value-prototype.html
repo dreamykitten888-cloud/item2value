@@ -244,9 +244,13 @@ const App = () => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const scrollRef = useRef(null);
 
-  // Save to localStorage whenever items or profile change
+  // Save to localStorage whenever items or profile change (with overflow protection)
   useEffect(() => {
-    localStorage.setItem('item2value_items', JSON.stringify(items));
+    try {
+      localStorage.setItem('item2value_items', JSON.stringify(items));
+    } catch(e) {
+      alert('Storage is almost full! Your latest change may not have saved. Go to Profile > Export Backup to save your data, then try removing some photos.');
+    }
   }, [items]);
   useEffect(() => {
     if (profile) localStorage.setItem('item2value_profile', JSON.stringify(profile));
@@ -288,6 +292,27 @@ const App = () => {
   };
 
   const fmt = (n) => '$' + n.toLocaleString();
+
+  // Compress photo to prevent localStorage overflow (~50KB per photo instead of ~3MB)
+  const compressPhoto = (dataUrl) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 600;
+        let w = img.width, h = img.height;
+        if (w > h && w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.6));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
   const userName = profile ? profile.name : 'there';
   const userEmail = profile ? profile.email : '';
   const userInitial = userName.charAt(0).toUpperCase();
@@ -730,8 +755,9 @@ const App = () => {
                   const files = Array.from(e.target.files).slice(0, 5 - addFormUI.photos.length);
                   files.forEach(file => {
                     const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      setAddFormUI(prev => ({...prev, photos: [...prev.photos, ev.target.result].slice(0,5)}));
+                    reader.onload = async (ev) => {
+                      const compressed = await compressPhoto(ev.target.result);
+                      setAddFormUI(prev => ({...prev, photos: [...prev.photos, compressed].slice(0,5)}));
                     };
                     reader.readAsDataURL(file);
                   });
@@ -1355,9 +1381,64 @@ const App = () => {
           ))}
         </div>
 
+        {/* Data Management */}
+        <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20}}>
+          <button onClick={() => {
+            const data = { profile, items, exportedAt: new Date().toISOString(), version: '1.0' };
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `item2value-backup-${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }} className="glass glass-hover" style={{width:'100%',borderRadius:12,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.04)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <Icons.Download size={18} color="#4ade80"/>
+              <div>
+                <span style={{fontWeight:600,color:'#fff',fontSize:14,display:'block'}}>Export Backup</span>
+                <span className="text-dim" style={{fontSize:11}}>Download all your data as a file</span>
+              </div>
+            </div>
+            <Icons.ChevronRight size={18} color="#475569"/>
+          </button>
+
+          <label className="glass glass-hover" style={{width:'100%',borderRadius:12,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.04)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <Icons.Upload size={18} color="#3b82f6"/>
+              <div>
+                <span style={{fontWeight:600,color:'#fff',fontSize:14,display:'block'}}>Import Backup</span>
+                <span className="text-dim" style={{fontSize:11}}>Restore from a backup file</span>
+              </div>
+            </div>
+            <Icons.ChevronRight size={18} color="#475569"/>
+            <input type="file" accept=".json" style={{display:'none'}} onChange={e => {
+              const file = e.target.files[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                try {
+                  const data = JSON.parse(ev.target.result);
+                  if (!data.items || !Array.isArray(data.items)) { alert('Invalid backup file.'); return; }
+                  const count = data.items.length;
+                  if (confirm(`This backup contains ${count} item${count!==1?'s':''}. Import will replace all current data. Continue?`)) {
+                    if (data.profile) setProfile(data.profile);
+                    setItems(data.items);
+                    alert('Backup restored successfully!');
+                  }
+                } catch(err) { alert('Could not read backup file. Make sure it is a valid item2value export.'); }
+              };
+              reader.readAsText(file);
+              e.target.value = '';
+            }}/>
+          </label>
+        </div>
+
         {/* Settings */}
         <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20}}>
-          {[['Bell','Notification Preferences'],['Dollar','Default Currency'],['Download','Data Export'],['Shield','Privacy & Security'],['Help','Help & Support']].map(([ic,label],i) => {
+          {[['Bell','Notification Preferences'],['Dollar','Default Currency'],['Shield','Privacy & Security'],['Help','Help & Support']].map(([ic,label],i) => {
             const Ic = Icons[ic];
             return (
               <button key={i} onClick={() => alert(label + ' is coming soon!')} className="glass" style={{width:'100%',borderRadius:12,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',border:'1px solid rgba(255,255,255,0.06)',background:'rgba(255,255,255,0.02)',opacity:0.6}}>
