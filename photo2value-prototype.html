@@ -450,8 +450,8 @@ const App = () => {
           categories[item.category].totalValue += item.value;
           categories[item.category].totalCost += getItemCost(item);
         });
-        const sectorIcons = {Fashion:'👜',Electronics:'📱',Home:'🏠',Watches:'⌚'};
-        const sectorColors = {Fashion:'#e879f9',Electronics:'#3b82f6',Home:'#f59e0b',Watches:'#22c55e'};
+        const sectorIcons = {Fashion:'👜',Electronics:'📱',Home:'🏠',Watches:'⌚',Art:'🎨',Sports:'⚽',Other:'📦'};
+        const sectorColors = {Fashion:'#e879f9',Electronics:'#3b82f6',Home:'#f59e0b',Watches:'#22c55e',Art:'#f472b6',Sports:'#fb923c',Other:'#94a3b8'};
         const sectors = Object.entries(categories).map(([cat, data]) => {
           const gainPct = data.totalCost > 0 ? ((data.totalValue - data.totalCost) / data.totalCost) * 100 : 0;
           const gainDollar = data.totalValue - data.totalCost;
@@ -857,7 +857,7 @@ const App = () => {
 
         {/* Filters */}
         <div className="scroll-hide" style={{display:'flex',gap:8,overflowX:'auto',marginBottom:12}}>
-          {['All','Fashion','Electronics','Home','Watches'].map(f => (
+          {['All', ...categoryOptions.filter(cat => items.some(i => i.category === cat))].map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{padding:'8px 16px',borderRadius:10,fontSize:13,fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',border: filter===f?'none':'1px solid rgba(255,255,255,0.1)',background: filter===f?'linear-gradient(135deg,#d4a853,#b8860b)':'rgba(255,255,255,0.04)',color: filter===f?'#000':'#fff'}}>{f}</button>
           ))}
         </div>
