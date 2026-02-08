@@ -95,64 +95,9 @@ const Icons = {
 };
 
 /* ── Data ── */
-const inventoryItems = [
-  { id:1, name:'Louis Vuitton Neverfull MM', category:'Fashion', cost:1270, asking:1500, value:1420, gain:12, emoji:'👜', condition:'Excellent', brand:'Louis Vuitton', model:'Neverfull MM', color:'Monogram', material:'Canvas & Leather' },
-  { id:2, name:'Nike Dunk Low Panda', category:'Fashion', cost:147, asking:160, value:135, gain:-8, emoji:'👟', condition:'Good', brand:'Nike', model:'Dunk Low', color:'White/Black' },
-  { id:3, name:'Herman Miller Aeron Chair', category:'Home', cost:850, asking:950, value:890, gain:5, emoji:'🪑', condition:'Like New', brand:'Herman Miller', model:'Aeron', color:'Graphite' },
-  { id:4, name:'Sony A7III Camera', category:'Electronics', cost:1185, asking:1200, value:1150, gain:-3, emoji:'📷', condition:'Excellent', brand:'Sony', model:'A7III', color:'Black' },
-  { id:5, name:'Vintage Rolex Datejust', category:'Watches', cost:4600, asking:6500, value:6200, gain:34, emoji:'⌚', condition:'Very Good', brand:'Rolex', model:'Datejust 1601', color:'Steel' },
-  { id:6, name:'Le Creuset Dutch Oven', category:'Home', cost:275, asking:300, value:280, gain:2, emoji:'🍲', condition:'Excellent', brand:'Le Creuset', model:'Round 5.5qt', color:'Flame' },
-  { id:7, name:'iPad Pro 12.9" M2', category:'Electronics', cost:880, asking:800, value:750, gain:-15, emoji:'📱', condition:'Good', brand:'Apple', model:'iPad Pro M2', color:'Space Gray' },
-  { id:8, name:'MCM Stark Backpack', category:'Fashion', cost:453, asking:520, value:485, gain:7, emoji:'🎒', condition:'Excellent', brand:'MCM', model:'Stark', color:'Cognac Visetos' },
-];
-
 const priceHistory = [
   {m:'Sep',v:1270},{m:'Oct',v:1285},{m:'Nov',v:1310},{m:'Dec',v:1350},{m:'Jan',v:1385},{m:'Feb',v:1420}
 ];
-
-const comparablesMap = {
-  1: [
-    { id:1, source:'Vestiaire Collective', title:'Louis Vuitton Neverfull MM Damier', price:1410, condition:'Excellent', date:'2 days ago' },
-    { id:2, source:'Rebag', title:'LV Neverfull MM Monogram', price:1520, condition:'Like New', date:'1 week ago' },
-    { id:3, source:'The RealReal', title:'Louis Vuitton Neverfull Tote', price:1310, condition:'Good', date:'3 days ago' },
-  ],
-  2: [
-    { id:1, source:'StockX', title:'Nike Dunk Low Retro White Black', price:128, condition:'New', date:'1 day ago' },
-    { id:2, source:'GOAT', title:'Nike Dunk Low Panda 2024', price:140, condition:'New', date:'3 days ago' },
-    { id:3, source:'eBay', title:'Nike Dunk Low Panda Size 10', price:119, condition:'Used', date:'5 days ago' },
-  ],
-  3: [
-    { id:1, source:'eBay', title:'Herman Miller Aeron Size B Graphite', price:875, condition:'Like New', date:'2 days ago' },
-    { id:2, source:'Facebook Marketplace', title:'Aeron Chair Fully Loaded', price:920, condition:'Excellent', date:'4 days ago' },
-    { id:3, source:'Craigslist', title:'Herman Miller Aeron Remastered', price:810, condition:'Good', date:'1 week ago' },
-  ],
-  4: [
-    { id:1, source:'eBay', title:'Sony A7III Body Only Low Shutter', price:1120, condition:'Excellent', date:'1 day ago' },
-    { id:2, source:'KEH Camera', title:'Sony Alpha a7 III Mirrorless', price:1189, condition:'Like New', date:'3 days ago' },
-    { id:3, source:'MPB', title:'Sony A7III Body 24.2MP', price:1095, condition:'Good', date:'5 days ago' },
-  ],
-  5: [
-    { id:1, source:'Chrono24', title:'Rolex Datejust 1601 Vintage Steel', price:6100, condition:'Very Good', date:'1 day ago' },
-    { id:2, source:'Bob\'s Watches', title:'Rolex Datejust 1601 Silver Dial', price:6450, condition:'Excellent', date:'4 days ago' },
-    { id:3, source:'Crown & Caliber', title:'Vintage Rolex Datejust SS', price:5890, condition:'Good', date:'1 week ago' },
-  ],
-  6: [
-    { id:1, source:'eBay', title:'Le Creuset Dutch Oven 5.5 Qt Flame', price:275, condition:'Excellent', date:'2 days ago' },
-    { id:2, source:'Poshmark', title:'Le Creuset Round French Oven', price:290, condition:'Like New', date:'5 days ago' },
-    { id:3, source:'Mercari', title:'Le Creuset 5.5 Quart Orange', price:245, condition:'Good', date:'1 week ago' },
-  ],
-  7: [
-    { id:1, source:'Swappa', title:'iPad Pro 12.9 M2 256GB WiFi', price:740, condition:'Good', date:'1 day ago' },
-    { id:2, source:'eBay', title:'Apple iPad Pro 12.9" 6th Gen M2', price:769, condition:'Excellent', date:'3 days ago' },
-    { id:3, source:'Back Market', title:'iPad Pro 12.9 M2 Refurbished', price:699, condition:'Refurbished', date:'2 days ago' },
-  ],
-  8: [
-    { id:1, source:'Vestiaire Collective', title:'MCM Stark Backpack Cognac Visetos', price:479, condition:'Excellent', date:'2 days ago' },
-    { id:2, source:'The RealReal', title:'MCM Visetos Stark Backpack Medium', price:510, condition:'Very Good', date:'5 days ago' },
-    { id:3, source:'Rebag', title:'MCM Stark Side Studs Backpack', price:445, condition:'Good', date:'1 week ago' },
-  ],
-};
-const getComps = (itemId) => comparablesMap[itemId] || comparablesMap[1];
 
 const alerts = [
   { id:1, type:'Price Spike', msg:'Vintage Rolex value up 8%', time:'2 hours ago', iconKey:'Zap' },
@@ -210,6 +155,60 @@ const PriceChart = ({ data, width=320, height=160 }) => {
 
 /* ── Main App ── */
 const App = () => {
+  // Sample data for first-time users
+  const sampleItems = [
+    { id:1, name:'Louis Vuitton Neverfull MM', category:'Fashion', cost:1270, asking:1500, value:1420, emoji:'👜', condition:'Excellent', brand:'Louis Vuitton', model:'Neverfull MM', color:'Monogram', material:'Canvas & Leather', photos:[], comps:[
+      { id:1, source:'Vestiaire Collective', title:'Louis Vuitton Neverfull MM Damier', price:1410, condition:'Excellent', date:'2 days ago', url:'' },
+      { id:2, source:'Rebag', title:'LV Neverfull MM Monogram', price:1520, condition:'Like New', date:'1 week ago', url:'' },
+      { id:3, source:'The RealReal', title:'Louis Vuitton Neverfull Tote', price:1310, condition:'Good', date:'3 days ago', url:'' },
+    ]},
+    { id:2, name:'Nike Dunk Low Panda', category:'Fashion', cost:147, asking:160, value:135, emoji:'👟', condition:'Good', brand:'Nike', model:'Dunk Low', color:'White/Black', photos:[], comps:[
+      { id:1, source:'StockX', title:'Nike Dunk Low Retro White Black', price:128, condition:'New', date:'1 day ago', url:'' },
+      { id:2, source:'GOAT', title:'Nike Dunk Low Panda 2024', price:140, condition:'New', date:'3 days ago', url:'' },
+      { id:3, source:'eBay', title:'Nike Dunk Low Panda Size 10', price:119, condition:'Used', date:'5 days ago', url:'' },
+    ]},
+    { id:3, name:'Herman Miller Aeron Chair', category:'Home', cost:850, asking:950, value:890, emoji:'🪑', condition:'Like New', brand:'Herman Miller', model:'Aeron', color:'Graphite', photos:[], comps:[
+      { id:1, source:'eBay', title:'Herman Miller Aeron Size B Graphite', price:875, condition:'Like New', date:'2 days ago', url:'' },
+      { id:2, source:'Facebook Marketplace', title:'Aeron Chair Fully Loaded', price:920, condition:'Excellent', date:'4 days ago', url:'' },
+      { id:3, source:'Craigslist', title:'Herman Miller Aeron Remastered', price:810, condition:'Good', date:'1 week ago', url:'' },
+    ]},
+    { id:4, name:'Sony A7III Camera', category:'Electronics', cost:1185, asking:1200, value:1150, emoji:'📷', condition:'Excellent', brand:'Sony', model:'A7III', color:'Black', photos:[], comps:[
+      { id:1, source:'eBay', title:'Sony A7III Body Only Low Shutter', price:1120, condition:'Excellent', date:'1 day ago', url:'' },
+      { id:2, source:'KEH Camera', title:'Sony Alpha a7 III Mirrorless', price:1189, condition:'Like New', date:'3 days ago', url:'' },
+      { id:3, source:'MPB', title:'Sony A7III Body 24.2MP', price:1095, condition:'Good', date:'5 days ago', url:'' },
+    ]},
+    { id:5, name:'Vintage Rolex Datejust', category:'Watches', cost:4600, asking:6500, value:6200, emoji:'⌚', condition:'Very Good', brand:'Rolex', model:'Datejust 1601', color:'Steel', photos:[], comps:[
+      { id:1, source:'Chrono24', title:'Rolex Datejust 1601 Vintage Steel', price:6100, condition:'Very Good', date:'1 day ago', url:'' },
+      { id:2, source:'Bob\'s Watches', title:'Rolex Datejust 1601 Silver Dial', price:6450, condition:'Excellent', date:'4 days ago', url:'' },
+      { id:3, source:'Crown & Caliber', title:'Vintage Rolex Datejust SS', price:5890, condition:'Good', date:'1 week ago', url:'' },
+    ]},
+    { id:6, name:'Le Creuset Dutch Oven', category:'Home', cost:275, asking:300, value:280, emoji:'🍲', condition:'Excellent', brand:'Le Creuset', model:'Round 5.5qt', color:'Flame', photos:[], comps:[
+      { id:1, source:'eBay', title:'Le Creuset Dutch Oven 5.5 Qt Flame', price:275, condition:'Excellent', date:'2 days ago', url:'' },
+      { id:2, source:'Poshmark', title:'Le Creuset Round French Oven', price:290, condition:'Like New', date:'5 days ago', url:'' },
+      { id:3, source:'Mercari', title:'Le Creuset 5.5 Quart Orange', price:245, condition:'Good', date:'1 week ago', url:'' },
+    ]},
+    { id:7, name:'iPad Pro 12.9" M2', category:'Electronics', cost:880, asking:800, value:750, emoji:'📱', condition:'Good', brand:'Apple', model:'iPad Pro M2', color:'Space Gray', photos:[], comps:[
+      { id:1, source:'Swappa', title:'iPad Pro 12.9 M2 256GB WiFi', price:740, condition:'Good', date:'1 day ago', url:'' },
+      { id:2, source:'eBay', title:'Apple iPad Pro 12.9" 6th Gen M2', price:769, condition:'Excellent', date:'3 days ago', url:'' },
+      { id:3, source:'Back Market', title:'iPad Pro 12.9 M2 Refurbished', price:699, condition:'Refurbished', date:'2 days ago', url:'' },
+    ]},
+    { id:8, name:'MCM Stark Backpack', category:'Fashion', cost:453, asking:520, value:485, emoji:'🎒', condition:'Excellent', brand:'MCM', model:'Stark', color:'Cognac Visetos', photos:[], comps:[
+      { id:1, source:'Vestiaire Collective', title:'MCM Stark Backpack Cognac Visetos', price:479, condition:'Excellent', date:'2 days ago', url:'' },
+      { id:2, source:'The RealReal', title:'MCM Visetos Stark Backpack Medium', price:510, condition:'Very Good', date:'5 days ago', url:'' },
+      { id:3, source:'Rebag', title:'MCM Stark Side Studs Backpack', price:445, condition:'Good', date:'1 week ago', url:'' },
+    ]},
+  ];
+
+  // Load from localStorage or use samples
+  const loadItems = () => {
+    try {
+      const saved = localStorage.getItem('item2value_items');
+      if (saved) return JSON.parse(saved);
+      return sampleItems;
+    } catch(e) { return sampleItems; }
+  };
+
+  const [items, setItems] = useState(loadItems);
   const [screen, setScreen] = useState('home');
   const [selectedId, setSelectedId] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
@@ -219,27 +218,39 @@ const App = () => {
   const [scanning, setScanning] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [aiDone, setAiDone] = useState(false);
-  const [customCosts, setCustomCosts] = useState({});
-  const [customAsking, setCustomAsking] = useState({});
   const [editingCost, setEditingCost] = useState(false);
   const [editingAsking, setEditingAsking] = useState(false);
+  const [editingMarket, setEditingMarket] = useState(false);
   const [costInput, setCostInput] = useState('');
   const [askingInput, setAskingInput] = useState('');
-  const [addForm, setAddForm] = useState({name:'',brand:'',model:'',category:'Fashion',condition:'Good',cost:'',asking:'',notes:'',emoji:'📦',photos:[]});
+  const [marketInput, setMarketInput] = useState('');
+  const [addForm, setAddForm] = useState({name:'',brand:'',model:'',category:'Fashion',condition:'Good',cost:'',asking:'',market:'',notes:'',emoji:'📦',photos:[]});
+  const [addingComp, setAddingComp] = useState(false);
+  const [compForm, setCompForm] = useState({title:'',url:'',price:'',source:'eBay',condition:'Good'});
   const scrollRef = useRef(null);
 
-  const getItemCost = (item) => customCosts[item.id] !== undefined ? customCosts[item.id] : item.cost;
-  const getItemAsking = (item) => customAsking[item.id] !== undefined ? customAsking[item.id] : item.asking;
+  // Save to localStorage whenever items change
+  useEffect(() => {
+    localStorage.setItem('item2value_items', JSON.stringify(items));
+  }, [items]);
+
+  const getItemCost = (item) => item.cost;
+  const getItemAsking = (item) => item.asking;
   const getItemGain = (item) => {
     const cost = getItemCost(item);
     if (cost === 0) return 0;
     return Math.round(((item.value - cost) / cost) * 100);
   };
 
-  const totalValue = inventoryItems.reduce((s,i) => s + i.value, 0);
-  const avgValue = Math.round(totalValue / inventoryItems.length);
-  const topGainer = inventoryItems.reduce((m,i) => getItemGain(i) > getItemGain(m) ? i : m);
-  const selected = inventoryItems.find(i => i.id === selectedId);
+  const getComps = (itemId) => {
+    const item = items.find(i => i.id === itemId);
+    return item ? (item.comps || []) : [];
+  };
+
+  const totalValue = items.reduce((s,i) => s + i.value, 0);
+  const avgValue = items.length > 0 ? Math.round(totalValue / items.length) : 0;
+  const topGainer = items.length > 0 ? items.reduce((m,i) => getItemGain(i) > getItemGain(m) ? i : m) : items[0];
+  const selected = items.find(i => i.id === selectedId);
 
   /* Tooltip component */
   const InfoTip = ({text, align}) => {
@@ -278,12 +289,12 @@ const App = () => {
     );
   };
 
-  const filtered = inventoryItems
+  const filtered = items
     .filter(i => (filter === 'All' || i.category === filter) && i.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a,b) => {
       if (sortBy === 'value-high') return b.value - a.value;
       if (sortBy === 'value-low') return a.value - b.value;
-      if (sortBy === 'gain') return b.gain - a.gain;
+      if (sortBy === 'gain') return getItemGain(b) - getItemGain(a);
       return 0;
     });
 
@@ -296,6 +307,9 @@ const App = () => {
   };
 
   const fmt = (n) => '$' + n.toLocaleString();
+  const inputStyle = {width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'12px 14px',color:'#fff',fontSize:14,outline:'none',fontFamily:'DM Sans, sans-serif'};
+  const inputFocusStyle = '1px solid rgba(212,168,83,0.5)';
+
   const GainBadge = ({gain, size='sm'}) => {
     const isUp = gain >= 0;
     const Ic = isUp ? Icons.TrendUp : Icons.TrendDown;
@@ -323,7 +337,7 @@ const App = () => {
         {/* Stats Grid */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
           {[
-            {label:'Total Items',val:'47',icon:'Package',grad:'linear-gradient(135deg,#3b82f6,#2563eb)'},
+            {label:'Total Items',val:String(items.length),icon:'Package',grad:'linear-gradient(135deg,#3b82f6,#2563eb)'},
             {label:'Total Value',val:fmt(totalValue),icon:'Dollar',grad:'linear-gradient(135deg,#d4a853,#b8860b)',tip:'The combined market value of all items currently in your inventory.'},
             {label:'Avg Value',val:fmt(avgValue),icon:'BarChart',grad:'linear-gradient(135deg,#a855f7,#7c3aed)',tip:'The average market value across all items in your inventory.'},
             {label:'Top Gainer',val:`+${getItemGain(topGainer)}%`,icon:'TrendUp',grad:'linear-gradient(135deg,#22c55e,#16a34a)',tip:`Your best performing item by % gain. Currently: ${topGainer.name}`},
@@ -360,7 +374,7 @@ const App = () => {
       {/* Portfolio by Sector */}
       {(() => {
         const categories = {};
-        inventoryItems.forEach(item => {
+        items.forEach(item => {
           if (!categories[item.category]) categories[item.category] = {items:[], totalValue:0, totalCost:0};
           categories[item.category].items.push(item);
           categories[item.category].totalValue += item.value;
@@ -417,7 +431,7 @@ const App = () => {
 
       {/* Watchlist: Biggest Movers */}
       {(() => {
-        const sorted = [...inventoryItems].sort((a,b) => Math.abs(b.gain) - Math.abs(a.gain));
+        const sorted = [...items].sort((a,b) => Math.abs(getItemGain(b)) - Math.abs(getItemGain(a)));
         return (
           <div style={{padding:'16px 24px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
@@ -584,9 +598,6 @@ const App = () => {
     </div>
   );
 
-  const inputStyle = {width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'12px 14px',color:'#fff',fontSize:14,outline:'none',fontFamily:'DM Sans, sans-serif'};
-  const inputFocusStyle = '1px solid rgba(212,168,83,0.5)';
-
   const AddItemScreen = () => (
     <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
       {/* Header */}
@@ -685,6 +696,14 @@ const App = () => {
           </div>
         </FormField>
 
+        {/* Estimated Market Value */}
+        <FormField label="Estimated Market Value" tip="What you think this item is worth based on your research. You can update this anytime.">
+          <div style={{position:'relative'}}>
+            <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#64748b',fontSize:14,fontWeight:600}}>$</span>
+            <input type="number" value={addForm.market} onChange={e => updateForm('market',e.target.value)} placeholder="Optional" style={{...inputStyle,paddingLeft:28}} onFocus={e => e.target.style.border=inputFocusStyle} onBlur={e => e.target.style.border='1px solid rgba(255,255,255,0.1)'}/>
+          </div>
+        </FormField>
+
         {/* Notes */}
         <FormField label="Notes">
           <textarea value={addForm.notes} onChange={e => updateForm('notes',e.target.value)} placeholder="Any extra details, serial numbers, where you bought it..." rows={3} style={{...inputStyle,resize:'vertical',minHeight:60}}/>
@@ -709,7 +728,28 @@ const App = () => {
         )}
 
         {/* Submit */}
-        <button onClick={() => {setScreen('inventory');setAddForm({name:'',brand:'',model:'',category:'Fashion',condition:'Good',cost:'',asking:'',notes:'',emoji:'📦',photos:[]});}} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12,opacity: addForm.name&&addForm.cost ? 1 : 0.4}}>
+        <button onClick={() => {
+          if (!addForm.name || !addForm.cost) return;
+          const newItem = {
+            id: Date.now(),
+            name: addForm.name,
+            brand: addForm.brand,
+            model: addForm.model,
+            category: addForm.category,
+            condition: addForm.condition,
+            cost: parseFloat(addForm.cost) || 0,
+            asking: parseFloat(addForm.asking) || 0,
+            value: parseFloat(addForm.market) || parseFloat(addForm.asking) || parseFloat(addForm.cost) || 0,
+            emoji: addForm.emoji,
+            notes: addForm.notes,
+            photos: addForm.photos,
+            comps: [],
+            createdAt: new Date().toISOString(),
+          };
+          setItems(prev => [newItem, ...prev]);
+          setScreen('inventory');
+          setAddForm({name:'',brand:'',model:'',category:'Fashion',condition:'Good',cost:'',asking:'',market:'',notes:'',emoji:'📦',photos:[]});
+        }} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12,opacity: addForm.name&&addForm.cost ? 1 : 0.4}}>
           Save to Inventory
         </button>
         <button onClick={() => setScreen('home')} style={{width:'100%',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer'}}>
@@ -810,7 +850,11 @@ const App = () => {
         {/* Photo */}
         <div style={{padding:'0 24px 20px'}}>
           <div style={{width:'100%',height:280,borderRadius:24,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:80,position:'relative',overflow:'hidden'}}>
-            {selected.emoji}
+            {selected.photos && selected.photos.length > 0 ? (
+              <img src={selected.photos[0]} style={{width:'100%',height:'100%',objectFit:'cover'}} />
+            ) : (
+              selected.emoji
+            )}
             <div style={{position:'absolute',bottom:0,left:0,right:0,height:'30%',background:'linear-gradient(to top,rgba(10,10,15,0.5),transparent)'}}/>
             {/* Dots */}
             <div style={{position:'absolute',bottom:16,left:'50%',transform:'translateX(-50%)',display:'flex',gap:6}}>
@@ -864,16 +908,29 @@ const App = () => {
               {/* 3 price boxes */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:10,marginBottom:16,width:'100%',boxSizing:'border-box'}}>
                 <EditableBox label="What I Paid" value={currentCost} editing={editingCost} setEditing={setEditingCost} input={costInput} setInput={setCostInput} tip="Total you spent acquiring this item."
-                  onSave={() => {const v=parseFloat(costInput);if(!isNaN(v)&&v>=0)setCustomCosts({...customCosts,[selected.id]:v});setEditingCost(false);}}/>
+                  onSave={() => {
+                    const v = parseFloat(costInput);
+                    if (!isNaN(v) && v >= 0) {
+                      setItems(prev => prev.map(it => it.id === selected.id ? {...it, cost: v} : it));
+                    }
+                    setEditingCost(false);
+                  }}/>
                 <EditableBox label="Asking Price" value={currentAsking} editing={editingAsking} setEditing={setEditingAsking} input={askingInput} setInput={setAskingInput} tip="The price you'd list this at if you sold today." color="#d4a853"
-                  onSave={() => {const v=parseFloat(askingInput);if(!isNaN(v)&&v>=0)setCustomAsking({...customAsking,[selected.id]:v});setEditingAsking(false);}}/>
-                <div className="glass" style={{borderRadius:12,padding:'12px 8px',textAlign:'center',minWidth:0,boxSizing:'border-box',border:'1px solid rgba(255,255,255,0.08)'}}>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:3}}>
-                    <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8}}>Market</p>
-                    <InfoTip text="Average selling price based on recent comparable listings."/>
-                  </div>
-                  <p style={{fontSize:18,fontWeight:700,color:'#94a3b8',marginTop:6}}>{fmt(selected.value)}</p>
-                </div>
+                  onSave={() => {
+                    const v = parseFloat(askingInput);
+                    if (!isNaN(v) && v >= 0) {
+                      setItems(prev => prev.map(it => it.id === selected.id ? {...it, asking: v} : it));
+                    }
+                    setEditingAsking(false);
+                  }}/>
+                <EditableBox label="Market" value={selected.value} editing={editingMarket} setEditing={setEditingMarket} input={marketInput} setInput={setMarketInput} tip="Your estimate of fair market value based on comparable listings." color="#94a3b8"
+                  onSave={() => {
+                    const v = parseFloat(marketInput);
+                    if (!isNaN(v) && v >= 0) {
+                      setItems(prev => prev.map(it => it.id === selected.id ? {...it, value: v} : it));
+                    }
+                    setEditingMarket(false);
+                  }}/>
               </div>
 
               {/* Metrics */}
@@ -940,14 +997,71 @@ const App = () => {
                 </div>
               ))}
             </div>
+
+            {/* Add Comp Form */}
+            {addingComp ? (
+              <div className="glass anim-fade" style={{borderRadius:12,padding:16,marginTop:10}}>
+                <p style={{fontSize:13,fontWeight:600,color:'#fff',marginBottom:12}}>Add Comparable Listing</p>
+                <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                  <input value={compForm.title} onChange={e => setCompForm({...compForm, title: e.target.value})} placeholder="Listing title (e.g. Sony A7III Body Only)" style={inputStyle} />
+                  <input value={compForm.url} onChange={e => setCompForm({...compForm, url: e.target.value})} placeholder="URL (paste eBay/Poshmark link)" style={inputStyle} />
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                    <div style={{position:'relative'}}>
+                      <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#64748b',fontSize:14,fontWeight:600}}>$</span>
+                      <input type="number" value={compForm.price} onChange={e => setCompForm({...compForm, price: e.target.value})} placeholder="Price" style={{...inputStyle,paddingLeft:28}} />
+                    </div>
+                    <select value={compForm.source} onChange={e => setCompForm({...compForm, source: e.target.value})} style={{...inputStyle,cursor:'pointer'}}>
+                      {['eBay','Poshmark','Mercari','StockX','Facebook Marketplace','Craigslist','The RealReal','Vestiaire','Other'].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <select value={compForm.condition} onChange={e => setCompForm({...compForm, condition: e.target.value})} style={{...inputStyle,cursor:'pointer'}}>
+                    {['New','Like New','Excellent','Very Good','Good','Fair'].map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <div style={{display:'flex',gap:10}}>
+                    <button onClick={() => {
+                      if (!compForm.title || !compForm.price) return;
+                      const newComp = {
+                        id: Date.now(),
+                        source: compForm.source,
+                        title: compForm.title,
+                        price: parseFloat(compForm.price),
+                        condition: compForm.condition,
+                        date: 'just now',
+                        url: compForm.url,
+                      };
+                      setItems(prev => prev.map(it => it.id === selected.id ? {...it, comps: [...(it.comps||[]), newComp]} : it));
+                      setCompForm({title:'',url:'',price:'',source:'eBay',condition:'Good'});
+                      setAddingComp(false);
+                    }} className="gradient-amber" style={{flex:1,border:'none',borderRadius:10,padding:'12px 0',fontSize:13,fontWeight:700,color:'#000',cursor:'pointer'}}>
+                      Save Comp
+                    </button>
+                    <button onClick={() => setAddingComp(false)} style={{flex:1,background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:10,padding:'12px 0',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setAddingComp(true)} className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,padding:'14px 0',fontSize:13,fontWeight:600,color:'#d4a853',cursor:'pointer',background:'rgba(255,255,255,0.04)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:10}}>
+                <Icons.Plus size={16} color="#d4a853"/>Add Comparable
+              </button>
+            )}
           </div>
 
           {/* Actions */}
           <button onClick={() => setScreen('pricing')} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12}}>
             Refresh Price
           </button>
-          <button className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#fff',cursor:'pointer',background:'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <button className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#fff',cursor:'pointer',background:'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
             <Icons.Edit size={16}/>Edit Item
+          </button>
+          <button onClick={() => {
+            if (confirm('Delete this item from your inventory?')) {
+              setItems(prev => prev.filter(it => it.id !== selected.id));
+              setScreen('inventory');
+            }
+          }} style={{width:'100%',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#f87171',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+            Delete Item
           </button>
         </div>
       </div>
@@ -1073,7 +1187,7 @@ const App = () => {
 
         {/* Stats */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
-          {[['Member Since','Jan 2026'],['Items Tracked','47'],['Total Value',fmt(totalValue)],['Avg Value',fmt(avgValue)]].map(([k,v],i) => (
+          {[['Member Since','Jan 2026'],['Items Tracked',String(items.length)],['Total Value',fmt(totalValue)],['Avg Value',fmt(avgValue)]].map(([k,v],i) => (
             <div key={i} className="glass" style={{borderRadius:12,padding:14,textAlign:'center'}}>
               <p className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1}}>{k}</p>
               <p style={{fontSize:18,fontWeight:700,color:'#fff',marginTop:6}}>{v}</p>
