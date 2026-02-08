@@ -224,6 +224,7 @@ const App = () => {
   const profileNameRef = useRef(null);
   const profileEmailRef = useRef(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [photoIndex, setPhotoIndex] = useState(0);
   const [viewMode, setViewMode] = useState('grid');
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
@@ -287,7 +288,7 @@ const App = () => {
       return 0;
     });
 
-  const goItem = (id) => { setSelectedId(id); setScreen('detail'); };
+  const goItem = (id) => { setSelectedId(id); setPhotoIndex(0); setScreen('detail'); };
   const takePhoto = () => {
     setScanning(true);
     setTimeout(() => { setScanning(false); setAnalyzing(true);
@@ -972,21 +973,43 @@ const App = () => {
           <button onClick={() => alert('Sharing is coming soon!')} style={{background:'none',border:'none',color:'#475569',cursor:'pointer'}}><Icons.Share size={22}/></button>
         </div>
 
-        {/* Photo */}
+        {/* Photo Gallery */}
         <div style={{padding:'0 24px 20px'}}>
-          <div style={{width:'100%',height:280,borderRadius:24,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:80,position:'relative',overflow:'hidden'}}>
+          <div style={{width:'100%',height:280,borderRadius:24,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:80,position:'relative',overflow:'hidden'}}
+            onTouchStart={e => { e.currentTarget._touchX = e.touches[0].clientX; }}
+            onTouchEnd={e => {
+              const diff = e.currentTarget._touchX - e.changedTouches[0].clientX;
+              const total = selected.photos?.length || 0;
+              if (total > 1) {
+                if (diff > 40) setPhotoIndex(prev => Math.min(prev + 1, total - 1));
+                if (diff < -40) setPhotoIndex(prev => Math.max(prev - 1, 0));
+              }
+            }}>
             {selected.photos && selected.photos.length > 0 ? (
-              <img src={selected.photos[0]} style={{width:'100%',height:'100%',objectFit:'cover'}} />
+              <img src={selected.photos[photoIndex] || selected.photos[0]} style={{width:'100%',height:'100%',objectFit:'cover',transition:'opacity 0.2s ease'}} />
             ) : (
               selected.emoji
             )}
             <div style={{position:'absolute',bottom:0,left:0,right:0,height:'30%',background:'linear-gradient(to top,rgba(10,10,15,0.5),transparent)'}}/>
+            {/* Left/Right tap zones */}
+            {selected.photos && selected.photos.length > 1 && (
+              <React.Fragment>
+                {photoIndex > 0 && <div onClick={() => setPhotoIndex(prev => prev - 1)} style={{position:'absolute',left:0,top:0,bottom:0,width:'30%',cursor:'pointer'}}/>}
+                {photoIndex < selected.photos.length - 1 && <div onClick={() => setPhotoIndex(prev => prev + 1)} style={{position:'absolute',right:0,top:0,bottom:0,width:'30%',cursor:'pointer'}}/>}
+              </React.Fragment>
+            )}
+            {/* Photo counter */}
+            {selected.photos && selected.photos.length > 1 && (
+              <div style={{position:'absolute',top:12,right:12,background:'rgba(0,0,0,0.6)',borderRadius:12,padding:'4px 10px',fontSize:11,fontWeight:600,color:'#fff'}}>{photoIndex + 1}/{selected.photos.length}</div>
+            )}
             {/* Dots */}
-            <div style={{position:'absolute',bottom:16,left:'50%',transform:'translateX(-50%)',display:'flex',gap:6}}>
-              <div style={{width:24,height:6,borderRadius:3,background:'#fff'}}/>
-              <div style={{width:6,height:6,borderRadius:3,background:'rgba(255,255,255,0.3)'}}/>
-              <div style={{width:6,height:6,borderRadius:3,background:'rgba(255,255,255,0.3)'}}/>
-            </div>
+            {selected.photos && selected.photos.length > 0 && (
+              <div style={{position:'absolute',bottom:16,left:'50%',transform:'translateX(-50%)',display:'flex',gap:6}}>
+                {selected.photos.map((_, idx) => (
+                  <div key={idx} onClick={() => setPhotoIndex(idx)} style={{width: idx === photoIndex ? 24 : 6, height:6, borderRadius:3, background: idx === photoIndex ? '#fff' : 'rgba(255,255,255,0.3)', transition:'width 0.2s ease', cursor:'pointer'}}/>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
