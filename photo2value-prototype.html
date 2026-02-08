@@ -102,11 +102,6 @@ const priceHistory = [
   {m:'Sep',v:1270},{m:'Oct',v:1285},{m:'Nov',v:1310},{m:'Dec',v:1350},{m:'Jan',v:1385},{m:'Feb',v:1420}
 ];
 
-const alerts = [
-  { id:1, type:'Price Spike', msg:'Vintage Rolex value up 8%', time:'2 hours ago', iconKey:'Zap' },
-  { id:2, type:'New Comp Found', msg:'3 new listings for Neverfull MM', time:'5 hours ago', iconKey:'TrendUp' },
-  { id:3, type:'Market Alert', msg:'Herman Miller Aeron trending up', time:'1 day ago', iconKey:'BarChart' },
-];
 
 /* ── Mini Chart Component ── */
 const PriceChart = ({ data, width=320, height=160 }) => {
@@ -278,6 +273,57 @@ const App = () => {
   };
 
   const fmt = (n) => '$' + n.toLocaleString();
+
+  // Generate real alerts from actual inventory data
+  const generateAlerts = () => {
+    const a = [];
+    let id = 1;
+    const now = new Date();
+    items.forEach(item => {
+      const cost = getItemCost(item);
+      const gain = getItemGain(item);
+      const asking = getItemAsking(item);
+      // Alert: item is worth more than you paid (positive ROI)
+      if (gain > 15) {
+        a.push({id: id++, type:'Strong Performer', msg:`${item.name} is up ${gain}% from what you paid.`, iconKey:'TrendUp', emoji:item.emoji});
+      }
+      // Alert: item value is below what you paid (losing money)
+      if (item.value < cost && cost > 0) {
+        const loss = Math.round(((cost - item.value) / cost) * 100);
+        a.push({id: id++, type:'Below Cost', msg:`${item.name} market value is ${loss}% below what you paid.`, iconKey:'TrendDown', emoji:item.emoji});
+      }
+      // Alert: asking price is way above market (may be overpriced)
+      if (asking > 0 && item.value > 0 && asking > item.value * 1.2) {
+        const pct = Math.round(((asking - item.value) / item.value) * 100);
+        a.push({id: id++, type:'Priced High', msg:`${item.name} asking is ${pct}% above market. May be hard to sell.`, iconKey:'Zap', emoji:item.emoji});
+      }
+      // Alert: asking price is below market (could get more)
+      if (asking > 0 && item.value > 0 && asking < item.value * 0.9) {
+        a.push({id: id++, type:'Underpriced', msg:`${item.name} is listed below market value. You could ask for more.`, iconKey:'Dollar', emoji:item.emoji});
+      }
+      // Alert: no comps added yet
+      if (!item.comps || item.comps.length === 0) {
+        a.push({id: id++, type:'Needs Comps', msg:`${item.name} has no comparable listings. Add comps for better valuation.`, iconKey:'Search', emoji:item.emoji});
+      }
+      // Alert: no market value set (defaulted to cost or asking)
+      if (item.value === cost && asking !== cost) {
+        a.push({id: id++, type:'Set Market Value', msg:`${item.name} market value may need updating. It's still set to your cost.`, iconKey:'Edit', emoji:item.emoji});
+      }
+      // Alert: item added recently (welcome)
+      if (item.createdAt) {
+        const created = new Date(item.createdAt);
+        const hoursSince = (now - created) / (1000 * 60 * 60);
+        if (hoursSince < 24) {
+          a.push({id: id++, type:'New Item Added', msg:`${item.name} was added to your inventory.`, iconKey:'Package', emoji:item.emoji});
+        }
+      }
+    });
+    // Sort: actionable alerts first (Below Cost, Underpriced, Needs Comps), then info
+    const priority = {'Below Cost':0,'Underpriced':1,'Priced High':2,'Needs Comps':3,'Set Market Value':4,'Strong Performer':5,'New Item Added':6};
+    a.sort((x,y) => (priority[x.type]??99) - (priority[y.type]??99));
+    return a;
+  };
+  const alerts = generateAlerts();
   const inputStyle = {width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'12px 14px',color:'#fff',fontSize:14,outline:'none',fontFamily:'DM Sans, sans-serif'};
   // Focus styles handled via CSS .form-input:focus class
 
@@ -1171,32 +1217,47 @@ const App = () => {
     </div>
   );
 
-  const AlertsScreen = () => (
+  const AlertsScreen = () => {
+    const alertColors = {'Below Cost':'#f87171','Underpriced':'#fbbf24','Priced High':'#f97316','Needs Comps':'#3b82f6','Set Market Value':'#8b5cf6','Strong Performer':'#4ade80','New Item Added':'#d4a853'};
+    return (
     <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
       <div style={{padding:'20px 24px'}}>
-        <h1 style={{fontSize:24,fontWeight:700,color:'#fff',marginBottom:20}}>Alerts</h1>
-        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+          <h1 style={{fontSize:24,fontWeight:700,color:'#fff'}}>Alerts</h1>
+          {alerts.length > 0 && <span style={{background:'rgba(212,168,83,0.15)',color:'#d4a853',fontSize:12,fontWeight:700,padding:'4px 10px',borderRadius:20}}>{alerts.length}</span>}
+        </div>
+        {alerts.length === 0 ? (
+          <div style={{textAlign:'center',padding:'60px 24px'}}>
+            <p style={{fontSize:48,marginBottom:12}}>🔔</p>
+            <p style={{fontSize:16,fontWeight:600,color:'#fff',marginBottom:6}}>No alerts yet</p>
+            <p className="text-muted" style={{fontSize:13,lineHeight:1.5}}>Add items to your inventory and alerts will appear here based on your pricing, market values, and comparables.</p>
+          </div>
+        ) : (
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {alerts.map((a,i) => {
-            const Ic = Icons[a.iconKey];
+            const Ic = Icons[a.iconKey] || Icons.Bell;
+            const accentColor = alertColors[a.type] || '#d4a853';
             return (
-              <div key={a.id} className="glass glass-hover anim-right" style={{borderRadius:14,padding:16,cursor:'pointer',animationDelay:`${i*0.08}s`}}>
+              <div key={a.id} className="glass glass-hover anim-right" style={{borderRadius:14,padding:16,cursor:'pointer',animationDelay:`${i*0.05}s`,borderLeft:`3px solid ${accentColor}`}}>
                 <div style={{display:'flex',alignItems:'flex-start',gap:14}}>
-                  <div className="gradient-amber" style={{width:40,height:40,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                    <Ic size={18} color="#000"/>
-                  </div>
+                  <div style={{width:40,height:40,borderRadius:10,background:`${accentColor}18`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:20}}>{a.emoji||'📦'}</div>
                   <div style={{flex:1}}>
-                    <p style={{fontWeight:600,color:'#fff',fontSize:14}}>{a.type}</p>
-                    <p className="text-muted" style={{fontSize:13,marginTop:3}}>{a.msg}</p>
-                    <p className="text-dim" style={{fontSize:11,marginTop:6}}>{a.time}</p>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,color:accentColor,background:`${accentColor}15`,padding:'2px 8px',borderRadius:6}}>{a.type}</span>
+                    </div>
+                    <p style={{fontWeight:500,color:'#e2e8f0',fontSize:13,marginTop:6,lineHeight:1.4}}>{a.msg}</p>
                   </div>
+                  <Ic size={16} color={accentColor} style={{flexShrink:0,marginTop:2}}/>
                 </div>
               </div>
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );
+  };
 
   const ProfileScreen = () => (
     <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
@@ -1318,8 +1379,9 @@ const App = () => {
                     if (tab.id === 'scan') { setScanning(false); setAnalyzing(false); setAiDone(false); }
                     setScreen(tab.id);
                   }} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',cursor:'pointer',padding:'6px 12px',borderRadius:10}}>
-                    <div style={{padding:6,borderRadius:8,background: active?'rgba(212,168,83,0.15)':'transparent'}}>
+                    <div style={{padding:6,borderRadius:8,background: active?'rgba(212,168,83,0.15)':'transparent',position:'relative'}}>
                       <Ic size={20} color={active?'#d4a853':'#475569'}/>
+                      {tab.id === 'alerts' && alerts.length > 0 && <div style={{position:'absolute',top:4,right:4,width:8,height:8,borderRadius:4,background:'#f87171',border:'2px solid #0a0a0f'}}/>}
                     </div>
                     <span style={{fontSize:10,fontWeight:600,color: active?'#d4a853':'#475569'}}>{tab.label}</span>
                   </button>
