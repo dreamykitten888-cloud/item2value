@@ -438,7 +438,7 @@ const App = () => {
           {[
             {label:'Total Items',val:String(items.length),icon:'Package',grad:'linear-gradient(135deg,#3b82f6,#2563eb)'},
             {label:'Total Value',val:fmt(totalValue),icon:'Dollar',grad:'linear-gradient(135deg,#d4a853,#b8860b)',tip:'The combined market value of all items currently in your inventory.'},
-            {label:'Total Earnings',val: totalEarnings > 0 ? fmt(totalEarnings) : '--',icon:'BarChart',grad:'linear-gradient(135deg,#a855f7,#7c3aed)',tip:'Total revenue from items you\'ve sold. Tap to see all sold items.',onClick:() => setScreen('sold-items')},
+            {label:'Total Earnings',val: totalEarnings > 0 ? fmt(totalEarnings) : '--',icon:'BarChart',grad:'linear-gradient(135deg,#a855f7,#7c3aed)',tip:'Total revenue from items you\'ve sold. Tap to see all sold items.',onClick:() => alert('Sold Items dashboard is coming soon! Enter earnings on any item to start tracking.')},
             {label:'Top Gainer',val: topGainer ? `+${getItemGain(topGainer)}%` : '--',icon:'TrendUp',grad:'linear-gradient(135deg,#22c55e,#16a34a)',tip: topGainer ? `Your best performing item by % gain. Currently: ${topGainer.name}` : 'Add items to see your top performer.'},
           ].map((c,i) => {
             const Ic = Icons[c.icon];
