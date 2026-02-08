@@ -285,36 +285,36 @@ const App = () => {
       const asking = getItemAsking(item);
       // Alert: item is worth more than you paid (positive ROI)
       if (gain > 15) {
-        a.push({id: id++, type:'Strong Performer', msg:`${item.name} is up ${gain}% from what you paid.`, iconKey:'TrendUp', emoji:item.emoji});
+        a.push({id: id++, type:'Strong Performer', msg:`${item.name} is up ${gain}% from what you paid.`, iconKey:'TrendUp', emoji:item.emoji, itemId:item.id});
       }
       // Alert: item value is below what you paid (losing money)
       if (item.value < cost && cost > 0) {
         const loss = Math.round(((cost - item.value) / cost) * 100);
-        a.push({id: id++, type:'Below Cost', msg:`${item.name} market value is ${loss}% below what you paid.`, iconKey:'TrendDown', emoji:item.emoji});
+        a.push({id: id++, type:'Below Cost', msg:`${item.name} market value is ${loss}% below what you paid.`, iconKey:'TrendDown', emoji:item.emoji, itemId:item.id});
       }
       // Alert: asking price is way above market (may be overpriced)
       if (asking > 0 && item.value > 0 && asking > item.value * 1.2) {
         const pct = Math.round(((asking - item.value) / item.value) * 100);
-        a.push({id: id++, type:'Priced High', msg:`${item.name} asking is ${pct}% above market. May be hard to sell.`, iconKey:'Zap', emoji:item.emoji});
+        a.push({id: id++, type:'Priced High', msg:`${item.name} asking is ${pct}% above market. May be hard to sell.`, iconKey:'Zap', emoji:item.emoji, itemId:item.id});
       }
       // Alert: asking price is below market (could get more)
       if (asking > 0 && item.value > 0 && asking < item.value * 0.9) {
-        a.push({id: id++, type:'Underpriced', msg:`${item.name} is listed below market value. You could ask for more.`, iconKey:'Dollar', emoji:item.emoji});
+        a.push({id: id++, type:'Underpriced', msg:`${item.name} is listed below market value. You could ask for more.`, iconKey:'Dollar', emoji:item.emoji, itemId:item.id});
       }
       // Alert: no comps added yet
       if (!item.comps || item.comps.length === 0) {
-        a.push({id: id++, type:'Needs Comps', msg:`${item.name} has no comparable listings. Add comps for better valuation.`, iconKey:'Search', emoji:item.emoji});
+        a.push({id: id++, type:'Needs Comps', msg:`${item.name} has no comparable listings. Add comps for better valuation.`, iconKey:'Search', emoji:item.emoji, itemId:item.id});
       }
       // Alert: no market value set (defaulted to cost or asking)
       if (item.value === cost && asking !== cost) {
-        a.push({id: id++, type:'Set Market Value', msg:`${item.name} market value may need updating. It's still set to your cost.`, iconKey:'Edit', emoji:item.emoji});
+        a.push({id: id++, type:'Set Market Value', msg:`${item.name} market value may need updating. It's still set to your cost.`, iconKey:'Edit', emoji:item.emoji, itemId:item.id});
       }
       // Alert: item added recently (welcome)
       if (item.createdAt) {
         const created = new Date(item.createdAt);
         const hoursSince = (now - created) / (1000 * 60 * 60);
         if (hoursSince < 24) {
-          a.push({id: id++, type:'New Item Added', msg:`${item.name} was added to your inventory.`, iconKey:'Package', emoji:item.emoji});
+          a.push({id: id++, type:'New Item Added', msg:`${item.name} was added to your inventory.`, iconKey:'Package', emoji:item.emoji, itemId:item.id});
         }
       }
     });
@@ -400,18 +400,15 @@ const App = () => {
         const sectorIcons = {Fashion:'👜',Electronics:'📱',Home:'🏠',Watches:'⌚'};
         const sectorColors = {Fashion:'#e879f9',Electronics:'#3b82f6',Home:'#f59e0b',Watches:'#22c55e'};
         const sectors = Object.entries(categories).map(([cat, data]) => {
-          const dayChange = data.totalValue * (Math.random() * 0.06 - 0.02);
-          const dayPct = (dayChange / data.totalValue) * 100;
-          return {cat, ...data, dayChange, dayPct};
+          const gainPct = data.totalCost > 0 ? ((data.totalValue - data.totalCost) / data.totalCost) * 100 : 0;
+          const gainDollar = data.totalValue - data.totalCost;
+          return {cat, ...data, gainPct, gainDollar};
         });
         return (
           <div style={{padding:'12px 24px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
               <h2 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Portfolio</h2>
-              <div style={{display:'flex',alignItems:'center',gap:4}}>
-                <div style={{width:6,height:6,borderRadius:3,background:'#4ade80',animation:'pulse 2s ease-in-out infinite'}}/>
-                <span className="text-dim" style={{fontSize:11}}>Live</span>
-              </div>
+              <span className="text-dim" style={{fontSize:11}}>Total Gain/Loss</span>
             </div>
             {sectors.length === 0 ? (
               <div className="glass" style={{borderRadius:14,padding:24,textAlign:'center'}}>
@@ -421,7 +418,7 @@ const App = () => {
             ) : (
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               {sectors.map((s,i) => {
-                const isUp = s.dayChange >= 0;
+                const isUp = s.gainDollar >= 0;
                 return (
                   <div key={s.cat} className="glass glass-hover anim-right" style={{borderRadius:14,padding:16,cursor:'pointer',animationDelay:`${i*0.06}s`}} onClick={() => {setFilter(s.cat);setScreen('inventory');}}>
                     <div style={{display:'flex',alignItems:'center',gap:12}}>
@@ -435,7 +432,7 @@ const App = () => {
                           <p className="text-dim" style={{fontSize:12}}>{s.items.length} item{s.items.length>1?'s':''}</p>
                           <span style={{fontSize:13,fontWeight:600,color:isUp?'#4ade80':'#f87171',display:'flex',alignItems:'center',gap:3}}>
                             {isUp?<Icons.TrendUp size={13} color="#4ade80"/>:<Icons.TrendDown size={13} color="#f87171"/>}
-                            {isUp?'+':''}{s.dayPct.toFixed(2)}% ({isUp?'+':''}${Math.abs(Math.round(s.dayChange)).toLocaleString()})
+                            {isUp?'+':''}{s.gainPct.toFixed(1)}% ({isUp?'+':''}${Math.abs(Math.round(s.gainDollar)).toLocaleString()})
                           </span>
                         </div>
                         {/* Mini bar showing value allocation */}
@@ -514,6 +511,14 @@ const App = () => {
         <button onClick={() => {setScreen('home');setScanning(false);setAnalyzing(false);setAiDone(false);}} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.ArrowLeft size={24}/></button>
         <h1 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Scan Item</h1>
         <div style={{width:24}}/>
+      </div>
+      {/* Coming Soon overlay */}
+      <div style={{position:'absolute',inset:0,zIndex:20,background:'rgba(0,0,0,0.85)',backdropFilter:'blur(12px)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32}}>
+        <div style={{width:80,height:80,borderRadius:20,background:'rgba(212,168,83,0.12)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:40,marginBottom:20}}>📸</div>
+        <h2 style={{fontSize:22,fontWeight:700,color:'#fff',marginBottom:8}}>Coming Soon</h2>
+        <p className="text-muted" style={{fontSize:14,textAlign:'center',lineHeight:1.5,maxWidth:280}}>AI-powered item scanning will automatically identify your items and pull market data. For now, use "+ Add Manually" to build your inventory.</p>
+        <button onClick={() => setScreen('add-item')} className="gradient-amber" style={{border:'none',borderRadius:14,padding:'14px 32px',fontSize:15,fontWeight:600,color:'#000',cursor:'pointer',marginTop:24}}>+ Add Manually</button>
+        <button onClick={() => {setScreen('home');setScanning(false);setAnalyzing(false);setAiDone(false);}} style={{background:'none',border:'none',color:'#94a3b8',fontSize:14,cursor:'pointer',marginTop:12}}>Back to Home</button>
       </div>
 
       {/* Viewfinder */}
@@ -872,7 +877,7 @@ const App = () => {
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px',position:'sticky',top:0,background:'linear-gradient(180deg,#0a0a0f 80%,transparent)',zIndex:20}}>
           <button onClick={() => {setScreen('inventory');setEditingCost(false);}} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.ArrowLeft size={24}/></button>
           <h1 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Details</h1>
-          <button style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.Share size={22}/></button>
+          <button onClick={() => alert('Sharing is coming soon!')} style={{background:'none',border:'none',color:'#475569',cursor:'pointer'}}><Icons.Share size={22}/></button>
         </div>
 
         {/* Photo */}
@@ -1001,10 +1006,13 @@ const App = () => {
             );
           })()}
 
-          {/* Chart */}
+          {/* Chart - Coming Soon */}
           <div className="glass" style={{borderRadius:16,padding:20,marginBottom:16}}>
-            <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:16}}>Price History</h3>
-            <PriceChart data={priceHistory}/>
+            <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:12}}>Price History</h3>
+            <div style={{padding:'20px 0',textAlign:'center'}}>
+              <Icons.Clock size={28} color="#475569"/>
+              <p className="text-dim" style={{fontSize:12,marginTop:8}}>Price trend tracking coming soon. Add comps over time to build your history.</p>
+            </div>
           </div>
 
           {/* Comps */}
@@ -1123,8 +1131,8 @@ const App = () => {
           <button onClick={() => setScreen('pricing')} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12}}>
             Refresh Price
           </button>
-          <button className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#fff',cursor:'pointer',background:'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
-            <Icons.Edit size={16}/>Edit Item
+          <button onClick={() => alert('Edit Item is coming soon! For now, you can edit prices directly by tapping the price boxes above.')} className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#94a3b8',cursor:'pointer',background:'rgba(255,255,255,0.03)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
+            <Icons.Edit size={16} color="#94a3b8"/>Edit Item <span style={{fontSize:10,background:'rgba(212,168,83,0.15)',color:'#d4a853',padding:'2px 6px',borderRadius:4,fontWeight:700}}>SOON</span>
           </button>
           <button onClick={() => {
             if (confirm('Delete this item from your inventory?')) {
@@ -1159,36 +1167,48 @@ const App = () => {
           </div>
         )}
 
-        {/* Price Range */}
-        <div className="glass" style={{borderRadius:16,padding:20,marginBottom:16}}>
-          <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:16}}>Estimated Market Range</h3>
-          {/* Range bar */}
-          <div style={{height:8,borderRadius:4,background:'linear-gradient(90deg,#f87171,#d4a853,#4ade80)',marginBottom:20,position:'relative'}}>
-            <div style={{position:'absolute',top:-4,left:'45%',width:16,height:16,borderRadius:8,background:'#fff',border:'3px solid #d4a853',boxShadow:'0 0 12px rgba(212,168,83,0.4)'}}/>
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
-            {[{l:'Low',p:1180,c:'#f87171'},{l:'Typical',p:1420,c:'#d4a853'},{l:'High',p:1780,c:'#4ade80'}].map((r,i) => (
-              <div key={i} className="glass" style={{borderRadius:12,padding:12,textAlign:'center'}}>
-                <p className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1}}>{r.l}</p>
-                <p style={{fontSize:18,fontWeight:700,color:r.c,marginTop:6}}>{fmt(r.p)}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Confidence */}
-          <div style={{marginTop:16,paddingTop:16,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <span className="text-muted" style={{fontSize:13}}>Confidence Score</span>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <div style={{width:80,height:6,borderRadius:3,background:'rgba(255,255,255,0.08)',overflow:'hidden'}}>
-                  <div style={{width:'87%',height:'100%',borderRadius:3,background:'linear-gradient(90deg,#d4a853,#b8860b)'}}/>
-                </div>
-                <span className="text-gold" style={{fontWeight:700,fontSize:13}}>87%</span>
-              </div>
+        {/* Price Range - calculated from real comps */}
+        {(() => {
+          const comps = selected ? getComps(selected.id) : [];
+          const prices = comps.map(c => c.price).filter(p => p > 0);
+          const hasComps = prices.length > 0;
+          const low = hasComps ? Math.min(...prices) : (selected ? selected.value * 0.85 : 0);
+          const high = hasComps ? Math.max(...prices) : (selected ? selected.value * 1.15 : 0);
+          const avg = hasComps ? Math.round(prices.reduce((s,p) => s+p, 0) / prices.length) : (selected ? selected.value : 0);
+          const confidence = Math.min(95, prices.length * 20 + (prices.length >= 3 ? 15 : 0));
+          const markerPos = hasComps && high > low ? Math.round(((avg - low) / (high - low)) * 100) : 50;
+          return (
+          <div className="glass" style={{borderRadius:16,padding:20,marginBottom:16}}>
+            <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:16}}>Estimated Market Range</h3>
+            {/* Range bar */}
+            <div style={{height:8,borderRadius:4,background:'linear-gradient(90deg,#f87171,#d4a853,#4ade80)',marginBottom:20,position:'relative'}}>
+              <div style={{position:'absolute',top:-4,left:`${markerPos}%`,transform:'translateX(-50%)',width:16,height:16,borderRadius:8,background:'#fff',border:'3px solid #d4a853',boxShadow:'0 0 12px rgba(212,168,83,0.4)'}}/>
             </div>
-            <p className="text-dim" style={{fontSize:11,marginTop:6}}>Based on 23 recent comps</p>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+              {[{l:'Low',p:Math.round(low),c:'#f87171'},{l:'Average',p:avg,c:'#d4a853'},{l:'High',p:Math.round(high),c:'#4ade80'}].map((r,i) => (
+                <div key={i} className="glass" style={{borderRadius:12,padding:12,textAlign:'center'}}>
+                  <p className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1}}>{r.l}</p>
+                  <p style={{fontSize:18,fontWeight:700,color:r.c,marginTop:6}}>{fmt(r.p)}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Confidence */}
+            <div style={{marginTop:16,paddingTop:16,borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <span className="text-muted" style={{fontSize:13}}>Confidence Score</span>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <div style={{width:80,height:6,borderRadius:3,background:'rgba(255,255,255,0.08)',overflow:'hidden'}}>
+                    <div style={{width:`${confidence}%`,height:'100%',borderRadius:3,background:'linear-gradient(90deg,#d4a853,#b8860b)'}}/>
+                  </div>
+                  <span className="text-gold" style={{fontWeight:700,fontSize:13}}>{confidence}%</span>
+                </div>
+              </div>
+              <p className="text-dim" style={{fontSize:11,marginTop:6}}>{hasComps ? `Based on ${prices.length} comp${prices.length>1?'s':''}` : 'Add comparables to improve accuracy'}</p>
+            </div>
           </div>
-        </div>
+          );
+        })()}
 
         {/* Comps */}
         <div className="glass" style={{borderRadius:16,padding:20,marginBottom:20}}>
@@ -1210,8 +1230,8 @@ const App = () => {
           </div>
         </div>
 
-        <button className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-          <Icons.Bell size={16} color="#000"/>Set Price Alert
+        <button onClick={() => alert('Price alerts are coming soon! Check the Alerts tab for inventory insights.')} style={{width:'100%',border:'1px solid rgba(212,168,83,0.3)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#94a3b8',cursor:'pointer',background:'rgba(255,255,255,0.03)',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <Icons.Bell size={16} color="#94a3b8"/>Set Price Alert <span style={{fontSize:10,background:'rgba(212,168,83,0.15)',color:'#d4a853',padding:'2px 6px',borderRadius:4,fontWeight:700}}>SOON</span>
         </button>
       </div>
     </div>
@@ -1238,7 +1258,7 @@ const App = () => {
             const Ic = Icons[a.iconKey] || Icons.Bell;
             const accentColor = alertColors[a.type] || '#d4a853';
             return (
-              <div key={a.id} className="glass glass-hover anim-right" style={{borderRadius:14,padding:16,cursor:'pointer',animationDelay:`${i*0.05}s`,borderLeft:`3px solid ${accentColor}`}}>
+              <div key={a.id} onClick={() => { if(a.itemId) { setSelectedId(a.itemId); setScreen('detail'); }}} className="glass glass-hover anim-right" style={{borderRadius:14,padding:16,cursor:'pointer',animationDelay:`${i*0.05}s`,borderLeft:`3px solid ${accentColor}`}}>
                 <div style={{display:'flex',alignItems:'flex-start',gap:14}}>
                   <div style={{width:40,height:40,borderRadius:10,background:`${accentColor}18`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:20}}>{a.emoji||'📦'}</div>
                   <div style={{flex:1}}>
@@ -1247,7 +1267,7 @@ const App = () => {
                     </div>
                     <p style={{fontWeight:500,color:'#e2e8f0',fontSize:13,marginTop:6,lineHeight:1.4}}>{a.msg}</p>
                   </div>
-                  <Ic size={16} color={accentColor} style={{flexShrink:0,marginTop:2}}/>
+                  <Icons.ChevronRight size={16} color={accentColor} style={{flexShrink:0,marginTop:2}}/>
                 </div>
               </div>
             );
@@ -1286,12 +1306,12 @@ const App = () => {
           {[['Bell','Notification Preferences'],['Dollar','Default Currency'],['Download','Data Export'],['Shield','Privacy & Security'],['Help','Help & Support']].map(([ic,label],i) => {
             const Ic = Icons[ic];
             return (
-              <button key={i} className="glass glass-hover" style={{width:'100%',borderRadius:12,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.04)'}}>
+              <button key={i} onClick={() => alert(label + ' is coming soon!')} className="glass" style={{width:'100%',borderRadius:12,padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',border:'1px solid rgba(255,255,255,0.06)',background:'rgba(255,255,255,0.02)',opacity:0.6}}>
                 <div style={{display:'flex',alignItems:'center',gap:12}}>
-                  <Ic size={18} color="#d4a853"/>
-                  <span style={{fontWeight:600,color:'#fff',fontSize:14}}>{label}</span>
+                  <Ic size={18} color="#64748b"/>
+                  <span style={{fontWeight:600,color:'#94a3b8',fontSize:14}}>{label}</span>
                 </div>
-                <Icons.ChevronRight size={18} color="#475569"/>
+                <span style={{fontSize:9,background:'rgba(212,168,83,0.12)',color:'#d4a853',padding:'2px 6px',borderRadius:4,fontWeight:700}}>SOON</span>
               </button>
             );
           })}
@@ -1308,8 +1328,8 @@ const App = () => {
           </button>
         </div>
 
-        <button style={{width:'100%',background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.25)',borderRadius:12,padding:'14px 0',color:'#f87171',fontSize:15,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-          <Icons.LogOut size={16} color="#f87171"/>Sign Out
+        <button onClick={() => alert('Sign Out is coming soon! Accounts are not yet enabled.')} style={{width:'100%',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:12,padding:'14px 0',color:'#64748b',fontSize:15,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:0.6}}>
+          <Icons.LogOut size={16} color="#64748b"/>Sign Out <span style={{fontSize:9,background:'rgba(212,168,83,0.12)',color:'#d4a853',padding:'2px 6px',borderRadius:4,fontWeight:700}}>SOON</span>
         </button>
       </div>
 
