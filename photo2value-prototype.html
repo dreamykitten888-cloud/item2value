@@ -257,7 +257,7 @@ const App = () => {
 
   const totalValue = items.reduce((s,i) => s + i.value, 0);
   const avgValue = items.length > 0 ? Math.round(totalValue / items.length) : 0;
-  const topGainer = items.length > 0 ? items.reduce((m,i) => getItemGain(i) > getItemGain(m) ? i : m) : items[0];
+  const topGainer = items.length > 0 ? items.reduce((m,i) => getItemGain(i) > getItemGain(m) ? i : m) : null;
   const selected = items.find(i => i.id === selectedId);
 
   const filtered = items
@@ -311,7 +311,7 @@ const App = () => {
             {label:'Total Items',val:String(items.length),icon:'Package',grad:'linear-gradient(135deg,#3b82f6,#2563eb)'},
             {label:'Total Value',val:fmt(totalValue),icon:'Dollar',grad:'linear-gradient(135deg,#d4a853,#b8860b)',tip:'The combined market value of all items currently in your inventory.'},
             {label:'Avg Value',val:fmt(avgValue),icon:'BarChart',grad:'linear-gradient(135deg,#a855f7,#7c3aed)',tip:'The average market value across all items in your inventory.'},
-            {label:'Top Gainer',val:`+${getItemGain(topGainer)}%`,icon:'TrendUp',grad:'linear-gradient(135deg,#22c55e,#16a34a)',tip:`Your best performing item by % gain. Currently: ${topGainer.name}`},
+            {label:'Top Gainer',val: topGainer ? `+${getItemGain(topGainer)}%` : '--',icon:'TrendUp',grad:'linear-gradient(135deg,#22c55e,#16a34a)',tip: topGainer ? `Your best performing item by % gain. Currently: ${topGainer.name}` : 'Add items to see your top performer.'},
           ].map((c,i) => {
             const Ic = Icons[c.icon];
             return <div key={i} className="glass anim-up" style={{borderRadius:16,padding:16,animationDelay:`${i*0.08}s`,cursor:'default',overflow:'visible',position:'relative'}}>
@@ -367,6 +367,12 @@ const App = () => {
                 <span className="text-dim" style={{fontSize:11}}>Live</span>
               </div>
             </div>
+            {sectors.length === 0 ? (
+              <div className="glass" style={{borderRadius:14,padding:24,textAlign:'center'}}>
+                <p style={{fontSize:32,marginBottom:8}}>📊</p>
+                <p className="text-muted" style={{fontSize:13}}>No sectors yet. Add items to see your portfolio breakdown.</p>
+              </div>
+            ) : (
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               {sectors.map((s,i) => {
                 const isUp = s.dayChange >= 0;
@@ -396,6 +402,7 @@ const App = () => {
                 );
               })}
             </div>
+            )}
           </div>
         );
       })()}
@@ -412,6 +419,12 @@ const App = () => {
               </div>
               <button onClick={() => setScreen('inventory')} style={{background:'none',border:'none',color:'#d4a853',fontSize:13,fontWeight:600,cursor:'pointer'}}>View All</button>
             </div>
+            {sorted.length === 0 ? (
+              <div className="glass" style={{borderRadius:14,padding:24,textAlign:'center'}}>
+                <p style={{fontSize:32,marginBottom:8}}>👀</p>
+                <p className="text-muted" style={{fontSize:13}}>Your watchlist is empty. Add items to track their market moves.</p>
+              </div>
+            ) : (<React.Fragment>
             {/* Table header */}
             <div style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'0 4px 8px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
               <span className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1}}>Item</span>
@@ -420,8 +433,8 @@ const App = () => {
             </div>
             <div style={{display:'flex',flexDirection:'column'}}>
               {sorted.map((item,i) => {
-                const dailyDollar = item.value * (item.gain / 100) * 0.1;
-                const dailyPct = (item.gain * 0.1);
+                const dailyDollar = item.value * (getItemGain(item) / 100) * 0.1;
+                const dailyPct = (getItemGain(item) * 0.1);
                 const isUp = dailyPct >= 0;
                 return (
                   <div key={item.id} onClick={() => goItem(item.id)} className="anim-right" style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'12px 4px',borderBottom:'1px solid rgba(255,255,255,0.04)',cursor:'pointer',alignItems:'center',animationDelay:`${i*0.04}s`}}>
@@ -441,6 +454,7 @@ const App = () => {
                 );
               })}
             </div>
+            </React.Fragment>)}
           </div>
         );
       })()}
@@ -757,7 +771,14 @@ const App = () => {
 
       {/* Items */}
       <div style={{padding:'12px 24px'}}>
-        {viewMode === 'grid' ? (
+        {filtered.length === 0 ? (
+          <div style={{textAlign:'center',padding:'48px 24px'}}>
+            <p style={{fontSize:48,marginBottom:12}}>📦</p>
+            <p style={{fontSize:16,fontWeight:600,color:'#fff',marginBottom:6}}>{items.length === 0 ? 'No items yet' : 'No matches found'}</p>
+            <p className="text-muted" style={{fontSize:13,marginBottom:20}}>{items.length === 0 ? 'Tap "+ Add Manually" to start building your inventory.' : 'Try a different search or filter.'}</p>
+            {items.length === 0 && <button onClick={() => setScreen('add-item')} className="gradient-amber" style={{border:'none',borderRadius:12,padding:'12px 24px',fontSize:14,fontWeight:600,color:'#000',cursor:'pointer'}}>+ Add Your First Item</button>}
+          </div>
+        ) : viewMode === 'grid' ? (
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             {filtered.map((item,i) => (
               <div key={item.id} onClick={() => goItem(item.id)} className="glass glass-hover anim-up" style={{borderRadius:16,overflow:'hidden',cursor:'pointer',animationDelay:`${i*0.06}s`}}>
