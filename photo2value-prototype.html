@@ -154,59 +154,62 @@ const PriceChart = ({ data, width=320, height=160 }) => {
   );
 };
 
+/* ── Stable components (defined outside App to prevent unmount/remount on re-render) ── */
+const InfoTip = ({text, align}) => {
+  const [show, setShow] = useState(false);
+  const ref = React.useRef(null);
+  const [pos, setPos] = useState('center');
+  React.useEffect(() => {
+    if (show && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      if (rect.right + 90 > window.innerWidth) setPos('right');
+      else if (rect.left - 90 < 0) setPos('left');
+      else setPos('center');
+    }
+  }, [show]);
+  const tipPos = align || pos;
+  const tipStyle = tipPos === 'right'
+    ? {right:0, transform:'none'}
+    : tipPos === 'left'
+    ? {left:0, transform:'none'}
+    : {left:'50%', transform:'translateX(-50%)'};
+  const arrowStyle = tipPos === 'right'
+    ? {right:12, transform:'rotate(45deg)'}
+    : tipPos === 'left'
+    ? {left:12, transform:'rotate(45deg)'}
+    : {left:'50%', transform:'translateX(-50%) rotate(45deg)'};
+  return (
+    <div ref={ref} style={{position:'relative',display:'inline-flex',marginLeft:6}} onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={(e) => {e.stopPropagation();setShow(!show);}}>
+      <Icons.Info size={14} color="#64748b"/>
+      {show && (
+        <div className="anim-fade" style={{position:'absolute',bottom:'calc(100% + 8px)',...tipStyle,background:'#1e293b',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#cbd5e1',whiteSpace:'normal',width:180,zIndex:50,boxShadow:'0 8px 24px rgba(0,0,0,0.5)',lineHeight:1.5,fontFamily:'DM Sans, sans-serif'}}>
+          {text}
+          <div style={{position:'absolute',bottom:-5,...arrowStyle,width:10,height:10,background:'#1e293b',borderRight:'1px solid rgba(255,255,255,0.15)',borderBottom:'1px solid rgba(255,255,255,0.15)'}}/>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FormField = ({label, required, children, tip}) => (
+  <div style={{marginBottom:16}}>
+    <div style={{display:'flex',alignItems:'center',marginBottom:6}}>
+      <label style={{fontSize:12,fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:0.5}}>{label}{required && <span style={{color:'#d4a853'}}> *</span>}</label>
+      {tip && <InfoTip text={tip}/>}
+    </div>
+    {children}
+  </div>
+);
+
 /* ── Main App ── */
 const App = () => {
-  // Sample data for first-time users
-  const sampleItems = [
-    { id:1, name:'Louis Vuitton Neverfull MM', category:'Fashion', cost:1270, asking:1500, value:1420, emoji:'👜', condition:'Excellent', brand:'Louis Vuitton', model:'Neverfull MM', color:'Monogram', material:'Canvas & Leather', photos:[], comps:[
-      { id:1, source:'Vestiaire Collective', title:'Louis Vuitton Neverfull MM Damier', price:1410, condition:'Excellent', date:'2 days ago', url:'' },
-      { id:2, source:'Rebag', title:'LV Neverfull MM Monogram', price:1520, condition:'Like New', date:'1 week ago', url:'' },
-      { id:3, source:'The RealReal', title:'Louis Vuitton Neverfull Tote', price:1310, condition:'Good', date:'3 days ago', url:'' },
-    ]},
-    { id:2, name:'Nike Dunk Low Panda', category:'Fashion', cost:147, asking:160, value:135, emoji:'👟', condition:'Good', brand:'Nike', model:'Dunk Low', color:'White/Black', photos:[], comps:[
-      { id:1, source:'StockX', title:'Nike Dunk Low Retro White Black', price:128, condition:'New', date:'1 day ago', url:'' },
-      { id:2, source:'GOAT', title:'Nike Dunk Low Panda 2024', price:140, condition:'New', date:'3 days ago', url:'' },
-      { id:3, source:'eBay', title:'Nike Dunk Low Panda Size 10', price:119, condition:'Used', date:'5 days ago', url:'' },
-    ]},
-    { id:3, name:'Herman Miller Aeron Chair', category:'Home', cost:850, asking:950, value:890, emoji:'🪑', condition:'Like New', brand:'Herman Miller', model:'Aeron', color:'Graphite', photos:[], comps:[
-      { id:1, source:'eBay', title:'Herman Miller Aeron Size B Graphite', price:875, condition:'Like New', date:'2 days ago', url:'' },
-      { id:2, source:'Facebook Marketplace', title:'Aeron Chair Fully Loaded', price:920, condition:'Excellent', date:'4 days ago', url:'' },
-      { id:3, source:'Craigslist', title:'Herman Miller Aeron Remastered', price:810, condition:'Good', date:'1 week ago', url:'' },
-    ]},
-    { id:4, name:'Sony A7III Camera', category:'Electronics', cost:1185, asking:1200, value:1150, emoji:'📷', condition:'Excellent', brand:'Sony', model:'A7III', color:'Black', photos:[], comps:[
-      { id:1, source:'eBay', title:'Sony A7III Body Only Low Shutter', price:1120, condition:'Excellent', date:'1 day ago', url:'' },
-      { id:2, source:'KEH Camera', title:'Sony Alpha a7 III Mirrorless', price:1189, condition:'Like New', date:'3 days ago', url:'' },
-      { id:3, source:'MPB', title:'Sony A7III Body 24.2MP', price:1095, condition:'Good', date:'5 days ago', url:'' },
-    ]},
-    { id:5, name:'Vintage Rolex Datejust', category:'Watches', cost:4600, asking:6500, value:6200, emoji:'⌚', condition:'Very Good', brand:'Rolex', model:'Datejust 1601', color:'Steel', photos:[], comps:[
-      { id:1, source:'Chrono24', title:'Rolex Datejust 1601 Vintage Steel', price:6100, condition:'Very Good', date:'1 day ago', url:'' },
-      { id:2, source:'Bob\'s Watches', title:'Rolex Datejust 1601 Silver Dial', price:6450, condition:'Excellent', date:'4 days ago', url:'' },
-      { id:3, source:'Crown & Caliber', title:'Vintage Rolex Datejust SS', price:5890, condition:'Good', date:'1 week ago', url:'' },
-    ]},
-    { id:6, name:'Le Creuset Dutch Oven', category:'Home', cost:275, asking:300, value:280, emoji:'🍲', condition:'Excellent', brand:'Le Creuset', model:'Round 5.5qt', color:'Flame', photos:[], comps:[
-      { id:1, source:'eBay', title:'Le Creuset Dutch Oven 5.5 Qt Flame', price:275, condition:'Excellent', date:'2 days ago', url:'' },
-      { id:2, source:'Poshmark', title:'Le Creuset Round French Oven', price:290, condition:'Like New', date:'5 days ago', url:'' },
-      { id:3, source:'Mercari', title:'Le Creuset 5.5 Quart Orange', price:245, condition:'Good', date:'1 week ago', url:'' },
-    ]},
-    { id:7, name:'iPad Pro 12.9" M2', category:'Electronics', cost:880, asking:800, value:750, emoji:'📱', condition:'Good', brand:'Apple', model:'iPad Pro M2', color:'Space Gray', photos:[], comps:[
-      { id:1, source:'Swappa', title:'iPad Pro 12.9 M2 256GB WiFi', price:740, condition:'Good', date:'1 day ago', url:'' },
-      { id:2, source:'eBay', title:'Apple iPad Pro 12.9" 6th Gen M2', price:769, condition:'Excellent', date:'3 days ago', url:'' },
-      { id:3, source:'Back Market', title:'iPad Pro 12.9 M2 Refurbished', price:699, condition:'Refurbished', date:'2 days ago', url:'' },
-    ]},
-    { id:8, name:'MCM Stark Backpack', category:'Fashion', cost:453, asking:520, value:485, emoji:'🎒', condition:'Excellent', brand:'MCM', model:'Stark', color:'Cognac Visetos', photos:[], comps:[
-      { id:1, source:'Vestiaire Collective', title:'MCM Stark Backpack Cognac Visetos', price:479, condition:'Excellent', date:'2 days ago', url:'' },
-      { id:2, source:'The RealReal', title:'MCM Visetos Stark Backpack Medium', price:510, condition:'Very Good', date:'5 days ago', url:'' },
-      { id:3, source:'Rebag', title:'MCM Stark Side Studs Backpack', price:445, condition:'Good', date:'1 week ago', url:'' },
-    ]},
-  ];
-
-  // Load from localStorage or use samples
+  // Load from localStorage (start fresh with empty inventory)
   const loadItems = () => {
     try {
       const saved = localStorage.getItem('item2value_items');
       if (saved) return JSON.parse(saved);
-      return sampleItems;
-    } catch(e) { return sampleItems; }
+      return [];
+    } catch(e) { return []; }
   };
 
   const [items, setItems] = useState(loadItems);
@@ -253,43 +256,6 @@ const App = () => {
   const avgValue = items.length > 0 ? Math.round(totalValue / items.length) : 0;
   const topGainer = items.length > 0 ? items.reduce((m,i) => getItemGain(i) > getItemGain(m) ? i : m) : items[0];
   const selected = items.find(i => i.id === selectedId);
-
-  /* Tooltip component */
-  const InfoTip = ({text, align}) => {
-    const [show, setShow] = useState(false);
-    const ref = React.useRef(null);
-    const [pos, setPos] = useState('center');
-    React.useEffect(() => {
-      if (show && ref.current) {
-        const rect = ref.current.getBoundingClientRect();
-        if (rect.right + 90 > window.innerWidth) setPos('right');
-        else if (rect.left - 90 < 0) setPos('left');
-        else setPos('center');
-      }
-    }, [show]);
-    const tipPos = align || pos;
-    const tipStyle = tipPos === 'right'
-      ? {right:0, transform:'none'}
-      : tipPos === 'left'
-      ? {left:0, transform:'none'}
-      : {left:'50%', transform:'translateX(-50%)'};
-    const arrowStyle = tipPos === 'right'
-      ? {right:12, transform:'rotate(45deg)'}
-      : tipPos === 'left'
-      ? {left:12, transform:'rotate(45deg)'}
-      : {left:'50%', transform:'translateX(-50%) rotate(45deg)'};
-    return (
-      <div ref={ref} style={{position:'relative',display:'inline-flex',marginLeft:6}} onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} onClick={(e) => {e.stopPropagation();setShow(!show);}}>
-        <Icons.Info size={14} color="#64748b"/>
-        {show && (
-          <div className="anim-fade" style={{position:'absolute',bottom:'calc(100% + 8px)',...tipStyle,background:'#1e293b',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#cbd5e1',whiteSpace:'normal',width:180,zIndex:50,boxShadow:'0 8px 24px rgba(0,0,0,0.5)',lineHeight:1.5,fontFamily:'DM Sans, sans-serif'}}>
-            {text}
-            <div style={{position:'absolute',bottom:-5,...arrowStyle,width:10,height:10,background:'#1e293b',borderRight:'1px solid rgba(255,255,255,0.15)',borderBottom:'1px solid rgba(255,255,255,0.15)'}}/>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   const filtered = items
     .filter(i => (filter === 'All' || i.category === filter) && i.name.toLowerCase().includes(search.toLowerCase()))
@@ -369,7 +335,7 @@ const App = () => {
           <Icons.Camera size={20} color="#000"/>Scan Item
         </button>
         <button onClick={() => setScreen('add-item')} className="glass glass-hover" style={{flex:1,border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'rgba(255,255,255,0.06)'}}>
-          <Icons.Plus size={20}/>Add Manual
+          <Icons.Plus size={20}/>Add Manually
         </button>
       </div>
 
@@ -600,16 +566,6 @@ const App = () => {
   };
   // Only emoji, category, condition, and photos use state (no keyboard involved)
   const [addFormUI, setAddFormUI] = useState({category:'Fashion',condition:'Good',emoji:'📦',photos:[]});
-
-  const FormField = ({label, required, children, tip}) => (
-    <div style={{marginBottom:16}}>
-      <div style={{display:'flex',alignItems:'center',marginBottom:6}}>
-        <label style={{fontSize:12,fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:0.5}}>{label}{required && <span style={{color:'#d4a853'}}> *</span>}</label>
-        {tip && <InfoTip text={tip}/>}
-      </div>
-      {children}
-    </div>
-  );
 
   const resetAddForm = () => {
     Object.values(formRefs).forEach(ref => { if (ref.current) ref.current.value = ''; });
