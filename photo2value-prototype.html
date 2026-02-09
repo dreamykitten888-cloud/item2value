@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -375,6 +376,13 @@ const App = () => {
   const [researchQuery, setResearchQuery] = useState('');
   const [researchData, setResearchData] = useState(null);
   const [researchLoading, setResearchLoading] = useState(false);
+  const [scanMode, setScanMode] = useState('photo'); // 'photo' or 'barcode'
+  const [scanData, setScanData] = useState(null); // pre-fill data from scan
+  const [scanStatus, setScanStatus] = useState(''); // status message during scan
+  const [barcodeScanning, setBarcodeScanning] = useState(false);
+  const scannerRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   const scrollRef = useRef(null);
   const supabaseUserIdRef = useRef(null);
   const syncTimerRef = useRef(null);
@@ -486,6 +494,59 @@ const App = () => {
     });
 
   const goItem = (id) => { setSelectedId(id); setPhotoIndex(0); setCommunityComps([]); setScreen('detail'); };
+  // Barcode product lookup via UPCitemdb (free trial, no key needed)
+  const lookupBarcode = async (code) => {
+    setScanStatus('Looking up product...');
+    try {
+      const resp = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`);
+      const data = await resp.json();
+      if (data.items && data.items.length > 0) {
+        const product = data.items[0];
+        const catMap = {'Apparel':'Fashion','Clothing':'Fashion','Shoes':'Fashion','Electronics':'Electronics','Computers':'Electronics','Phone':'Electronics','Home':'Home','Kitchen':'Home','Garden':'Home','Sports':'Sports','Outdoors':'Sports','Toys':'Toys','Games':'Toys','Books':'Books','Media':'Books','Automotive':'Automotive','Tools':'Tools','Hardware':'Tools'};
+        let bestCat = 'Other';
+        if (product.category) { const c = product.category.toLowerCase(); for (const [k,v] of Object.entries(catMap)) { if (c.includes(k.toLowerCase())) { bestCat = v; break; } } }
+        const sd = {
+          name: product.title || '',
+          brand: product.brand || '',
+          model: product.model || '',
+          category: bestCat,
+          cost: product.lowest_recorded_price ? parseFloat(product.lowest_recorded_price) : 0,
+          market: product.highest_recorded_price ? parseFloat(product.highest_recorded_price) : 0,
+          photos: (product.images || []).slice(0, 1),
+          barcode: code,
+          source: 'barcode',
+        };
+        setScanData(sd);
+        setScanStatus('Product found! Review details below.');
+        return sd;
+      } else {
+        setScanStatus('Product not found in database. Try photo mode or add manually.');
+        return null;
+      }
+    } catch (e) {
+      console.log('Barcode lookup error:', e);
+      setScanStatus('Lookup failed. Check connection and try again.');
+      return null;
+    }
+  };
+
+  // Navigate to Add Item with scan data pre-filled
+  const goAddWithScanData = (data) => {
+    if (!data) { setScreen('add-item'); return; }
+    // We'll pre-fill the form after navigating
+    setScanData(data);
+    setScreen('add-item');
+  };
+
+  // Stop barcode scanner cleanup
+  const stopBarcodeScanner = () => {
+    if (scannerRef.current) {
+      try { scannerRef.current.stop().catch(() => {}); } catch(e) {}
+      scannerRef.current = null;
+    }
+    setBarcodeScanning(false);
+  };
+
   const takePhoto = () => {
     setScanning(true);
     setTimeout(() => { setScanning(false); setAnalyzing(true);
@@ -805,54 +866,168 @@ const App = () => {
     </div>
   );
 
-  const ScanScreen = () => (
-    <div style={{height:'100%',background:'#000',display:'flex',flexDirection:'column',position:'relative'}}>
+  const ScanScreen = () => {
+    const startBarcodeScanner = () => {
+      setBarcodeScanning(true);
+      setScanStatus('Starting camera...');
+      setTimeout(() => {
+        if (scannerRef.current) { try { scannerRef.current.stop().catch(()=>{}); } catch(e){} }
+        const scanner = new Html5Qrcode("barcode-reader");
+        scannerRef.current = scanner;
+        scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
+          (decodedText) => {
+            scanner.stop().catch(()=>{});
+            scannerRef.current = null;
+            setBarcodeScanning(false);
+            setScanStatus('Barcode found: ' + decodedText);
+            if (supabaseUserIdRef.current) logEvent(supabaseUserIdRef.current, 'barcode_scanned', { code: decodedText });
+            lookupBarcode(decodedText);
+          },
+          () => {} // ignore scan failures (normal while searching)
+        ).then(() => {
+          setScanStatus('Point camera at barcode...');
+        }).catch((err) => {
+          console.log('Camera error:', err);
+          setBarcodeScanning(false);
+          setScanStatus('Camera access denied. Check permissions.');
+        });
+      }, 200);
+    };
+
+    const handlePhotoCapture = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setScanStatus('Processing photo...');
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const compressed = await compressPhoto(ev.target.result);
+        const sd = { name: '', brand: '', model: '', category: 'Other', cost: 0, market: 0, photos: [compressed], source: 'photo' };
+        setScanData(sd);
+        setScanStatus('Photo captured! Add details and save.');
+        if (supabaseUserIdRef.current) logEvent(supabaseUserIdRef.current, 'photo_scanned', {});
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    };
+
+    return (
+    <div style={{height:'100%',background:'#0a0a0f',display:'flex',flexDirection:'column'}}>
       {/* Header */}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px',position:'relative',zIndex:10}}>
-        <button onClick={() => {setScreen('home');setScanning(false);setAnalyzing(false);setAiDone(false);}} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.ArrowLeft size={24}/></button>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px',flexShrink:0}}>
+        <button onClick={() => {stopBarcodeScanner();setScanStatus('');setScanData(null);setScreen('home');}} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}><Icons.ArrowLeft size={24}/></button>
         <h1 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Scan Item</h1>
         <div style={{width:24}}/>
       </div>
-      {/* Coming Soon overlay */}
-      <div style={{position:'absolute',inset:0,zIndex:20,background:'rgba(0,0,0,0.85)',backdropFilter:'blur(12px)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32}}>
-        <div style={{width:80,height:80,borderRadius:20,background:'rgba(212,168,83,0.12)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:40,marginBottom:20}}>📸</div>
-        <h2 style={{fontSize:22,fontWeight:700,color:'#fff',marginBottom:8}}>Coming Soon</h2>
-        <p className="text-muted" style={{fontSize:14,textAlign:'center',lineHeight:1.5,maxWidth:280}}>AI-powered item scanning will automatically identify your items and pull market data. For now, use "+ Add Manually" to build your inventory.</p>
-        <button onClick={() => setScreen('add-item')} className="gradient-amber" style={{border:'none',borderRadius:14,padding:'14px 32px',fontSize:15,fontWeight:600,color:'#000',cursor:'pointer',marginTop:24}}>+ Add Manually</button>
-        <button onClick={() => {setScreen('home');setScanning(false);setAnalyzing(false);setAiDone(false);}} style={{background:'none',border:'none',color:'#94a3b8',fontSize:14,cursor:'pointer',marginTop:12}}>Back to Home</button>
+
+      {/* Mode Toggle */}
+      <div style={{display:'flex',gap:8,padding:'0 24px 16px',flexShrink:0}}>
+        {[{id:'photo',label:'Take Photo',icon:'📸'},{id:'barcode',label:'Scan Barcode',icon:'📊'}].map(m => (
+          <button key={m.id} onClick={() => { stopBarcodeScanner(); setScanMode(m.id); setScanStatus(''); setScanData(null); }}
+            style={{flex:1,padding:'12px 0',borderRadius:12,border:'1px solid',fontSize:13,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+              borderColor: scanMode === m.id ? '#d4a853' : 'rgba(255,255,255,0.1)',
+              background: scanMode === m.id ? 'rgba(212,168,83,0.15)' : 'rgba(255,255,255,0.04)',
+              color: scanMode === m.id ? '#d4a853' : '#94a3b8'}}>
+            <span>{m.icon}</span>{m.label}
+          </button>
+        ))}
       </div>
 
-      {/* Viewfinder */}
-      <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
-        <div style={{width:260,height:320,borderRadius:24,border:'3px solid rgba(255,255,255,0.2)',position:'relative',overflow:'hidden',background:'linear-gradient(180deg,#0a0a0f,#1a1a2e)'}}>
-          {/* Corner brackets */}
-          {['top:0;left:0','top:0;right:0','bottom:0;left:0','bottom:0;right:0'].map((pos,i) => {
-            const s = pos.split(';').reduce((o,p) => {const [k,v]=p.split(':');o[k]=v;return o;},{});
-            return <div key={i} style={{position:'absolute',...s,width:28,height:28,borderColor:'rgba(255,255,255,0.5)',borderStyle:'solid',borderWidth: i<2?(i%2===0?'2px 0 0 2px':'2px 2px 0 0'):(i%2===0?'0 0 2px 2px':'0 2px 2px 0')}}/>;
-          })}
-          {/* Scan line animation */}
-          {scanning && <>
-            <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg,transparent,rgba(212,168,83,0.15),transparent)',animation:'pulse 1.5s ease-in-out infinite'}}/>
-            <div style={{position:'absolute',left:0,right:0,height:2,background:'linear-gradient(90deg,transparent,#d4a853,transparent)',animation:'scanLine 2s ease-in-out infinite'}}/>
-          </>}
-          {/* Center icon */}
-          {!scanning && <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',opacity:0.3}}>
-            <Icons.Camera size={48} color="#fff"/>
-          </div>}
+      {/* Scanner Area */}
+      <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'0 24px',overflow:'hidden'}}>
+        {scanMode === 'barcode' ? (
+          <div style={{width:'100%',maxWidth:320}}>
+            <div id="barcode-reader" style={{width:'100%',borderRadius:16,overflow:'hidden',background:'#000',minHeight:240}}></div>
+            {!barcodeScanning && !scanData && (
+              <button onClick={startBarcodeScanner} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginTop:16}}>
+                Start Scanning
+              </button>
+            )}
+            {barcodeScanning && (
+              <div style={{textAlign:'center',marginTop:16}}>
+                <div style={{width:32,height:32,border:'3px solid rgba(212,168,83,0.3)',borderTopColor:'#d4a853',borderRadius:'50%',animation:'spin 0.8s linear infinite',margin:'0 auto 12px'}}></div>
+                <p style={{fontSize:13,color:'#94a3b8'}}>Searching for barcode...</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{width:'100%',maxWidth:320,textAlign:'center'}}>
+            {!scanData ? (
+              <>
+                <div style={{width:200,height:200,borderRadius:24,border:'3px dashed rgba(255,255,255,0.15)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',margin:'0 auto 24px',background:'rgba(255,255,255,0.03)'}}>
+                  <Icons.Camera size={48} color="#475569"/>
+                  <p style={{fontSize:12,color:'#475569',marginTop:8}}>Take a photo of your item</p>
+                </div>
+                <label className="gradient-amber" style={{display:'block',width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',textAlign:'center'}}>
+                  Open Camera
+                  <input type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={handlePhotoCapture}/>
+                </label>
+                <label style={{display:'block',width:'100%',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer',textAlign:'center',marginTop:10}}>
+                  <span style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6}}><Icons.Upload size={16}/>Choose from Gallery</span>
+                  <input type="file" accept="image/*" style={{display:'none'}} onChange={handlePhotoCapture}/>
+                </label>
+              </>
+            ) : scanData.source === 'photo' && (
+              <div>
+                <img src={scanData.photos[0]} style={{width:200,height:200,borderRadius:16,objectFit:'cover',border:'2px solid #d4a853',margin:'0 auto 16px',display:'block'}}/>
+                <p style={{fontSize:14,fontWeight:600,color:'#4ade80',marginBottom:4}}>Photo captured!</p>
+                <p style={{fontSize:12,color:'#94a3b8',marginBottom:16}}>Your photo will be the cover image. Add details on the next screen.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Status Message */}
+      {scanStatus && (
+        <div style={{padding:'0 24px',flexShrink:0}}>
+          <div style={{background:'rgba(255,255,255,0.06)',borderRadius:12,padding:14,textAlign:'center',marginBottom:12}}>
+            <p style={{fontSize:13,color: scanStatus.includes('found') || scanStatus.includes('captured') ? '#4ade80' : scanStatus.includes('denied') || scanStatus.includes('failed') || scanStatus.includes('not found') ? '#f87171' : '#d4a853'}}>{scanStatus}</p>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Bottom controls */}
-      <div style={{padding:'0 24px 48px',display:'flex',flexDirection:'column',alignItems:'center',gap:16,position:'relative',zIndex:10}}>
-        <button onClick={takePhoto} disabled={scanning} style={{width:72,height:72,borderRadius:36,background: scanning ? 'rgba(212,168,83,0.5)' : 'linear-gradient(135deg,#d4a853,#b8860b)',border:'none',cursor: scanning?'default':'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 40px rgba(212,168,83,0.3)'}}>
-          <Icons.Camera size={30} color="#000"/>
-        </button>
-        <button style={{width:'100%',background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-          <Icons.Upload size={16}/>Upload from Gallery
-        </button>
+      {/* Scan Result Preview (barcode) */}
+      {scanData && scanData.source === 'barcode' && (
+        <div style={{padding:'0 24px',flexShrink:0}}>
+          <div className="glass" style={{borderRadius:16,padding:16,marginBottom:12}}>
+            <div style={{display:'flex',gap:12,alignItems:'center',marginBottom:12}}>
+              {scanData.photos[0] && <img src={scanData.photos[0]} style={{width:56,height:56,borderRadius:10,objectFit:'cover',background:'#1e293b'}}/>}
+              <div style={{flex:1,minWidth:0}}>
+                <p className="truncate" style={{fontWeight:700,color:'#fff',fontSize:14}}>{scanData.name || 'Unknown Product'}</p>
+                <p className="text-dim" style={{fontSize:11}}>{[scanData.brand, scanData.model, scanData.barcode].filter(Boolean).join(' · ')}</p>
+              </div>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              {scanData.cost > 0 && <span style={{fontSize:11,color:'#3b82f6',background:'rgba(59,130,246,0.1)',padding:'4px 10px',borderRadius:8}}>Low: ${scanData.cost}</span>}
+              {scanData.market > 0 && <span style={{fontSize:11,color:'#4ade80',background:'rgba(34,197,94,0.1)',padding:'4px 10px',borderRadius:8}}>High: ${scanData.market}</span>}
+              <span style={{fontSize:11,color:'#a855f7',background:'rgba(168,85,247,0.1)',padding:'4px 10px',borderRadius:8}}>{scanData.category}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Actions */}
+      <div style={{padding:'0 24px 32px',flexShrink:0}}>
+        {scanData ? (
+          <div style={{display:'flex',flex:'column',gap:10}}>
+            <button onClick={() => { stopBarcodeScanner(); goAddWithScanData(scanData); }} className="gradient-amber" style={{flex:1,border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer'}}>
+              Review & Save →
+            </button>
+            <button onClick={() => { setScanData(null); setScanStatus(''); }} style={{flex:1,background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+              Scan Again
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => { stopBarcodeScanner(); setScreen('add-item'); }} style={{width:'100%',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+            Skip, Add Manually
+          </button>
+        )}
       </div>
     </div>
   );
+  };
 
   const AIScreen = () => (
     <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
@@ -1435,7 +1610,25 @@ const App = () => {
   const resetAddForm = () => {
     Object.values(formRefs).forEach(ref => { if (ref.current) ref.current.value = ''; });
     setAddFormUI({category:'Fashion',condition:'Good',emoji:'📦',photos:[]});
+    setScanData(null);
   };
+
+  // Pre-fill Add Item form when coming from scan
+  useEffect(() => {
+    if (screen === 'add-item' && scanData) {
+      setTimeout(() => {
+        if (formRefs.name.current && scanData.name) formRefs.name.current.value = scanData.name;
+        if (formRefs.brand.current && scanData.brand) formRefs.brand.current.value = scanData.brand;
+        if (formRefs.model.current && scanData.model) formRefs.model.current.value = scanData.model;
+        if (formRefs.cost.current && scanData.cost) formRefs.cost.current.value = scanData.cost;
+        if (formRefs.market.current && scanData.market) formRefs.market.current.value = scanData.market;
+        const updates = {};
+        if (scanData.category) updates.category = scanData.category;
+        if (scanData.photos && scanData.photos.length > 0) updates.photos = scanData.photos;
+        if (Object.keys(updates).length > 0) setAddFormUI(prev => ({...prev, ...updates}));
+      }, 100);
+    }
+  }, [screen, scanData]);
 
   const AddItemScreen = () => (
     <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
@@ -1445,6 +1638,16 @@ const App = () => {
         <h1 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Add Item</h1>
         <div style={{width:24}}/>
       </div>
+
+      {scanData && (
+        <div style={{margin:'0 24px 12px',background:'rgba(34,197,94,0.1)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:12,padding:'10px 16px',display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:16}}>{scanData.source === 'barcode' ? '📊' : '📸'}</span>
+          <div>
+            <p style={{fontSize:13,fontWeight:600,color:'#4ade80'}}>{scanData.source === 'barcode' ? 'Scanned from barcode' : 'Photo captured'}</p>
+            <p style={{fontSize:11,color:'#94a3b8'}}>Review the details below and tap Save when ready.</p>
+          </div>
+        </div>
+      )}
 
       <div style={{padding:'0 24px'}}>
         {/* Emoji picker */}
@@ -2796,7 +2999,7 @@ const App = () => {
                 const active = screen === tab.id || (tab.id === 'home' && ['home','sold-items','alerts'].includes(screen)) || (tab.id === 'inventory' && ['inventory','detail','edit-item','pricing'].includes(screen)) || (tab.id === 'discover' && ['discover','research'].includes(screen));
                 return (
                   <button key={tab.id} onClick={() => {
-                    if (tab.id === 'scan') { setScanning(false); setAnalyzing(false); setAiDone(false); }
+                    if (tab.id === 'scan') { setScanning(false); setAnalyzing(false); setAiDone(false); stopBarcodeScanner(); setScanStatus(''); setScanData(null); }
                     setScreen(tab.id);
                   }} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',cursor:'pointer',padding:'6px 12px',borderRadius:10}}>
                     <div style={{padding:6,borderRadius:8,background: active?'rgba(212,168,83,0.15)':'transparent',position:'relative'}}>
