@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Photo2Value</title>
+<title>PrÄperty</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -593,7 +593,7 @@ const App = () => {
   const SetupScreen = () => (
     <div style={{height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32}}>
       <div style={{width:80,height:80,borderRadius:20,background:'linear-gradient(135deg,#d4a853,#b8860b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,marginBottom:24}}>💎</div>
-      <h1 style={{fontSize:26,fontWeight:700,color:'#fff',marginBottom:6}}>Welcome to item2value</h1>
+      <h1 style={{fontSize:26,fontWeight:700,color:'#fff',marginBottom:6}}>Welcome to PrÄperty</h1>
       <p className="text-muted" style={{fontSize:14,textAlign:'center',marginBottom:32,lineHeight:1.5}}>Track your inventory, monitor market values, and maximize your returns.</p>
 
       <div style={{width:'100%',maxWidth:320}}>
@@ -1033,7 +1033,7 @@ const App = () => {
               <div style={{width:28,height:28,borderRadius:8,background:'linear-gradient(135deg,#a855f7,#7c3aed)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>👥</div>
               <div>
                 <p style={{fontWeight:700,color:'#fff',fontSize:14}}>Community Data</p>
-                <p className="text-dim" style={{fontSize:11}}>{discoverResults.length > 0 ? `${discoverResults.length} results from item2value users` : 'No community data yet'}</p>
+                <p className="text-dim" style={{fontSize:11}}>{discoverResults.length > 0 ? `${discoverResults.length} results from PrÄperty users` : 'No community data yet'}</p>
               </div>
             </div>
           )}
@@ -1051,7 +1051,7 @@ const App = () => {
             <div style={{textAlign:'center',padding:'40px 0'}}>
               <div style={{fontSize:48,marginBottom:16}}>🔍</div>
               <p style={{fontSize:16,fontWeight:600,color:'#fff',marginBottom:8}}>Search the Market</p>
-              <p className="text-dim" style={{fontSize:13,lineHeight:1.5,maxWidth:280,margin:'0 auto'}}>Search for any item to see what it is buying and selling for across all item2value users. Like a stock ticker for your stuff.</p>
+              <p className="text-dim" style={{fontSize:13,lineHeight:1.5,maxWidth:280,margin:'0 auto'}}>Search for any item to see what it is buying and selling for across all PrÄperty users. Like a stock ticker for your stuff.</p>
             </div>
           )}
 
@@ -1260,7 +1260,7 @@ const App = () => {
                 <button onClick={(e) => { e.stopPropagation(); const tip = document.getElementById('pi-tooltip'); tip.style.display = tip.style.display === 'block' ? 'none' : 'block'; }} style={{width:20,height:20,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.2)',background:'rgba(255,255,255,0.06)',color:'#94a3b8',fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1,marginLeft:2}}>i</button>
               </div>
               <div id="pi-tooltip" style={{display:'none',background:'#1e293b',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,padding:14,marginBottom:14,boxShadow:'0 8px 24px rgba(0,0,0,0.4)'}}>
-                <p style={{fontSize:12,color:'#e2e8f0',lineHeight:1.6,margin:0}}>Aggregated pricing data from item2value community members tracking this item. <b style={{color:'#d4a853'}}>Market Value</b> is the avg estimated worth. <b style={{color:'#3b82f6'}}>Avg Cost</b> is what people paid. <b style={{color:'#a855f7'}}>Range</b> shows lowest to highest values. <b style={{color:'#4ade80'}}>Avg Sold</b> is the average sale price.</p>
+                <p style={{fontSize:12,color:'#e2e8f0',lineHeight:1.6,margin:0}}>Aggregated pricing data from PrÄperty community members tracking this item. <b style={{color:'#d4a853'}}>Market Value</b> is the avg estimated worth. <b style={{color:'#3b82f6'}}>Avg Cost</b> is what people paid. <b style={{color:'#a855f7'}}>Range</b> shows lowest to highest values. <b style={{color:'#4ade80'}}>Avg Sold</b> is the average sale price.</p>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
                 {[
@@ -2224,7 +2224,7 @@ const App = () => {
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
               <div>
                 <h3 style={{fontSize:16,fontWeight:700,color:'#fff'}}>Community Comps</h3>
-                <p className="text-dim" style={{fontSize:11}}>From other item2value users</p>
+                <p className="text-dim" style={{fontSize:11}}>From other PrÄperty users</p>
               </div>
               <button onClick={async () => {
                 setCommunityComps([]);
@@ -2606,7 +2606,7 @@ const App = () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `item2value-backup-${new Date().toISOString().slice(0,10)}.json`;
+            a.download = `praperty-backup-${new Date().toISOString().slice(0,10)}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -2645,7 +2645,7 @@ const App = () => {
                     setItems(data.items);
                     alert('Backup restored successfully!');
                   }
-                } catch(err) { alert('Could not read backup file. Make sure it is a valid item2value export.'); }
+                } catch(err) { alert('Could not read backup file. Make sure it is a valid PrÄperty export.'); }
               };
               reader.readAsText(file);
               e.target.value = '';
@@ -2816,7 +2816,7 @@ const App = () => {
           const steps = [
             {
               emoji: '👋',
-              title: 'Welcome to item2value!',
+              title: 'Welcome to PrÄperty!',
               body: 'Track your stuff like a portfolio. Know what you own, what it\'s worth, and when to sell.',
               tip: 'Let\'s walk through the basics.',
             },
