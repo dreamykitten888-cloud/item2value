@@ -2472,10 +2472,18 @@ const App = () => {
           </div>
 
           {/* Actions */}
-          <button onClick={() => setScreen('pricing')} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12}}>
+          <div style={{display:'flex',gap:8,marginBottom:12}}>
+            <button onClick={() => { const sq = encodeURIComponent((() => { const seen = new Set(); return [selected.name, selected.brand, selected.model].filter(Boolean).join(' ').split(/\s+/).filter(w => { const l = w.toLowerCase(); if (seen.has(l)) return false; seen.add(l); return true; }).join(' '); })()); window.open(`https://www.ebay.com/sch/i.html?_nkw=${sq}&LH_Sold=1&LH_Complete=1`, '_blank'); }} className="gradient-amber" style={{flex:1,border:'none',borderRadius:14,padding:'16px 0',fontSize:14,fontWeight:700,color:'#000',cursor:'pointer'}}>
+              Search Market
+            </button>
+            <button onClick={() => goResearch([selected.name, selected.brand, selected.model].filter(Boolean).join(' ').split(/\s+/).filter((w,i,a) => a.findIndex(x => x.toLowerCase() === w.toLowerCase()) === i).join(' '))} style={{flex:1,border:'1px solid rgba(212,168,83,0.4)',borderRadius:14,padding:'16px 0',fontSize:14,fontWeight:700,color:'#d4a853',cursor:'pointer',background:'rgba(212,168,83,0.08)'}}>
+              Deep Research →
+            </button>
+          </div>
+          <button onClick={() => setScreen('pricing')} style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',fontSize:14,fontWeight:600,color:'#fff',cursor:'pointer',background:'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
             Refresh Price
           </button>
-          <button onClick={() => { initEditForm(selected); setScreen('edit-item'); }} className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#fff',cursor:'pointer',background:'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
+          <button onClick={() => { initEditForm(selected); setScreen('edit-item'); }} className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',fontSize:14,fontWeight:600,color:'#fff',cursor:'pointer',background:'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
             <Icons.Edit size={16}/>Edit Item
           </button>
           <button onClick={() => {
