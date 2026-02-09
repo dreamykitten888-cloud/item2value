@@ -320,6 +320,8 @@ const App = () => {
   const [compForm, setCompForm] = useState({title:'',url:'',price:'',source:'eBay',condition:'Good'});
   const updateCompForm = (key, val) => setCompForm(prev => ({...prev, [key]: val}));
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
   const scrollRef = useRef(null);
   const supabaseUserIdRef = useRef(null);
   const syncTimerRef = useRef(null);
@@ -557,6 +559,9 @@ const App = () => {
           const newProfile = { name, email, createdAt: new Date().toISOString() };
           setProfile(newProfile);
           setScreen('home');
+          // Show tutorial for new users
+          setShowTutorial(true);
+          setTutorialStep(0);
           // Sync new profile to Supabase
           syncProfile(newProfile).then(userId => {
             if (userId) { supabaseUserIdRef.current = userId; }
@@ -1509,8 +1514,38 @@ const App = () => {
           <div className="glass" style={{borderRadius:16,padding:20,marginBottom:20}}>
             <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:16}}>Comparable Listings</h3>
             {getComps(selected.id).length === 0 && !addingComp && (
-              <p className="text-dim" style={{fontSize:13,textAlign:'center',padding:'12px 0'}}>No comparables yet. Add one below.</p>
+              <p className="text-dim" style={{fontSize:13,textAlign:'center',padding:'12px 0'}}>No comparables yet. Search below to find similar listings.</p>
             )}
+
+            {/* Smart Search Links */}
+            {(() => {
+              const q = encodeURIComponent([selected.name, selected.brand, selected.model].filter(Boolean).join(' '));
+              const searches = [
+                { name: 'eBay', color: '#e53238', bg: 'rgba(229,50,56,0.1)', url: `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1` },
+                { name: 'Poshmark', color: '#7f0353', bg: 'rgba(127,3,83,0.1)', url: `https://poshmark.com/search?query=${q}&type=listings&src=dir` },
+                { name: 'Mercari', color: '#4dc9f6', bg: 'rgba(77,201,246,0.1)', url: `https://www.mercari.com/search/?keyword=${q}` },
+                { name: 'StockX', color: '#0d9e4f', bg: 'rgba(13,158,79,0.1)', url: `https://stockx.com/search?s=${q}` },
+                { name: 'Facebook', color: '#1877f2', bg: 'rgba(24,119,242,0.1)', url: `https://www.facebook.com/marketplace/search/?query=${q}` },
+                { name: 'Google', color: '#4285f4', bg: 'rgba(66,133,244,0.1)', url: `https://www.google.com/search?q=${q}+price&tbm=shop` },
+              ];
+              return (
+                <div style={{marginBottom:12}}>
+                  <p style={{fontSize:11,color:'#64748b',marginBottom:8,textTransform:'uppercase',letterSpacing:0.5}}>Quick Search (tap to find comps)</p>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                    {searches.map(s => (
+                      <a key={s.name} href={s.url} target="_blank" rel="noopener noreferrer" style={{
+                        background:s.bg, border:`1px solid ${s.color}33`, borderRadius:20,
+                        padding:'6px 14px', fontSize:12, fontWeight:600, color:s.color,
+                        textDecoration:'none', display:'inline-flex', alignItems:'center', gap:4,
+                      }}>
+                        {s.name} ↗
+                      </a>
+                    ))}
+                  </div>
+                  <p style={{fontSize:11,color:'#334155',marginTop:8,lineHeight:1.4}}>Find a listing, then tap "Add Comparable" below to enter the price.</p>
+                </div>
+              );
+            })()}
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               {getComps(selected.id).map(c => (
                 editingCompId === c.id ? (
@@ -1706,6 +1741,35 @@ const App = () => {
               <p className="text-dim" style={{fontSize:11,marginTop:6}}>{hasComps ? `Based on ${prices.length} comp${prices.length>1?'s':''}` : 'Add comparables to improve accuracy'}</p>
             </div>
           </div>
+          );
+        })()}
+
+        {/* Smart Search Links on Pricing Screen */}
+        {selected && (() => {
+          const q = encodeURIComponent([selected.name, selected.brand, selected.model].filter(Boolean).join(' '));
+          const searches = [
+            { name: 'eBay Sold', color: '#e53238', bg: 'rgba(229,50,56,0.1)', url: `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1` },
+            { name: 'Poshmark', color: '#7f0353', bg: 'rgba(127,3,83,0.1)', url: `https://poshmark.com/search?query=${q}&type=listings&src=dir` },
+            { name: 'Mercari', color: '#4dc9f6', bg: 'rgba(77,201,246,0.1)', url: `https://www.mercari.com/search/?keyword=${q}` },
+            { name: 'StockX', color: '#0d9e4f', bg: 'rgba(13,158,79,0.1)', url: `https://stockx.com/search?s=${q}` },
+            { name: 'Google Shopping', color: '#4285f4', bg: 'rgba(66,133,244,0.1)', url: `https://www.google.com/search?q=${q}+price&tbm=shop` },
+          ];
+          return (
+            <div className="glass" style={{borderRadius:16,padding:20,marginBottom:20}}>
+              <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:6}}>Research Prices</h3>
+              <p className="text-dim" style={{fontSize:12,marginBottom:14}}>Tap a marketplace to search for similar listings. Find one? Go back and add it as a comparable.</p>
+              <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                {searches.map(s => (
+                  <a key={s.name} href={s.url} target="_blank" rel="noopener noreferrer" style={{
+                    background:s.bg, border:`1px solid ${s.color}33`, borderRadius:20,
+                    padding:'8px 16px', fontSize:13, fontWeight:600, color:s.color,
+                    textDecoration:'none', display:'inline-flex', alignItems:'center', gap:4,
+                  }}>
+                    {s.name} ↗
+                  </a>
+                ))}
+              </div>
+            </div>
           );
         })()}
 
@@ -2003,6 +2067,10 @@ const App = () => {
           </button>
         </div>
 
+        <button onClick={() => { setShowTutorial(true); setTutorialStep(0); }} className="glass glass-hover" style={{width:'100%',borderRadius:12,padding:'14px 0',border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.04)',color:'#d4a853',fontSize:15,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:12}}>
+          <Icons.Help size={16} color="#d4a853"/>Replay Tutorial
+        </button>
+
         <button onClick={() => {
           if (confirm('Sign out? This will clear your profile but your inventory data stays on this device. You can sign back in by entering your name and email.')) {
             if (supabaseUserIdRef.current) logEvent(supabaseUserIdRef.current, 'user_signout', {});
@@ -2127,6 +2195,92 @@ const App = () => {
             </div>
           </div>
         )}
+
+        {/* Onboarding Tutorial Overlay */}
+        {showTutorial && (() => {
+          const steps = [
+            {
+              emoji: '👋',
+              title: 'Welcome to item2value!',
+              body: 'Track your stuff like a portfolio. Know what you own, what it\'s worth, and when to sell.',
+              tip: 'Let\'s walk through the basics.',
+            },
+            {
+              emoji: '📦',
+              title: 'Add Your First Item',
+              body: 'Tap the camera icon in the bottom nav to scan or manually add items. Include photos, brand, and what you paid.',
+              tip: 'Tip: Photos make it easy to find comps later.',
+            },
+            {
+              emoji: '🔍',
+              title: 'Research Comparable Prices',
+              body: 'Open any item and scroll to "Comparable Listings." Use the quick search links to search eBay, Poshmark, Mercari, and more for similar items.',
+              tip: 'The more comps you add, the more accurate your market value becomes.',
+            },
+            {
+              emoji: '📊',
+              title: 'Track Your Market Value',
+              body: 'Your market value updates automatically based on comps you add. Check the Price History chart to see trends over time.',
+              tip: 'Your home screen shows total portfolio value at a glance.',
+            },
+            {
+              emoji: '💰',
+              title: 'Record Sales & Earnings',
+              body: 'Sold something? Open the item, tap the Earnings box, and enter what you got. It auto-calculates your profit and shows up in Total Earnings.',
+              tip: 'Track "Date Sold" too, so we can calculate sell velocity.',
+            },
+            {
+              emoji: '💾',
+              title: 'Backup Your Data',
+              body: 'Go to Profile and tap "Export Backup" to download your data. You can restore it anytime with "Import Backup."',
+              tip: 'Your data syncs to the cloud automatically, but backups are extra insurance.',
+            },
+          ];
+          const step = steps[tutorialStep];
+          const isLast = tutorialStep === steps.length - 1;
+          return (
+            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.85)',backdropFilter:'blur(12px)',zIndex:200,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32}} onClick={e => e.stopPropagation()}>
+              {/* Progress dots */}
+              <div style={{display:'flex',gap:6,marginBottom:32}}>
+                {steps.map((_,i) => (
+                  <div key={i} style={{width: i === tutorialStep ? 24 : 8, height:8, borderRadius:4, background: i === tutorialStep ? '#d4a853' : i < tutorialStep ? 'rgba(212,168,83,0.5)' : 'rgba(255,255,255,0.12)', transition:'all 0.3s'}}/>
+                ))}
+              </div>
+
+              {/* Card */}
+              <div className="anim-fade" key={tutorialStep} style={{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:24,padding:32,maxWidth:320,width:'100%',textAlign:'center'}}>
+                <div style={{fontSize:48,marginBottom:16}}>{step.emoji}</div>
+                <h2 style={{fontSize:20,fontWeight:700,color:'#fff',marginBottom:10}}>{step.title}</h2>
+                <p style={{fontSize:14,color:'#cbd5e1',lineHeight:1.6,marginBottom:16}}>{step.body}</p>
+                <p style={{fontSize:12,color:'#d4a853',fontStyle:'italic'}}>{step.tip}</p>
+              </div>
+
+              {/* Buttons */}
+              <div style={{display:'flex',gap:12,marginTop:28,width:'100%',maxWidth:320}}>
+                {tutorialStep > 0 && (
+                  <button onClick={() => setTutorialStep(prev => prev - 1)} style={{flex:1,padding:'14px 0',borderRadius:14,border:'1px solid rgba(255,255,255,0.15)',background:'rgba(255,255,255,0.06)',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer'}}>Back</button>
+                )}
+                <button onClick={() => {
+                  if (isLast) {
+                    setShowTutorial(false);
+                    localStorage.setItem('item2value_tutorial_done', 'true');
+                  } else {
+                    setTutorialStep(prev => prev + 1);
+                  }
+                }} className="gradient-amber" style={{flex:1,padding:'14px 0',borderRadius:14,border:'none',fontSize:14,fontWeight:700,color:'#000',cursor:'pointer'}}>
+                  {isLast ? 'Get Started!' : 'Next'}
+                </button>
+              </div>
+
+              {/* Skip */}
+              {!isLast && (
+                <button onClick={() => { setShowTutorial(false); localStorage.setItem('item2value_tutorial_done', 'true'); }} style={{background:'none',border:'none',color:'#475569',fontSize:13,cursor:'pointer',marginTop:16,padding:8}}>
+                  Skip tutorial
+                </button>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
