@@ -1253,10 +1253,14 @@ const App = () => {
             </div>
 
             {/* Price Intelligence */}
-            <div className="glass" style={{borderRadius:16,padding:20,marginBottom:16}}>
+            <div className="glass" style={{borderRadius:16,padding:20,marginBottom:16,position:'relative'}}>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
                 <span style={{fontSize:18}}>💰</span>
                 <h3 style={{fontSize:16,fontWeight:700,color:'#fff'}}>Price Intelligence</h3>
+                <button onClick={(e) => { e.stopPropagation(); const tip = document.getElementById('pi-tooltip'); tip.style.display = tip.style.display === 'block' ? 'none' : 'block'; }} style={{width:20,height:20,borderRadius:'50%',border:'1px solid rgba(255,255,255,0.2)',background:'rgba(255,255,255,0.06)',color:'#94a3b8',fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0,lineHeight:1,marginLeft:2}}>i</button>
+              </div>
+              <div id="pi-tooltip" style={{display:'none',background:'#1e293b',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,padding:14,marginBottom:14,boxShadow:'0 8px 24px rgba(0,0,0,0.4)'}}>
+                <p style={{fontSize:12,color:'#e2e8f0',lineHeight:1.6,margin:0}}>Aggregated pricing data from item2value community members tracking this item. <b style={{color:'#d4a853'}}>Market Value</b> is the avg estimated worth. <b style={{color:'#3b82f6'}}>Avg Cost</b> is what people paid. <b style={{color:'#a855f7'}}>Range</b> shows lowest to highest values. <b style={{color:'#4ade80'}}>Avg Sold</b> is the average sale price.</p>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
                 {[
