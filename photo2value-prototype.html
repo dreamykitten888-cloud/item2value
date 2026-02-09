@@ -1288,21 +1288,47 @@ const App = () => {
                 <span style={{fontSize:18}}>🌐</span>
                 <h3 style={{fontSize:16,fontWeight:700,color:'#fff'}}>Live Market Prices</h3>
               </div>
-              <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                {[
-                  {name:'eBay Sold',color:'#e53238',url:`https://www.ebay.com/sch/i.html?_nkw=${webQ}&LH_Sold=1&LH_Complete=1`,desc:'Actual sold prices'},
-                  {name:'eBay Active',color:'#e53238',url:`https://www.ebay.com/sch/i.html?_nkw=${webQ}`,desc:'Current listings'},
-                  {name:'Poshmark',color:'#7f0353',url:`https://poshmark.com/search?query=${webQ}&type=listings`,desc:'Fashion & lifestyle'},
-                  {name:'Mercari',color:'#4dc9f6',url:`https://www.mercari.com/search/?keyword=${webQ}`,desc:'General marketplace'},
-                  {name:'StockX',color:'#0d9e4f',url:`https://stockx.com/search?s=${webQ}`,desc:'Sneakers & streetwear'},
-                  {name:'Google Shopping',color:'#4285f4',url:`https://www.google.com/search?q=${webQ}+price&tbm=shop`,desc:'Price comparison'},
-                ].map(m => (
-                  <a key={m.name} href={m.url} target="_blank" rel="noopener noreferrer" style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:`${m.color}11`,border:`1px solid ${m.color}22`,borderRadius:12,padding:'10px 14px',textDecoration:'none'}}>
-                    <div><span style={{fontSize:13,fontWeight:600,color:m.color}}>{m.name}</span><span style={{fontSize:11,color:'#475569',marginLeft:8}}>{m.desc}</span></div>
-                    <span style={{fontSize:12,color:m.color}}>↗</span>
-                  </a>
-                ))}
-              </div>
+              {[
+                {platform:'eBay',color:'#e53238',links:[
+                  {label:'Sold',url:`https://www.ebay.com/sch/i.html?_nkw=${webQ}&LH_Sold=1&LH_Complete=1`,desc:'What it actually sold for'},
+                  {label:'Active',url:`https://www.ebay.com/sch/i.html?_nkw=${webQ}`,desc:'Current listings'},
+                ]},
+                {platform:'Mercari',color:'#4dc9f6',links:[
+                  {label:'Sold',url:`https://www.mercari.com/search/?keyword=${webQ}&status=sold_out`,desc:'Completed sales'},
+                  {label:'Active',url:`https://www.mercari.com/search/?keyword=${webQ}`,desc:'Current listings'},
+                ]},
+                {platform:'Poshmark',color:'#7f0353',links:[
+                  {label:'Sold',url:`https://poshmark.com/search?query=${webQ}&type=listings&availability=sold_out`,desc:'Sold comps'},
+                  {label:'Active',url:`https://poshmark.com/search?query=${webQ}&type=listings`,desc:'Active listings'},
+                ]},
+                {platform:'StockX',color:'#0d9e4f',links:[
+                  {label:'Browse',url:`https://stockx.com/search?s=${webQ}`,desc:'Market prices + history'},
+                ]},
+                {platform:'Facebook',color:'#1877F2',links:[
+                  {label:'Marketplace',url:`https://www.facebook.com/marketplace/search/?query=${webQ}`,desc:'Local + shipped listings'},
+                ]},
+                {platform:'Google Shopping',color:'#4285f4',links:[
+                  {label:'Prices',url:`https://www.google.com/search?q=${webQ}+price&tbm=shop`,desc:'Retail price comparison'},
+                ]},
+                {platform:'TikTok Shop',color:'#FE2C55',links:[
+                  {label:'Shop',url:`https://www.tiktok.com/search?q=${webQ}+shop`,desc:'Trending products'},
+                ]},
+                {platform:'Whatnot',color:'#7C3AED',links:[
+                  {label:'Search',url:`https://www.whatnot.com/search?q=${webQ}`,desc:'Live auction prices'},
+                ]},
+              ].map(p => (
+                <div key={p.platform} style={{marginBottom:10}}>
+                  <p style={{fontSize:12,fontWeight:700,color:p.color,marginBottom:6,letterSpacing:0.3}}>{p.platform}</p>
+                  <div style={{display:'flex',gap:6}}>
+                    {p.links.map(l => (
+                      <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer" style={{flex:1,display:'block',background:`${p.color}11`,border:`1px solid ${p.color}22`,borderRadius:10,padding:'8px 12px',textDecoration:'none'}}>
+                        <span style={{fontSize:12,fontWeight:600,color:p.color}}>{l.label} ↗</span>
+                        <p style={{fontSize:10,color:'#64748b',marginTop:2}}>{l.desc}</p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Social Buzz */}
@@ -1431,13 +1457,14 @@ const App = () => {
         </FormField>
 
         {/* Photo Upload */}
-        <FormField label={`Photos (${addFormUI.photos.length}/5)`} tip="Add up to 5 photos. First photo becomes the cover image shown in your inventory.">
+        <FormField label={`Photos (${addFormUI.photos.length}/5)`} tip="Tap any photo to set it as cover.">
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
             {addFormUI.photos.map((photo,idx) => (
-              <div key={idx} style={{width:72,height:72,borderRadius:12,overflow:'hidden',position:'relative',border:'1px solid rgba(255,255,255,0.1)'}}>
+              <div key={idx} onClick={() => { if (idx !== 0) setAddFormUI(prev => { const p = [...prev.photos]; const [moved] = p.splice(idx, 1); p.unshift(moved); return {...prev, photos: p}; }); }} style={{width:72,height:72,borderRadius:12,overflow:'hidden',position:'relative',border: idx === 0 ? '2px solid #d4a853' : '1px solid rgba(255,255,255,0.1)',cursor:'pointer'}}>
                 <img src={photo} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                 {idx===0 && <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(212,168,83,0.9)',padding:'2px 0',textAlign:'center'}}><span style={{fontSize:8,fontWeight:700,color:'#000',textTransform:'uppercase',letterSpacing:0.5}}>Cover</span></div>}
-                <button onClick={() => setAddFormUI(prev => ({...prev,photos:prev.photos.filter((_,i)=>i!==idx)}))} style={{position:'absolute',top:4,right:4,width:20,height:20,borderRadius:10,background:'rgba(0,0,0,0.7)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+                {idx!==0 && <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.6)',padding:'2px 0',textAlign:'center'}}><span style={{fontSize:7,fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:0.5}}>Tap for cover</span></div>}
+                <button onClick={(e) => { e.stopPropagation(); setAddFormUI(prev => ({...prev,photos:prev.photos.filter((_,i)=>i!==idx)})); }} style={{position:'absolute',top:4,right:4,width:20,height:20,borderRadius:10,background:'rgba(0,0,0,0.7)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
               </div>
             ))}
             {addFormUI.photos.length < 5 && (
@@ -1601,13 +1628,14 @@ const App = () => {
         </FormField>
 
         {/* Photo Management */}
-        <FormField label={`Photos (${editFormUI.photos.length}/5)`} tip="Add up to 5 photos. First photo becomes the cover image.">
+        <FormField label={`Photos (${editFormUI.photos.length}/5)`} tip="Tap any photo to set it as cover.">
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
             {editFormUI.photos.map((photo,idx) => (
-              <div key={idx} style={{width:72,height:72,borderRadius:12,overflow:'hidden',position:'relative',border:'1px solid rgba(255,255,255,0.1)'}}>
+              <div key={idx} onClick={() => { if (idx !== 0) setEditFormUI(prev => { const p = [...prev.photos]; const [moved] = p.splice(idx, 1); p.unshift(moved); return {...prev, photos: p}; }); }} style={{width:72,height:72,borderRadius:12,overflow:'hidden',position:'relative',border: idx === 0 ? '2px solid #d4a853' : '1px solid rgba(255,255,255,0.1)',cursor:'pointer'}}>
                 <img src={photo} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                 {idx===0 && <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(212,168,83,0.9)',padding:'2px 0',textAlign:'center'}}><span style={{fontSize:8,fontWeight:700,color:'#000',textTransform:'uppercase',letterSpacing:0.5}}>Cover</span></div>}
-                <button onClick={() => setEditFormUI(prev => ({...prev,photos:prev.photos.filter((_,i)=>i!==idx)}))} style={{position:'absolute',top:4,right:4,width:20,height:20,borderRadius:10,background:'rgba(0,0,0,0.7)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+                {idx!==0 && <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,0.6)',padding:'2px 0',textAlign:'center'}}><span style={{fontSize:7,fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:0.5}}>Tap for cover</span></div>}
+                <button onClick={(e) => { e.stopPropagation(); setEditFormUI(prev => ({...prev,photos:prev.photos.filter((_,i)=>i!==idx)})); }} style={{position:'absolute',top:4,right:4,width:20,height:20,borderRadius:10,background:'rgba(0,0,0,0.7)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
               </div>
             ))}
             {editFormUI.photos.length < 5 && (
