@@ -372,6 +372,8 @@ const App = () => {
   const [discoverResults, setDiscoverResults] = useState([]);
   const [discoverLoading, setDiscoverLoading] = useState(false);
   const [discoverCategory, setDiscoverCategory] = useState('All');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchInputRef = useRef(null);
   const [communityComps, setCommunityComps] = useState([]);
   const [researchQuery, setResearchQuery] = useState('');
   const [researchData, setResearchData] = useState(null);
@@ -1111,7 +1113,7 @@ const App = () => {
     });
     const groups = Object.values(grouped).sort((a, b) => b.items.length - a.items.length);
 
-    const categories = ['All', 'Fashion', 'Electronics', 'Home', 'Sports', 'Collectibles', 'Automotive', 'Books', 'Toys', 'Tools', 'Other'];
+    const categories = ['All', 'Fashion', 'Electronics', 'Home', 'Watches', 'Sports', 'Collectibles', 'Trading Cards', 'Vinyl & Music', 'LEGO', 'Coins & Stamps', 'Art', 'Automotive', 'Books', 'Toys', 'Tools', 'Other'];
 
     return (
       <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
@@ -1121,21 +1123,64 @@ const App = () => {
           <p className="text-dim" style={{fontSize:13}}>Search what anything is buying and selling for</p>
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar with Autocomplete */}
         <div style={{padding:'12px 24px'}}>
           <div style={{position:'relative'}}>
-            <Icons.Search size={18} color="#475569"/>
+            <Icons.Search size={18} color="#475569" style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',zIndex:1,pointerEvents:'none'}}/>
             <input
+              ref={searchInputRef}
               className="form-input"
               placeholder="Search any item (e.g. Nike Air Max 90)"
               value={discoverQuery}
-              onChange={e => setDiscoverQuery(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') doDiscoverSearch(discoverQuery, discoverCategory); }}
-              style={{width:'100%',padding:'14px 16px 14px 16px',borderRadius:14,border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.06)',color:'#fff',fontSize:14}}
+              onChange={e => { setDiscoverQuery(e.target.value); setShowSuggestions(e.target.value.length > 0); }}
+              onFocus={() => { if (discoverQuery.length > 0) setShowSuggestions(true); }}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              onKeyDown={e => { if (e.key === 'Enter') { setShowSuggestions(false); doDiscoverSearch(discoverQuery, discoverCategory); } }}
+              style={{width:'100%',padding:'14px 16px 14px 40px',borderRadius:14,border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.06)',color:'#fff',fontSize:14}}
             />
+            {/* Autocomplete Suggestions Dropdown */}
+            {showSuggestions && discoverQuery.trim().length > 0 && (() => {
+              const q = discoverQuery.toLowerCase().trim();
+              // Match from user's own inventory
+              const myItems = items
+                .map(i => ({ text: [i.name, i.brand, i.model].filter(Boolean).join(' '), emoji: i.emoji, source: 'inventory' }))
+                .filter(i => i.text.toLowerCase().includes(q))
+                .slice(0, 4);
+              // Common/trending search suggestions
+              const trending = [
+                'Nike Air Jordan 1','Louis Vuitton Neverfull','Rolex Submariner','Pokemon Charizard','Sony PlayStation 5',
+                'Funko Pop Marvel','Apple iPhone','Nintendo Switch','Vintage Vinyl Beatles','LEGO Star Wars',
+                'Air Force 1','Yeezy Boost 350','Canon EOS R5','Herman Miller Aeron','Ray-Ban Wayfarer',
+                'Supreme Box Logo','Dyson Airwrap','MacBook Pro','Bose QuietComfort','Omega Speedmaster',
+                'Magic The Gathering Black Lotus','Yu-Gi-Oh Blue Eyes','Comic Book Spider-Man','Baseball Cards Topps',
+                'Patek Philippe Nautilus','Tudor Black Bay','Birkin Bag Hermes','Chanel Classic Flap',
+              ].filter(s => s.toLowerCase().includes(q) && !myItems.some(m => m.text.toLowerCase() === s.toLowerCase()))
+               .slice(0, 4)
+               .map(s => ({ text: s, emoji: '🔍', source: 'trending' }));
+              const suggestions = [...myItems, ...trending];
+              if (suggestions.length === 0) return null;
+              return (
+                <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:50,marginTop:4,background:'#1a1a2e',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,overflow:'hidden',boxShadow:'0 8px 32px rgba(0,0,0,0.5)'}}>
+                  {suggestions.map((s, i) => (
+                    <div key={i} onClick={() => { setDiscoverQuery(s.text); setShowSuggestions(false); doDiscoverSearch(s.text, discoverCategory); }}
+                      style={{padding:'12px 16px',display:'flex',alignItems:'center',gap:10,cursor:'pointer',borderBottom: i < suggestions.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',background:'transparent'}}
+                      onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
+                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <span style={{fontSize:14}}>{s.emoji}</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        <p className="truncate" style={{fontSize:13,color:'#fff',fontWeight:500}}>{s.text}</p>
+                      </div>
+                      <span style={{fontSize:10,color: s.source === 'inventory' ? '#d4a853' : '#64748b',background: s.source === 'inventory' ? 'rgba(212,168,83,0.1)' : 'rgba(255,255,255,0.04)',padding:'2px 8px',borderRadius:6,fontWeight:600}}>
+                        {s.source === 'inventory' ? 'My Items' : 'Popular'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
           <div style={{display:'flex',gap:8,marginTop:10}}>
-            <button onClick={() => doDiscoverSearch(discoverQuery, discoverCategory)} className="gradient-amber" style={{flex:1,border:'none',borderRadius:12,padding:'12px 0',fontSize:14,fontWeight:700,color:'#000',cursor:'pointer'}}>
+            <button onClick={() => { setShowSuggestions(false); doDiscoverSearch(discoverQuery, discoverCategory); }} className="gradient-amber" style={{flex:1,border:'none',borderRadius:12,padding:'12px 0',fontSize:14,fontWeight:700,color:'#000',cursor:'pointer'}}>
               Search Market
             </button>
             {discoverQuery.trim() && (
@@ -1161,26 +1206,16 @@ const App = () => {
         </div>
 
         <div style={{padding:'0 24px'}}>
-          {/* Web Marketplace Links - always show when there's a query */}
+          {/* Web Marketplace Links - category-aware */}
           {discoverQuery.trim() && (() => {
-            const seen = new Set();
-            const webQ = encodeURIComponent([discoverQuery].filter(Boolean).join(' ').split(/\s+/).filter(w => { const l = w.toLowerCase(); if (seen.has(l)) return false; seen.add(l); return true; }).join(' '));
-            const marketplaces = [
-              { name: 'eBay Sold', color: '#e53238', bg: 'rgba(229,50,56,0.08)', url: `https://www.ebay.com/sch/i.html?_nkw=${webQ}&LH_Sold=1&LH_Complete=1`, desc: 'See actual sold prices' },
-              { name: 'eBay Active', color: '#e53238', bg: 'rgba(229,50,56,0.08)', url: `https://www.ebay.com/sch/i.html?_nkw=${webQ}`, desc: 'See current listings' },
-              { name: 'Poshmark', color: '#7f0353', bg: 'rgba(127,3,83,0.08)', url: `https://poshmark.com/search?query=${webQ}&type=listings&src=dir`, desc: 'Fashion & accessories' },
-              { name: 'Mercari', color: '#4dc9f6', bg: 'rgba(77,201,246,0.08)', url: `https://www.mercari.com/search/?keyword=${webQ}`, desc: 'General marketplace' },
-              { name: 'StockX', color: '#0d9e4f', bg: 'rgba(13,158,79,0.08)', url: `https://stockx.com/search?s=${webQ}`, desc: 'Sneakers & streetwear' },
-              { name: 'Google Shopping', color: '#4285f4', bg: 'rgba(66,133,244,0.08)', url: `https://www.google.com/search?q=${webQ}+price&tbm=shop`, desc: 'Compare across stores' },
-              { name: 'Facebook', color: '#1877f2', bg: 'rgba(24,119,242,0.08)', url: `https://www.facebook.com/marketplace/search/?query=${webQ}`, desc: 'Local deals' },
-            ];
+            const marketplaces = getMarketplacesForCategory(discoverCategory, discoverQuery);
             return (
               <div className="glass anim-fade" style={{borderRadius:16,padding:20,marginBottom:16,border:'1px solid rgba(212,168,83,0.15)'}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                   <div style={{width:28,height:28,borderRadius:8,background:'linear-gradient(135deg,#d4a853,#b8860b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>🌐</div>
                   <div>
                     <p style={{fontWeight:700,color:'#fff',fontSize:14}}>Web Prices</p>
-                    <p className="text-dim" style={{fontSize:11}}>Tap to see real prices on marketplaces</p>
+                    <p className="text-dim" style={{fontSize:11}}>{discoverCategory !== 'All' ? `Showing marketplaces for ${discoverCategory}` : 'Tap to see real prices on marketplaces'}</p>
                   </div>
                 </div>
                 <div style={{display:'flex',flexDirection:'column',gap:6}}>
@@ -1457,53 +1492,33 @@ const App = () => {
               </div>
             </div>
 
-            {/* Web Prices */}
+            {/* Web Prices - category-aware */}
             <div className="glass" style={{borderRadius:16,padding:20,marginBottom:16}}>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
                 <span style={{fontSize:18}}>🌐</span>
                 <h3 style={{fontSize:16,fontWeight:700,color:'#fff'}}>Live Market Prices</h3>
               </div>
-              {[
-                {platform:'eBay',color:'#e53238',links:[
-                  {label:'Sold',url:`https://www.ebay.com/sch/i.html?_nkw=${webQ}&LH_Sold=1&LH_Complete=1`,desc:'What it actually sold for'},
-                  {label:'Active',url:`https://www.ebay.com/sch/i.html?_nkw=${webQ}`,desc:'Current listings'},
-                ]},
-                {platform:'Mercari',color:'#4dc9f6',links:[
-                  {label:'Sold',url:`https://www.mercari.com/search/?keyword=${webQ}&status=sold_out`,desc:'Completed sales'},
-                  {label:'Active',url:`https://www.mercari.com/search/?keyword=${webQ}`,desc:'Current listings'},
-                ]},
-                {platform:'Poshmark',color:'#7f0353',links:[
-                  {label:'Sold',url:`https://poshmark.com/search?query=${webQ}&type=listings&availability=sold_out`,desc:'Sold comps'},
-                  {label:'Active',url:`https://poshmark.com/search?query=${webQ}&type=listings`,desc:'Active listings'},
-                ]},
-                {platform:'StockX',color:'#0d9e4f',links:[
-                  {label:'Browse',url:`https://stockx.com/search?s=${webQ}`,desc:'Market prices + history'},
-                ]},
-                {platform:'Facebook',color:'#1877F2',links:[
-                  {label:'Marketplace',url:`https://www.facebook.com/marketplace/search/?query=${webQ}`,desc:'Local + shipped listings'},
-                ]},
-                {platform:'Google Shopping',color:'#4285f4',links:[
-                  {label:'Prices',url:`https://www.google.com/search?q=${webQ}+price&tbm=shop`,desc:'Retail price comparison'},
-                ]},
-                {platform:'TikTok Shop',color:'#FE2C55',links:[
-                  {label:'Shop',url:`https://www.tiktok.com/search?q=${webQ}+shop`,desc:'Trending products'},
-                ]},
-                {platform:'Whatnot',color:'#7C3AED',links:[
-                  {label:'Search',url:`https://www.whatnot.com/search?q=${webQ}`,desc:'Live auction prices'},
-                ]},
-              ].map(p => (
-                <div key={p.platform} style={{marginBottom:10}}>
-                  <p style={{fontSize:12,fontWeight:700,color:p.color,marginBottom:6,letterSpacing:0.3}}>{p.platform}</p>
-                  <div style={{display:'flex',gap:6}}>
-                    {p.links.map(l => (
-                      <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer" style={{flex:1,display:'block',background:`${p.color}11`,border:`1px solid ${p.color}22`,borderRadius:10,padding:'8px 12px',textDecoration:'none'}}>
-                        <span style={{fontSize:12,fontWeight:600,color:p.color}}>{l.label} ↗</span>
-                        <p style={{fontSize:10,color:'#64748b',marginTop:2}}>{l.desc}</p>
+              {(() => {
+                const category = d.categories && d.categories[0] ? d.categories[0] : 'All';
+                const mps = getMarketplacesForCategory(category, researchQuery);
+                return (
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {mps.map(m => (
+                      <a key={m.name} href={m.url} target="_blank" rel="noopener noreferrer" style={{
+                        display:'flex', alignItems:'center', justifyContent:'space-between',
+                        background:m.bg, border:`1px solid ${m.color}22`, borderRadius:12,
+                        padding:'10px 14px', textDecoration:'none',
+                      }}>
+                        <div>
+                          <span style={{fontSize:13,fontWeight:600,color:m.color}}>{m.name}</span>
+                          <span style={{fontSize:11,color:'#475569',marginLeft:8}}>{m.desc}</span>
+                        </div>
+                        <span style={{fontSize:12,color:m.color}}>↗</span>
                       </a>
                     ))}
                   </div>
-                </div>
-              ))}
+                );
+              })()}
             </div>
 
             {/* Social Buzz */}
@@ -1590,8 +1605,57 @@ const App = () => {
 
   /* ── Add Item Form ── */
   const emojiOptions = ['📦','👜','👟','🪑','📷','⌚','🍲','📱','🎒','🎮','💻','🖼️','🎸','💎','🧥'];
-  const categoryOptions = ['Fashion','Electronics','Home','Watches','Art','Sports','Other'];
+  const categoryOptions = ['Fashion','Electronics','Home','Watches','Art','Sports','Collectibles','Trading Cards','Vinyl & Music','LEGO','Books','Coins & Stamps','Toys','Automotive','Tools','Other'];
   const conditionOptions = ['New','Like New','Excellent','Very Good','Good','Fair'];
+
+  /* ── Marketplace Config (category-aware) ── */
+  const ALL_MARKETPLACES = {
+    // Universal marketplaces (shown for all categories)
+    'eBay Sold':       { color:'#e53238', bg:'rgba(229,50,56,0.08)', urlFn: q => `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1`, desc:'Actual sold prices', categories:'all' },
+    'eBay Active':     { color:'#e53238', bg:'rgba(229,50,56,0.08)', urlFn: q => `https://www.ebay.com/sch/i.html?_nkw=${q}`, desc:'Current listings', categories:'all' },
+    'Amazon':          { color:'#FF9900', bg:'rgba(255,153,0,0.08)', urlFn: q => `https://www.amazon.com/s?k=${q}`, desc:'New & used prices', categories:'all' },
+    'Google Shopping':  { color:'#4285f4', bg:'rgba(66,133,244,0.08)', urlFn: q => `https://www.google.com/search?q=${q}+price&tbm=shop`, desc:'Compare across stores', categories:'all' },
+    'Facebook':        { color:'#1877f2', bg:'rgba(24,119,242,0.08)', urlFn: q => `https://www.facebook.com/marketplace/search/?query=${q}`, desc:'Local deals', categories:'all' },
+    'Mercari':         { color:'#4dc9f6', bg:'rgba(77,201,246,0.08)', urlFn: q => `https://www.mercari.com/search/?keyword=${q}`, desc:'General marketplace', categories:['Fashion','Electronics','Home','Toys','Sports','Collectibles','Other'] },
+    // Fashion / Luxury
+    'Poshmark':        { color:'#7f0353', bg:'rgba(127,3,83,0.08)', urlFn: q => `https://poshmark.com/search?query=${q}&type=listings&src=dir`, desc:'Fashion & accessories', categories:['Fashion','Watches'] },
+    'StockX':          { color:'#0d9e4f', bg:'rgba(13,158,79,0.08)', urlFn: q => `https://stockx.com/search?s=${q}`, desc:'Sneakers, streetwear & collectibles', categories:['Fashion','Collectibles','Trading Cards','Electronics','Toys'] },
+    'The RealReal':    { color:'#000000', bg:'rgba(255,255,255,0.06)', urlFn: q => `https://www.therealreal.com/search?q=${q}`, desc:'Luxury consignment', categories:['Fashion','Watches','Art'] },
+    'Grailed':         { color:'#000000', bg:'rgba(255,255,255,0.06)', urlFn: q => `https://www.grailed.com/shop?query=${q}`, desc:"Men's fashion & streetwear", categories:['Fashion'] },
+    'Vestiaire':       { color:'#1a1a1a', bg:'rgba(255,255,255,0.06)', urlFn: q => `https://www.vestiairecollective.com/search/?q=${q}`, desc:'Designer resale', categories:['Fashion','Watches'] },
+    // Watches
+    'Chrono24':        { color:'#C8A951', bg:'rgba(200,169,81,0.08)', urlFn: q => `https://www.chrono24.com/search/index.htm?query=${q}`, desc:'Luxury watch marketplace', categories:['Watches'] },
+    // Trading Cards
+    'TCGPlayer':       { color:'#F5A623', bg:'rgba(245,166,35,0.08)', urlFn: q => `https://www.tcgplayer.com/search/all/product?q=${q}`, desc:'Trading card marketplace', categories:['Trading Cards','Collectibles','Toys'] },
+    'COMC':            { color:'#1a5276', bg:'rgba(26,82,118,0.08)', urlFn: q => `https://www.comc.com/Cards/Baseball,sp,${q}`, desc:'Sports cards & comics', categories:['Trading Cards','Collectibles','Sports'] },
+    'Card Kingdom':    { color:'#2c3e50', bg:'rgba(44,62,80,0.08)', urlFn: q => `https://www.cardkingdom.com/catalog/search?search=header&filter%5Bname%5D=${q}`, desc:'Magic: The Gathering', categories:['Trading Cards'] },
+    // Vinyl & Music
+    'Discogs':         { color:'#333333', bg:'rgba(51,51,51,0.08)', urlFn: q => `https://www.discogs.com/search/?q=${q}&type=all`, desc:'Vinyl & music marketplace', categories:['Vinyl & Music','Collectibles'] },
+    // LEGO
+    'BrickLink':       { color:'#D01012', bg:'rgba(208,16,18,0.08)', urlFn: q => `https://www.bricklink.com/v2/search.page?q=${q}`, desc:'LEGO parts & sets', categories:['LEGO','Toys','Collectibles'] },
+    // Books
+    'AbeBooks':        { color:'#D4AF37', bg:'rgba(212,175,55,0.08)', urlFn: q => `https://www.abebooks.com/servlet/SearchResults?kn=${q}`, desc:'Rare & first edition books', categories:['Books','Collectibles'] },
+    // Coins & Antiques
+    'Heritage Auctions':{ color:'#8B4513', bg:'rgba(139,69,19,0.08)', urlFn: q => `https://www.ha.com/search/searchresults.s?N=0&Ntt=${q}`, desc:'Coins, stamps & fine art', categories:['Coins & Stamps','Art','Collectibles'] },
+    // Collectibles & Live
+    'Whatnot':         { color:'#7C3AED', bg:'rgba(124,58,237,0.08)', urlFn: q => `https://www.whatnot.com/search?q=${q}`, desc:'Live auction collectibles', categories:['Collectibles','Trading Cards','Toys','Fashion','Coins & Stamps','Vinyl & Music'] },
+    'GoCollect':       { color:'#2196F3', bg:'rgba(33,150,243,0.08)', urlFn: q => `https://gocollect.com/search?q=${q}`, desc:'Comic book values', categories:['Collectibles','Books'] },
+    'HobbyDB':         { color:'#FF6B35', bg:'rgba(255,107,53,0.08)', urlFn: q => `https://www.hobbydb.com/marketplaces/hobbydb/catalog_items?q=${q}`, desc:'Funko, toys & collectibles', categories:['Collectibles','Toys'] },
+    'Catawiki':        { color:'#F7941D', bg:'rgba(247,148,29,0.08)', urlFn: q => `https://www.catawiki.com/en/s/?q=${q}`, desc:'Curated auctions', categories:['Collectibles','Art','Watches','Coins & Stamps'] },
+    // General
+    'TikTok Shop':     { color:'#FE2C55', bg:'rgba(254,44,85,0.08)', urlFn: q => `https://www.tiktok.com/search?q=${q}+shop`, desc:'Trending products', categories:['Fashion','Electronics','Collectibles','Toys'] },
+    'Craigslist':      { color:'#5a0e8f', bg:'rgba(90,14,143,0.08)', urlFn: q => `https://www.craigslist.org/search/sss?query=${q}`, desc:'Local classifieds', categories:['Home','Automotive','Electronics','Tools'] },
+  };
+
+  const getMarketplacesForCategory = (category, query) => {
+    const q = encodeURIComponent(query);
+    return Object.entries(ALL_MARKETPLACES)
+      .filter(([_, mp]) => mp.categories === 'all' || (Array.isArray(mp.categories) && (!category || category === 'All' || mp.categories.includes(category))))
+      .map(([name, mp]) => ({ name, color: mp.color, bg: mp.bg, url: mp.urlFn(q), desc: mp.desc }));
+  };
+
+  // Comp source options (all platforms a user might log a comp from)
+  const compSourceOptions = ['eBay','Amazon','Poshmark','Mercari','StockX','Facebook Marketplace','Craigslist','The RealReal','Vestiaire','Grailed','Chrono24','TCGPlayer','COMC','Discogs','BrickLink','AbeBooks','Heritage Auctions','Whatnot','GoCollect','HobbyDB','Catawiki','TikTok Shop','Card Kingdom','Other'];
 
   // Use refs for text inputs to prevent re-renders (fixes iOS keyboard dismissal)
   const formRefs = {
@@ -2153,6 +2217,19 @@ const App = () => {
                   }}/>
               </div>
 
+              {/* Sold Platform (only show when item is sold) */}
+              {hasSold && (
+                <div style={{marginBottom:12}}>
+                  <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8,marginBottom:4}}>Sold On</p>
+                  <select value={selected.soldPlatform || ''} onChange={e => {
+                    setItems(prev => prev.map(it => it.id === selected.id ? {...it, soldPlatform: e.target.value || null} : it));
+                  }} style={{width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:12,outline:'none',fontFamily:'DM Sans, sans-serif',cursor:'pointer'}}>
+                    <option value="">Select platform...</option>
+                    {compSourceOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              )}
+
               {/* Date fields */}
               <div style={{display:'grid',gridTemplateColumns: hasSold ? '1fr 1fr' : '1fr',gap:10,marginBottom:16}}>
                 <div>
@@ -2284,17 +2361,10 @@ const App = () => {
               <p className="text-dim" style={{fontSize:13,textAlign:'center',padding:'12px 0'}}>No comparables yet. Search below to find similar listings.</p>
             )}
 
-            {/* Smart Search Links */}
+            {/* Smart Search Links - category-aware */}
             {(() => {
-              const q = encodeURIComponent((() => { const seen = new Set(); return [selected.name, selected.brand, selected.model].filter(Boolean).join(' ').split(/\s+/).filter(w => { const l = w.toLowerCase(); if (seen.has(l)) return false; seen.add(l); return true; }).join(' '); })());
-              const searches = [
-                { name: 'eBay', color: '#e53238', bg: 'rgba(229,50,56,0.1)', url: `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1` },
-                { name: 'Poshmark', color: '#7f0353', bg: 'rgba(127,3,83,0.1)', url: `https://poshmark.com/search?query=${q}&type=listings&src=dir` },
-                { name: 'Mercari', color: '#4dc9f6', bg: 'rgba(77,201,246,0.1)', url: `https://www.mercari.com/search/?keyword=${q}` },
-                { name: 'StockX', color: '#0d9e4f', bg: 'rgba(13,158,79,0.1)', url: `https://stockx.com/search?s=${q}` },
-                { name: 'Facebook', color: '#1877f2', bg: 'rgba(24,119,242,0.1)', url: `https://www.facebook.com/marketplace/search/?query=${q}` },
-                { name: 'Google', color: '#4285f4', bg: 'rgba(66,133,244,0.1)', url: `https://www.google.com/search?q=${q}+price&tbm=shop` },
-              ];
+              const searchTerms = (() => { const seen = new Set(); return [selected.name, selected.brand, selected.model].filter(Boolean).join(' ').split(/\s+/).filter(w => { const l = w.toLowerCase(); if (seen.has(l)) return false; seen.add(l); return true; }).join(' '); })();
+              const searches = getMarketplacesForCategory(selected.category, searchTerms);
               return (
                 <div style={{marginBottom:12}}>
                   <p style={{fontSize:11,color:'#64748b',marginBottom:8,textTransform:'uppercase',letterSpacing:0.5}}>Quick Search (tap to find comps)</p>
@@ -2326,7 +2396,7 @@ const App = () => {
                           <input className="form-input" type="number" value={compForm.price} onChange={e => updateCompForm('price',e.target.value)} placeholder="Price" style={{...inputStyle,paddingLeft:28}}/>
                         </div>
                         <select value={compForm.source} onChange={e => updateCompForm('source',e.target.value)} style={{...inputStyle,cursor:'pointer'}}>
-                          {['eBay','Poshmark','Mercari','StockX','Facebook Marketplace','Craigslist','The RealReal','Vestiaire','Other'].map(s => <option key={s} value={s}>{s}</option>)}
+                          {compSourceOptions.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </div>
                       <select value={compForm.condition} onChange={e => updateCompForm('condition',e.target.value)} style={{...inputStyle,cursor:'pointer'}}>
@@ -2383,7 +2453,7 @@ const App = () => {
                       <input className="form-input" type="number" value={compForm.price} onChange={e => updateCompForm('price',e.target.value)} placeholder="Price" style={{...inputStyle,paddingLeft:28}}/>
                     </div>
                     <select value={compForm.source} onChange={e => updateCompForm('source',e.target.value)} style={{...inputStyle,cursor:'pointer'}}>
-                      {['eBay','Poshmark','Mercari','StockX','Facebook Marketplace','Craigslist','The RealReal','Vestiaire','Other'].map(s => <option key={s} value={s}>{s}</option>)}
+                      {compSourceOptions.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                   <select value={compForm.condition} onChange={e => updateCompForm('condition',e.target.value)} style={{...inputStyle,cursor:'pointer'}}>
@@ -2568,16 +2638,10 @@ const App = () => {
           );
         })()}
 
-        {/* Smart Search Links on Pricing Screen */}
+        {/* Smart Search Links on Pricing Screen - category-aware */}
         {selected && (() => {
-          const q = encodeURIComponent((() => { const seen = new Set(); return [selected.name, selected.brand, selected.model].filter(Boolean).join(' ').split(/\s+/).filter(w => { const l = w.toLowerCase(); if (seen.has(l)) return false; seen.add(l); return true; }).join(' '); })());
-          const searches = [
-            { name: 'eBay Sold', color: '#e53238', bg: 'rgba(229,50,56,0.1)', url: `https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1` },
-            { name: 'Poshmark', color: '#7f0353', bg: 'rgba(127,3,83,0.1)', url: `https://poshmark.com/search?query=${q}&type=listings&src=dir` },
-            { name: 'Mercari', color: '#4dc9f6', bg: 'rgba(77,201,246,0.1)', url: `https://www.mercari.com/search/?keyword=${q}` },
-            { name: 'StockX', color: '#0d9e4f', bg: 'rgba(13,158,79,0.1)', url: `https://stockx.com/search?s=${q}` },
-            { name: 'Google Shopping', color: '#4285f4', bg: 'rgba(66,133,244,0.1)', url: `https://www.google.com/search?q=${q}+price&tbm=shop` },
-          ];
+          const searchTerms = (() => { const seen = new Set(); return [selected.name, selected.brand, selected.model].filter(Boolean).join(' ').split(/\s+/).filter(w => { const l = w.toLowerCase(); if (seen.has(l)) return false; seen.add(l); return true; }).join(' '); })();
+          const searches = getMarketplacesForCategory(selected.category, searchTerms);
           return (
             <div className="glass" style={{borderRadius:16,padding:20,marginBottom:20}}>
               <h3 style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:6}}>Research Prices</h3>
@@ -2733,7 +2797,10 @@ const App = () => {
                       <p className="text-dim" style={{fontSize:11,marginTop:3}}>{days !== '--' ? `${days}d` : '--'}</p>
                     </div>
                   </div>
-                  {item.dateSold && <p className="text-dim" style={{fontSize:10,marginTop:8}}>Sold {new Date(item.dateSold).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</p>}
+                  <div style={{display:'flex',gap:8,alignItems:'center',marginTop:8}}>
+                    {item.soldPlatform && <span style={{fontSize:10,color:'#d4a853',background:'rgba(212,168,83,0.1)',padding:'2px 8px',borderRadius:6,fontWeight:600}}>via {item.soldPlatform}</span>}
+                    {item.dateSold && <span className="text-dim" style={{fontSize:10}}>Sold {new Date(item.dateSold).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>}
+                  </div>
                 </div>
               );
             })}
@@ -3040,7 +3107,7 @@ const App = () => {
             {
               emoji: '🔍',
               title: 'Research Comparable Prices',
-              body: 'Open any item and scroll to "Comparable Listings." Use the quick search links to search eBay, Poshmark, Mercari, and more for similar items.',
+              body: 'Open any item and scroll to "Comparable Listings." Use the quick search links to search eBay, Amazon, TCGPlayer, Chrono24, and 20+ marketplaces matched to your item category.',
               tip: 'The more comps you add, the more accurate your market value becomes.',
             },
             {
