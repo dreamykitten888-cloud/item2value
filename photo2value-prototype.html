@@ -22,6 +22,7 @@
   input, select { font-family: 'DM Sans', system-ui, sans-serif; }
   .form-input:focus { border-color: rgba(212,168,83,0.5) !important; outline: none; }
 
+  @keyframes slideDown { from { opacity:0; transform:translate(-50%,-20px); } to { opacity:1; transform:translate(-50%,0); } }
   @keyframes slideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
   @keyframes slideRight { from { opacity:0; transform:translateX(-24px); } to { opacity:1; transform:translateX(0); } }
   @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
@@ -331,6 +332,8 @@ const App = () => {
   const [profile, setProfile] = useState(loadProfile);
   const [items, setItems] = useState(loadItems);
   const [screen, setScreen] = useState(loadProfile() ? 'home' : 'setup');
+  const [toastMsg, setToastMsg] = useState('');
+  const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(''), 2500); };
   const [editingProfile, setEditingProfile] = useState(false);
   const profileNameRef = useRef(null);
   const profileEmailRef = useRef(null);
@@ -2277,9 +2280,10 @@ const App = () => {
             logEvent(supabaseUserIdRef.current, 'item_added', { name: newItem.name, category: newItem.category, cost: newItem.cost });
           }
           resetAddForm();
+          showToast(`${newItem.name} saved to inventory!`);
           setScreen('inventory');
-        }} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12}}>
-          Save to Inventory
+        }} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginBottom:12,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <span style={{fontSize:16}}>💾</span> Save Item
         </button>
         <button onClick={() => {resetAddForm();setScreen('home');}} style={{width:'100%',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',color:'#fff',fontSize:14,fontWeight:600,cursor:'pointer'}}>
           Cancel
@@ -2641,6 +2645,31 @@ const App = () => {
                   }}/>
               </div>
 
+              {/* Quick Sold Toggle */}
+              {!hasSold && currentAsking > 0 && (
+                <button onClick={() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  setItems(prev => prev.map(it => it.id === selected.id ? {...it, earnings: currentAsking, dateSold: it.dateSold || today} : it));
+                  showToast(`${selected.name} marked as sold!`);
+                  if (supabaseUserIdRef.current) {
+                    logEvent(supabaseUserIdRef.current, 'item_sold', { name: selected.name, earnings: currentAsking, cost: selected.cost, profit: currentAsking - (selected.cost || 0) });
+                  }
+                }} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'12px 16px',borderRadius:12,border:'1px solid rgba(34,197,94,0.3)',background:'rgba(34,197,94,0.08)',cursor:'pointer',marginBottom:12}}>
+                  <span style={{fontSize:14}}>💰</span>
+                  <span style={{fontSize:13,fontWeight:600,color:'#4ade80'}}>Sold at {fmt(currentAsking)}</span>
+                  <span className="text-dim" style={{fontSize:11}}>(tap to mark sold)</span>
+                </button>
+              )}
+
+              {/* Sold confirmation badge */}
+              {hasSold && (
+                <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',borderRadius:10,background:'rgba(34,197,94,0.08)',border:'1px solid rgba(34,197,94,0.2)',marginBottom:12}}>
+                  <span style={{fontSize:14}}>✅</span>
+                  <span style={{fontSize:12,fontWeight:600,color:'#4ade80'}}>Sold for {fmt(currentEarnings)}</span>
+                  <span className="text-dim" style={{fontSize:11,marginLeft:'auto'}}>Tap Earnings to edit</span>
+                </div>
+              )}
+
               {/* Sold Platform (only show when item is sold) */}
               {hasSold && (
                 <div style={{marginBottom:12}}>
@@ -2654,20 +2683,20 @@ const App = () => {
                 </div>
               )}
 
-              {/* Date fields */}
-              <div style={{display:'grid',gridTemplateColumns: hasSold ? '1fr 1fr' : '1fr',gap:10,marginBottom:16}}>
-                <div>
+              {/* Date fields - spaced for mobile calendar picker */}
+              <div style={{display:'grid',gridTemplateColumns: hasSold ? '1fr 1fr' : '1fr',gap:10,marginBottom:16,position:'relative',zIndex:1}}>
+                <div style={{position:'relative'}}>
                   <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8,marginBottom:4}}>Date Purchased</p>
                   <input type="date" value={selected.datePurchased || ''} onChange={e => {
                     setItems(prev => prev.map(it => it.id === selected.id ? {...it, datePurchased: e.target.value || null} : it));
-                  }} style={{width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:12,outline:'none',fontFamily:'DM Sans, sans-serif',colorScheme:'dark'}}/>
+                  }} style={{width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'10px 10px',color:'#fff',fontSize:12,outline:'none',fontFamily:'DM Sans, sans-serif',colorScheme:'dark',boxSizing:'border-box',minHeight:44}}/>
                 </div>
                 {hasSold && (
-                  <div>
+                  <div style={{position:'relative'}}>
                     <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.8,marginBottom:4}}>Date Sold</p>
                     <input type="date" value={selected.dateSold || ''} onChange={e => {
                       setItems(prev => prev.map(it => it.id === selected.id ? {...it, dateSold: e.target.value || null} : it));
-                    }} style={{width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:12,outline:'none',fontFamily:'DM Sans, sans-serif',colorScheme:'dark'}}/>
+                    }} style={{width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'10px 10px',color:'#fff',fontSize:12,outline:'none',fontFamily:'DM Sans, sans-serif',colorScheme:'dark',boxSizing:'border-box',minHeight:44}}/>
                   </div>
                 )}
               </div>
@@ -3510,6 +3539,13 @@ const App = () => {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Toast Notification */}
+        {toastMsg && (
+          <div style={{position:'absolute',top:60,left:'50%',transform:'translateX(-50%)',zIndex:100,background:'rgba(34,197,94,0.95)',color:'#fff',padding:'12px 24px',borderRadius:12,fontSize:14,fontWeight:600,boxShadow:'0 8px 32px rgba(0,0,0,0.4)',animation:'slideDown 0.3s ease-out',display:'flex',alignItems:'center',gap:8}}>
+            <span>✅</span> {toastMsg}
           </div>
         )}
 
