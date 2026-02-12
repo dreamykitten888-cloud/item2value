@@ -374,6 +374,165 @@ const App = () => {
   const [discoverCategory, setDiscoverCategory] = useState('All');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchInputRef = useRef(null);
+  const [addItemQuery, setAddItemQuery] = useState('');
+  const [showAddSuggestions, setShowAddSuggestions] = useState(false);
+
+  /* ── Product Knowledge Base (for autocomplete across Discover + Add Item) ── */
+  const PRODUCT_DB = [
+    // Fashion
+    {name:'Louis Vuitton Neverfull',brand:'Louis Vuitton',model:'Neverfull MM',cat:'Fashion',emoji:'👜'},
+    {name:'Chanel Classic Flap',brand:'Chanel',model:'Classic Flap',cat:'Fashion',emoji:'👜'},
+    {name:'Hermes Birkin Bag',brand:'Hermes',model:'Birkin 30',cat:'Fashion',emoji:'👜'},
+    {name:'Gucci GG Marmont',brand:'Gucci',model:'GG Marmont',cat:'Fashion',emoji:'👜'},
+    {name:'Nike Air Jordan 1',brand:'Nike',model:'Air Jordan 1',cat:'Fashion',emoji:'👟'},
+    {name:'Nike Air Force 1',brand:'Nike',model:'Air Force 1',cat:'Fashion',emoji:'👟'},
+    {name:'Nike Dunk Low',brand:'Nike',model:'Dunk Low',cat:'Fashion',emoji:'👟'},
+    {name:'Adidas Yeezy Boost 350',brand:'Adidas',model:'Yeezy Boost 350',cat:'Fashion',emoji:'👟'},
+    {name:'New Balance 550',brand:'New Balance',model:'550',cat:'Fashion',emoji:'👟'},
+    {name:'Supreme Box Logo Hoodie',brand:'Supreme',model:'Box Logo',cat:'Fashion',emoji:'🧥'},
+    {name:'Canada Goose Parka',brand:'Canada Goose',model:'Expedition Parka',cat:'Fashion',emoji:'🧥'},
+    {name:'Ray-Ban Wayfarer',brand:'Ray-Ban',model:'Wayfarer',cat:'Fashion',emoji:'👜'},
+    {name:'Lululemon Align Leggings',brand:'Lululemon',model:'Align',cat:'Fashion',emoji:'👜'},
+    // Electronics
+    {name:'Apple iPhone 15 Pro',brand:'Apple',model:'iPhone 15 Pro',cat:'Electronics',emoji:'📱'},
+    {name:'Apple MacBook Pro',brand:'Apple',model:'MacBook Pro M3',cat:'Electronics',emoji:'💻'},
+    {name:'Apple iPad Pro',brand:'Apple',model:'iPad Pro 12.9"',cat:'Electronics',emoji:'💻'},
+    {name:'Apple AirPods Pro',brand:'Apple',model:'AirPods Pro 2',cat:'Electronics',emoji:'📱'},
+    {name:'Sony PlayStation 5',brand:'Sony',model:'PlayStation 5',cat:'Electronics',emoji:'🎮'},
+    {name:'Nintendo Switch OLED',brand:'Nintendo',model:'Switch OLED',cat:'Electronics',emoji:'🎮'},
+    {name:'Xbox Series X',brand:'Microsoft',model:'Series X',cat:'Electronics',emoji:'🎮'},
+    {name:'Sony A7 IV Camera',brand:'Sony',model:'A7 IV',cat:'Electronics',emoji:'📷'},
+    {name:'Canon EOS R5',brand:'Canon',model:'EOS R5',cat:'Electronics',emoji:'📷'},
+    {name:'Samsung Galaxy S24',brand:'Samsung',model:'Galaxy S24 Ultra',cat:'Electronics',emoji:'📱'},
+    {name:'Bose QuietComfort Ultra',brand:'Bose',model:'QuietComfort Ultra',cat:'Electronics',emoji:'📱'},
+    {name:'Dyson Airwrap',brand:'Dyson',model:'Airwrap Complete',cat:'Electronics',emoji:'📱'},
+    {name:'DJI Mini 4 Pro Drone',brand:'DJI',model:'Mini 4 Pro',cat:'Electronics',emoji:'📷'},
+    {name:'Meta Quest 3',brand:'Meta',model:'Quest 3',cat:'Electronics',emoji:'🎮'},
+    // Watches
+    {name:'Rolex Submariner',brand:'Rolex',model:'Submariner',cat:'Watches',emoji:'⌚'},
+    {name:'Rolex Daytona',brand:'Rolex',model:'Daytona',cat:'Watches',emoji:'⌚'},
+    {name:'Omega Speedmaster',brand:'Omega',model:'Speedmaster Professional',cat:'Watches',emoji:'⌚'},
+    {name:'Patek Philippe Nautilus',brand:'Patek Philippe',model:'Nautilus 5711',cat:'Watches',emoji:'⌚'},
+    {name:'Tudor Black Bay',brand:'Tudor',model:'Black Bay 58',cat:'Watches',emoji:'⌚'},
+    {name:'Seiko Presage',brand:'Seiko',model:'Presage',cat:'Watches',emoji:'⌚'},
+    {name:'Casio G-Shock',brand:'Casio',model:'G-Shock DW-5600',cat:'Watches',emoji:'⌚'},
+    {name:'Apple Watch Ultra',brand:'Apple',model:'Watch Ultra 2',cat:'Watches',emoji:'⌚'},
+    {name:'Cartier Tank',brand:'Cartier',model:'Tank Francaise',cat:'Watches',emoji:'⌚'},
+    // Home
+    {name:'Herman Miller Aeron',brand:'Herman Miller',model:'Aeron',cat:'Home',emoji:'🪑'},
+    {name:'Dyson V15 Detect',brand:'Dyson',model:'V15 Detect',cat:'Home',emoji:'🪑'},
+    {name:'KitchenAid Stand Mixer',brand:'KitchenAid',model:'Artisan',cat:'Home',emoji:'🍲'},
+    {name:'Le Creuset Dutch Oven',brand:'Le Creuset',model:'Dutch Oven',cat:'Home',emoji:'🍲'},
+    {name:'Vitamix Blender',brand:'Vitamix',model:'A3500',cat:'Home',emoji:'🍲'},
+    {name:'Roomba Robot Vacuum',brand:'iRobot',model:'Roomba j7+',cat:'Home',emoji:'🪑'},
+    {name:'Bonsai Tree',brand:'',model:'',cat:'Home',emoji:'🪑'},
+    {name:'Mid-Century Modern Chair',brand:'',model:'',cat:'Home',emoji:'🪑'},
+    {name:'Vintage Rug',brand:'',model:'',cat:'Home',emoji:'🪑'},
+    // Trading Cards
+    {name:'Pokemon Charizard',brand:'Pokemon',model:'Charizard VMAX',cat:'Trading Cards',emoji:'🎮'},
+    {name:'Pokemon Pikachu',brand:'Pokemon',model:'Pikachu VMAX',cat:'Trading Cards',emoji:'🎮'},
+    {name:'Magic The Gathering Black Lotus',brand:'MTG',model:'Black Lotus',cat:'Trading Cards',emoji:'🎮'},
+    {name:'Yu-Gi-Oh Blue Eyes White Dragon',brand:'Yu-Gi-Oh',model:'Blue-Eyes White Dragon',cat:'Trading Cards',emoji:'🎮'},
+    {name:'Pokemon Booster Box',brand:'Pokemon',model:'Booster Box',cat:'Trading Cards',emoji:'🎮'},
+    {name:'Sports Card Topps',brand:'Topps',model:'Baseball Card',cat:'Trading Cards',emoji:'🎮'},
+    {name:'Panini Prizm Basketball',brand:'Panini',model:'Prizm',cat:'Trading Cards',emoji:'🎮'},
+    {name:'Disney Lorcana',brand:'Disney',model:'Lorcana',cat:'Trading Cards',emoji:'🎮'},
+    {name:'One Piece Card Game',brand:'Bandai',model:'One Piece TCG',cat:'Trading Cards',emoji:'🎮'},
+    // Collectibles
+    {name:'Funko Pop Marvel',brand:'Funko',model:'Pop! Marvel',cat:'Collectibles',emoji:'📦'},
+    {name:'Funko Pop Star Wars',brand:'Funko',model:'Pop! Star Wars',cat:'Collectibles',emoji:'📦'},
+    {name:'Funko Pop Anime',brand:'Funko',model:'Pop! Anime',cat:'Collectibles',emoji:'📦'},
+    {name:'Hot Toys Figure',brand:'Hot Toys',model:'',cat:'Collectibles',emoji:'📦'},
+    {name:'Bearbrick 1000%',brand:'Medicom',model:'Bearbrick',cat:'Collectibles',emoji:'📦'},
+    {name:'KAWS Companion',brand:'KAWS',model:'Companion',cat:'Collectibles',emoji:'📦'},
+    {name:'Sideshow Collectibles Statue',brand:'Sideshow',model:'Premium Format',cat:'Collectibles',emoji:'📦'},
+    {name:'Vintage Comic Book',brand:'',model:'',cat:'Collectibles',emoji:'📦'},
+    {name:'Sports Memorabilia',brand:'',model:'',cat:'Collectibles',emoji:'📦'},
+    {name:'Signed Autograph',brand:'',model:'',cat:'Collectibles',emoji:'📦'},
+    // Vinyl & Music
+    {name:'Vinyl Record Beatles',brand:'The Beatles',model:'Abbey Road',cat:'Vinyl & Music',emoji:'🎸'},
+    {name:'Vinyl Record Pink Floyd',brand:'Pink Floyd',model:'Dark Side of the Moon',cat:'Vinyl & Music',emoji:'🎸'},
+    {name:'Vinyl Record Taylor Swift',brand:'Taylor Swift',model:'1989',cat:'Vinyl & Music',emoji:'🎸'},
+    {name:'Vintage Turntable',brand:'Technics',model:'SL-1200',cat:'Vinyl & Music',emoji:'🎸'},
+    {name:'Limited Edition Vinyl',brand:'',model:'',cat:'Vinyl & Music',emoji:'🎸'},
+    // LEGO
+    {name:'LEGO Star Wars',brand:'LEGO',model:'Millennium Falcon',cat:'LEGO',emoji:'📦'},
+    {name:'LEGO Technic',brand:'LEGO',model:'Technic',cat:'LEGO',emoji:'📦'},
+    {name:'LEGO Creator Expert',brand:'LEGO',model:'Creator Expert',cat:'LEGO',emoji:'📦'},
+    {name:'LEGO Architecture',brand:'LEGO',model:'Architecture',cat:'LEGO',emoji:'📦'},
+    {name:'LEGO Ideas',brand:'LEGO',model:'Ideas',cat:'LEGO',emoji:'📦'},
+    {name:'LEGO City',brand:'LEGO',model:'City',cat:'LEGO',emoji:'📦'},
+    // Books
+    {name:'First Edition Harry Potter',brand:'J.K. Rowling',model:'First Edition',cat:'Books',emoji:'📦'},
+    {name:'Signed Book',brand:'',model:'Signed Copy',cat:'Books',emoji:'📦'},
+    {name:'Vintage Comic Book',brand:'',model:'',cat:'Books',emoji:'📦'},
+    {name:'Manga Collection',brand:'',model:'',cat:'Books',emoji:'📦'},
+    {name:'Rare Textbook',brand:'',model:'',cat:'Books',emoji:'📦'},
+    // Coins & Stamps
+    {name:'Silver Eagle Coin',brand:'US Mint',model:'American Silver Eagle',cat:'Coins & Stamps',emoji:'💎'},
+    {name:'Gold Coin',brand:'',model:'',cat:'Coins & Stamps',emoji:'💎'},
+    {name:'Morgan Silver Dollar',brand:'US Mint',model:'Morgan Dollar',cat:'Coins & Stamps',emoji:'💎'},
+    {name:'Rare Stamp Collection',brand:'',model:'',cat:'Coins & Stamps',emoji:'💎'},
+    {name:'PCGS Graded Coin',brand:'PCGS',model:'',cat:'Coins & Stamps',emoji:'💎'},
+    // Sports
+    {name:'Golf Clubs',brand:'Titleist',model:'',cat:'Sports',emoji:'📦'},
+    {name:'Tennis Racket',brand:'Wilson',model:'Pro Staff',cat:'Sports',emoji:'📦'},
+    {name:'Peloton Bike',brand:'Peloton',model:'Bike+',cat:'Sports',emoji:'📦'},
+    {name:'Yeti Cooler',brand:'Yeti',model:'Tundra',cat:'Sports',emoji:'📦'},
+    // Art
+    {name:'Original Painting',brand:'',model:'',cat:'Art',emoji:'🖼️'},
+    {name:'Limited Print',brand:'',model:'',cat:'Art',emoji:'🖼️'},
+    {name:'Sculpture',brand:'',model:'',cat:'Art',emoji:'🖼️'},
+    {name:'Photography Print',brand:'',model:'',cat:'Art',emoji:'🖼️'},
+    // Automotive
+    {name:'Car Parts',brand:'',model:'',cat:'Automotive',emoji:'📦'},
+    {name:'Vintage Car Accessory',brand:'',model:'',cat:'Automotive',emoji:'📦'},
+    {name:'Wheels and Tires',brand:'',model:'',cat:'Automotive',emoji:'📦'},
+    // Tools
+    {name:'Milwaukee Power Drill',brand:'Milwaukee',model:'M18',cat:'Tools',emoji:'📦'},
+    {name:'DeWalt Table Saw',brand:'DeWalt',model:'',cat:'Tools',emoji:'📦'},
+    {name:'Snap-On Tool Set',brand:'Snap-On',model:'',cat:'Tools',emoji:'📦'},
+    // Toys
+    {name:'Vintage Star Wars Figure',brand:'Kenner',model:'',cat:'Toys',emoji:'📦'},
+    {name:'Transformers Figure',brand:'Hasbro',model:'',cat:'Toys',emoji:'📦'},
+    {name:'American Girl Doll',brand:'American Girl',model:'',cat:'Toys',emoji:'📦'},
+    {name:'Hot Wheels',brand:'Mattel',model:'Hot Wheels',cat:'Toys',emoji:'📦'},
+    {name:'Barbie Collector',brand:'Mattel',model:'Barbie',cat:'Toys',emoji:'📦'},
+  ];
+
+  const getSuggestions = (query, limit = 8) => {
+    if (!query || query.trim().length === 0) return [];
+    const q = query.toLowerCase().trim();
+    const words = q.split(/\s+/);
+
+    // 1. Match from user's own inventory
+    const myItems = items
+      .map(i => ({ text: [i.name, i.brand, i.model].filter(Boolean).join(' '), emoji: i.emoji, brand: i.brand, model: i.model, source: 'inventory' }))
+      .filter(i => words.every(w => i.text.toLowerCase().includes(w)))
+      .slice(0, 3);
+
+    // 2. Match from product knowledge base
+    const dbMatches = PRODUCT_DB
+      .filter(p => words.every(w => (p.name + ' ' + p.brand + ' ' + p.model).toLowerCase().includes(w)))
+      .filter(p => !myItems.some(m => m.text.toLowerCase() === p.name.toLowerCase()))
+      .slice(0, 4)
+      .map(p => ({ text: p.name, emoji: p.emoji, brand: p.brand, model: p.model, source: 'suggested' }));
+
+    // 3. Dynamic smart suggestions (for queries that don't match anything)
+    const dynamicSuggestions = [];
+    if (myItems.length + dbMatches.length < 3) {
+      const suffixes = ['vintage','used','new','rare','limited edition','lot','set','collection','parts','accessories','case','box','original'];
+      const prefixes = ['vintage','rare','signed','limited','custom','original','authentic'];
+      suffixes.forEach(s => {
+        if (!q.includes(s)) dynamicSuggestions.push({ text: `${query.trim()} ${s}`, emoji: '🔍', brand: '', model: '', source: 'dynamic' });
+      });
+      prefixes.forEach(p => {
+        if (!q.includes(p)) dynamicSuggestions.push({ text: `${p} ${query.trim()}`, emoji: '🔍', brand: '', model: '', source: 'dynamic' });
+      });
+    }
+
+    return [...myItems, ...dbMatches, ...dynamicSuggestions.slice(0, Math.max(0, limit - myItems.length - dbMatches.length))].slice(0, limit);
+  };
   const [communityComps, setCommunityComps] = useState([]);
   const [researchQuery, setResearchQuery] = useState('');
   const [researchData, setResearchData] = useState(null);
@@ -1140,24 +1299,7 @@ const App = () => {
             />
             {/* Autocomplete Suggestions Dropdown */}
             {showSuggestions && discoverQuery.trim().length > 0 && (() => {
-              const q = discoverQuery.toLowerCase().trim();
-              // Match from user's own inventory
-              const myItems = items
-                .map(i => ({ text: [i.name, i.brand, i.model].filter(Boolean).join(' '), emoji: i.emoji, source: 'inventory' }))
-                .filter(i => i.text.toLowerCase().includes(q))
-                .slice(0, 4);
-              // Common/trending search suggestions
-              const trending = [
-                'Nike Air Jordan 1','Louis Vuitton Neverfull','Rolex Submariner','Pokemon Charizard','Sony PlayStation 5',
-                'Funko Pop Marvel','Apple iPhone','Nintendo Switch','Vintage Vinyl Beatles','LEGO Star Wars',
-                'Air Force 1','Yeezy Boost 350','Canon EOS R5','Herman Miller Aeron','Ray-Ban Wayfarer',
-                'Supreme Box Logo','Dyson Airwrap','MacBook Pro','Bose QuietComfort','Omega Speedmaster',
-                'Magic The Gathering Black Lotus','Yu-Gi-Oh Blue Eyes','Comic Book Spider-Man','Baseball Cards Topps',
-                'Patek Philippe Nautilus','Tudor Black Bay','Birkin Bag Hermes','Chanel Classic Flap',
-              ].filter(s => s.toLowerCase().includes(q) && !myItems.some(m => m.text.toLowerCase() === s.toLowerCase()))
-               .slice(0, 4)
-               .map(s => ({ text: s, emoji: '🔍', source: 'trending' }));
-              const suggestions = [...myItems, ...trending];
+              const suggestions = getSuggestions(discoverQuery);
               if (suggestions.length === 0) return null;
               return (
                 <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:50,marginTop:4,background:'#1a1a2e',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,overflow:'hidden',boxShadow:'0 8px 32px rgba(0,0,0,0.5)'}}>
@@ -1170,8 +1312,8 @@ const App = () => {
                       <div style={{flex:1,minWidth:0}}>
                         <p className="truncate" style={{fontSize:13,color:'#fff',fontWeight:500}}>{s.text}</p>
                       </div>
-                      <span style={{fontSize:10,color: s.source === 'inventory' ? '#d4a853' : '#64748b',background: s.source === 'inventory' ? 'rgba(212,168,83,0.1)' : 'rgba(255,255,255,0.04)',padding:'2px 8px',borderRadius:6,fontWeight:600}}>
-                        {s.source === 'inventory' ? 'My Items' : 'Popular'}
+                      <span style={{fontSize:10,color: s.source === 'inventory' ? '#d4a853' : s.source === 'suggested' ? '#a855f7' : '#64748b',background: s.source === 'inventory' ? 'rgba(212,168,83,0.1)' : s.source === 'suggested' ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.04)',padding:'2px 8px',borderRadius:6,fontWeight:600}}>
+                        {s.source === 'inventory' ? 'My Items' : s.source === 'suggested' ? 'Suggested' : 'Try this'}
                       </span>
                     </div>
                   ))}
@@ -1677,8 +1819,9 @@ const App = () => {
     setScanData(null);
   };
 
-  // Pre-fill Add Item form when coming from scan
+  // Reset autocomplete when entering add-item screen; pre-fill from scan
   useEffect(() => {
+    if (screen === 'add-item') { setAddItemQuery(''); setShowAddSuggestions(false); }
     if (screen === 'add-item' && scanData) {
       setTimeout(() => {
         if (formRefs.name.current && scanData.name) formRefs.name.current.value = scanData.name;
@@ -1755,9 +1898,48 @@ const App = () => {
           </div>
         </FormField>
 
-        {/* Item name */}
+        {/* Item name with autocomplete */}
         <FormField label="Item Name" required>
-          <input ref={formRefs.name} className="form-input" defaultValue="" placeholder="e.g. Louis Vuitton Neverfull MM" style={inputStyle}/>
+          <div style={{position:'relative'}}>
+            <input ref={formRefs.name} className="form-input" defaultValue="" placeholder="e.g. Louis Vuitton Neverfull MM" style={inputStyle}
+              onChange={e => { setAddItemQuery(e.target.value); setShowAddSuggestions(e.target.value.trim().length > 0); }}
+              onFocus={e => { if (e.target.value.trim().length > 0) setShowAddSuggestions(true); }}
+              onBlur={() => setTimeout(() => setShowAddSuggestions(false), 200)}
+              autoComplete="off"/>
+            {showAddSuggestions && addItemQuery.trim().length > 0 && (() => {
+              const suggestions = getSuggestions(addItemQuery);
+              if (suggestions.length === 0) return null;
+              return (
+                <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:50,marginTop:4,background:'#1a1a2e',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,overflow:'hidden',boxShadow:'0 8px 32px rgba(0,0,0,0.5)',maxHeight:240,overflowY:'auto'}}>
+                  {suggestions.map((s, i) => (
+                    <div key={i} onMouseDown={e => e.preventDefault()} onClick={() => {
+                      if (formRefs.name.current) formRefs.name.current.value = s.text;
+                      if (formRefs.brand.current && s.brand) formRefs.brand.current.value = s.brand;
+                      if (formRefs.model.current && s.model) formRefs.model.current.value = s.model;
+                      const matched = PRODUCT_DB.find(p => p.name.toLowerCase() === s.text.toLowerCase());
+                      if (matched) {
+                        if (matched.emoji) setAddFormUI(prev => ({...prev, emoji: matched.emoji}));
+                        if (matched.cat) setAddFormUI(prev => ({...prev, category: matched.cat}));
+                      }
+                      setAddItemQuery(''); setShowAddSuggestions(false);
+                    }}
+                      style={{padding:'12px 16px',display:'flex',alignItems:'center',gap:10,cursor:'pointer',borderBottom: i < suggestions.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',background:'transparent'}}
+                      onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
+                      onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <span style={{fontSize:14}}>{s.emoji}</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        <p className="truncate" style={{fontSize:13,color:'#fff',fontWeight:500}}>{s.text}</p>
+                        {s.brand && <p style={{fontSize:10,color:'rgba(255,255,255,0.4)',marginTop:1}}>{[s.brand, s.model].filter(Boolean).join(' · ')}</p>}
+                      </div>
+                      <span style={{fontSize:10,color: s.source === 'inventory' ? '#d4a853' : s.source === 'suggested' ? '#a855f7' : '#64748b',background: s.source === 'inventory' ? 'rgba(212,168,83,0.1)' : s.source === 'suggested' ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.04)',padding:'2px 8px',borderRadius:6,fontWeight:600}}>
+                        {s.source === 'inventory' ? 'My Items' : s.source === 'suggested' ? 'Suggested' : 'Try this'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
         </FormField>
 
         {/* Brand + Model row */}
