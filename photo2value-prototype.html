@@ -1789,10 +1789,71 @@ const App = () => {
     'Craigslist':      { color:'#5a0e8f', bg:'rgba(90,14,143,0.08)', urlFn: q => `https://www.craigslist.org/search/sss?query=${q}`, desc:'Local classifieds', categories:['Home','Automotive','Electronics','Tools'] },
   };
 
+  // Keyword hints to infer category from search query
+  const CATEGORY_KEYWORDS = {
+    'Fashion': ['shirt','dress','jacket','jeans','sneaker','shoe','boots','bag','purse','handbag','wallet','belt','hat','sunglasses','coat','hoodie','sweater','denim','leather','nike','adidas','jordan','yeezy','supreme','gucci','louis vuitton','chanel','prada','balenciaga','poshmark','grailed','streetwear','vintage clothing','designer'],
+    'Electronics': ['phone','laptop','tablet','camera','headphones','speaker','monitor','gpu','cpu','console','playstation','xbox','nintendo','switch','iphone','ipad','macbook','samsung','sony','apple','airpods','tv','drone','keyboard','mouse','projector','router'],
+    'Home': ['furniture','lamp','rug','plant','bonsai','vase','chair','table','desk','shelf','mirror','clock','decor','candle','pillow','blanket','kitchen','cookware','appliance','blender','pottery','ceramic'],
+    'Watches': ['watch','rolex','omega','seiko','casio','cartier','patek','audemars','breitling','tudor','tag heuer','chronograph','timepiece','wristwatch','g-shock'],
+    'Art': ['painting','sculpture','print','lithograph','canvas','artwork','drawing','illustration','poster','photograph','signed art','limited print','fine art','abstract','oil painting'],
+    'Sports': ['baseball','football','basketball','soccer','tennis','golf','hockey','bat','glove','jersey','helmet','racket','athletic','fitness','weights','bike','cycling','skiing','surfboard'],
+    'Collectibles': ['antique','vintage','memorabilia','figurine','statue','prop','funko','pop vinyl','bobblehead','pin','badge','medal','action figure','collectible','signed','autograph','limited edition'],
+    'Trading Cards': ['pokemon','magic the gathering','mtg','yugioh','baseball card','football card','sports card','tcg','charizard','psa','bgs','graded card','booster','pack','topps','panini','upper deck'],
+    'Vinyl & Music': ['vinyl','record','album','lp','turntable','cassette','cd','band','concert','pressing','first press','discogs','beatles','pink floyd'],
+    'LEGO': ['lego','brick','minifig','minifigure','lego set','technic','star wars lego','creator','modular','bricklink'],
+    'Books': ['book','novel','first edition','signed copy','hardcover','paperback','comic','manga','graphic novel','textbook','rare book','manuscript'],
+    'Coins & Stamps': ['coin','penny','quarter','dollar','stamp','bullion','silver','gold coin','numismatic','mint','proof','currency','banknote','medal'],
+    'Toys': ['toy','doll','barbie','hot wheels','transformer','nerf','board game','puzzle','plush','stuffed animal','rc car','model kit','train set'],
+    'Automotive': ['car','truck','motorcycle','wheel','tire','bumper','engine','exhaust','headlight','seat','steering','obd','auto part','classic car','vintage car'],
+    'Tools': ['drill','saw','wrench','hammer','screwdriver','tool set','power tool','dewalt','milwaukee','makita','craftsman','welder','compressor','level','measuring'],
+  };
+
+  const inferCategoriesFromQuery = (query) => {
+    if (!query || !query.trim()) return [];
+    const q = query.toLowerCase().trim();
+    const matched = new Set();
+
+    // Check PRODUCT_DB first for exact/partial matches
+    PRODUCT_DB.forEach(p => {
+      const pText = (p.name + ' ' + p.brand + ' ' + p.model).toLowerCase();
+      if (q.split(/\s+/).every(w => pText.includes(w)) || pText.includes(q)) {
+        matched.add(p.cat);
+      }
+    });
+
+    // Check keyword hints
+    Object.entries(CATEGORY_KEYWORDS).forEach(([cat, keywords]) => {
+      if (keywords.some(kw => q.includes(kw) || kw.includes(q))) {
+        matched.add(cat);
+      }
+    });
+
+    return [...matched];
+  };
+
   const getMarketplacesForCategory = (category, query) => {
     const q = encodeURIComponent(query);
+
+    // If a specific category is selected (not "All"), use it directly
+    let effectiveCategories = null;
+    if (category && category !== 'All') {
+      effectiveCategories = [category];
+    } else if (query && query.trim()) {
+      // Infer categories from the search query
+      effectiveCategories = inferCategoriesFromQuery(query);
+    }
+
     return Object.entries(ALL_MARKETPLACES)
-      .filter(([_, mp]) => mp.categories === 'all' || (Array.isArray(mp.categories) && (!category || category === 'All' || mp.categories.includes(category))))
+      .filter(([_, mp]) => {
+        // Universal marketplaces always show
+        if (mp.categories === 'all') return true;
+        // If we have effective categories, only show marketplaces matching those
+        if (effectiveCategories && effectiveCategories.length > 0) {
+          return Array.isArray(mp.categories) && mp.categories.some(c => effectiveCategories.includes(c));
+        }
+        // No category and no query match: only show universal marketplaces
+        return false;
+      })
       .map(([name, mp]) => ({ name, color: mp.color, bg: mp.bg, url: mp.urlFn(q), desc: mp.desc }));
   };
 
