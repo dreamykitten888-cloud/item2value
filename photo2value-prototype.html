@@ -372,6 +372,7 @@ const App = () => {
   const [discoverResults, setDiscoverResults] = useState([]);
   const [discoverLoading, setDiscoverLoading] = useState(false);
   const [discoverCategory, setDiscoverCategory] = useState('All');
+  const [discoverSearched, setDiscoverSearched] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchInputRef = useRef(null);
   const [addItemQuery, setAddItemQuery] = useState('');
@@ -379,125 +380,229 @@ const App = () => {
 
   /* ── Product Knowledge Base (for autocomplete across Discover + Add Item) ── */
   const PRODUCT_DB = [
-    // Fashion
-    {name:'Louis Vuitton Neverfull',brand:'Louis Vuitton',model:'Neverfull MM',cat:'Fashion',emoji:'👜'},
-    {name:'Chanel Classic Flap',brand:'Chanel',model:'Classic Flap',cat:'Fashion',emoji:'👜'},
-    {name:'Hermes Birkin Bag',brand:'Hermes',model:'Birkin 30',cat:'Fashion',emoji:'👜'},
+    // Fashion - Bags
+    {name:'Louis Vuitton Neverfull MM',brand:'Louis Vuitton',model:'Neverfull MM',cat:'Fashion',emoji:'👜'},
+    {name:'Louis Vuitton Speedy 30',brand:'Louis Vuitton',model:'Speedy 30',cat:'Fashion',emoji:'👜'},
+    {name:'Louis Vuitton Pochette Metis',brand:'Louis Vuitton',model:'Pochette Metis',cat:'Fashion',emoji:'👜'},
+    {name:'Chanel Classic Flap Medium',brand:'Chanel',model:'Classic Flap Medium',cat:'Fashion',emoji:'👜'},
+    {name:'Chanel Boy Bag',brand:'Chanel',model:'Boy Bag',cat:'Fashion',emoji:'👜'},
+    {name:'Hermes Birkin 25',brand:'Hermes',model:'Birkin 25',cat:'Fashion',emoji:'👜'},
+    {name:'Hermes Birkin 30',brand:'Hermes',model:'Birkin 30',cat:'Fashion',emoji:'👜'},
+    {name:'Hermes Kelly 28',brand:'Hermes',model:'Kelly 28',cat:'Fashion',emoji:'👜'},
     {name:'Gucci GG Marmont',brand:'Gucci',model:'GG Marmont',cat:'Fashion',emoji:'👜'},
-    {name:'Nike Air Jordan 1',brand:'Nike',model:'Air Jordan 1',cat:'Fashion',emoji:'👟'},
-    {name:'Nike Air Force 1',brand:'Nike',model:'Air Force 1',cat:'Fashion',emoji:'👟'},
-    {name:'Nike Dunk Low',brand:'Nike',model:'Dunk Low',cat:'Fashion',emoji:'👟'},
-    {name:'Adidas Yeezy Boost 350',brand:'Adidas',model:'Yeezy Boost 350',cat:'Fashion',emoji:'👟'},
-    {name:'New Balance 550',brand:'New Balance',model:'550',cat:'Fashion',emoji:'👟'},
-    {name:'Supreme Box Logo Hoodie',brand:'Supreme',model:'Box Logo',cat:'Fashion',emoji:'🧥'},
-    {name:'Canada Goose Parka',brand:'Canada Goose',model:'Expedition Parka',cat:'Fashion',emoji:'🧥'},
+    {name:'Gucci Dionysus',brand:'Gucci',model:'Dionysus',cat:'Fashion',emoji:'👜'},
+    // Fashion - Sneakers (with colorways)
+    {name:'Jordan 1 Retro High Chicago',brand:'Nike',model:'Air Jordan 1 High OG',cat:'Fashion',emoji:'👟'},
+    {name:'Jordan 1 Retro High Bred',brand:'Nike',model:'Air Jordan 1 High OG',cat:'Fashion',emoji:'👟'},
+    {name:'Jordan 1 Retro High Royal',brand:'Nike',model:'Air Jordan 1 High OG',cat:'Fashion',emoji:'👟'},
+    {name:'Jordan 1 Retro Low Travis Scott',brand:'Nike',model:'Air Jordan 1 Low',cat:'Fashion',emoji:'👟'},
+    {name:'Jordan 4 Retro Bred',brand:'Nike',model:'Air Jordan 4',cat:'Fashion',emoji:'👟'},
+    {name:'Jordan 4 Retro Military Black',brand:'Nike',model:'Air Jordan 4',cat:'Fashion',emoji:'👟'},
+    {name:'Jordan 11 Retro Concord',brand:'Nike',model:'Air Jordan 11',cat:'Fashion',emoji:'👟'},
+    {name:'Nike Dunk Low Panda',brand:'Nike',model:'Dunk Low',cat:'Fashion',emoji:'👟'},
+    {name:'Nike Dunk Low Grey Fog',brand:'Nike',model:'Dunk Low',cat:'Fashion',emoji:'👟'},
+    {name:'Nike Air Force 1 Low White',brand:'Nike',model:'Air Force 1 07',cat:'Fashion',emoji:'👟'},
+    {name:'Nike Air Max 90',brand:'Nike',model:'Air Max 90',cat:'Fashion',emoji:'👟'},
+    {name:'Nike Air Max 1',brand:'Nike',model:'Air Max 1',cat:'Fashion',emoji:'👟'},
+    {name:'Adidas Yeezy Boost 350 V2 Zebra',brand:'Adidas',model:'Yeezy Boost 350 V2',cat:'Fashion',emoji:'👟'},
+    {name:'Adidas Yeezy Boost 350 V2 Bred',brand:'Adidas',model:'Yeezy Boost 350 V2',cat:'Fashion',emoji:'👟'},
+    {name:'Adidas Yeezy Slide Onyx',brand:'Adidas',model:'Yeezy Slide',cat:'Fashion',emoji:'👟'},
+    {name:'Adidas Samba OG',brand:'Adidas',model:'Samba OG',cat:'Fashion',emoji:'👟'},
+    {name:'New Balance 550 White Green',brand:'New Balance',model:'550',cat:'Fashion',emoji:'👟'},
+    {name:'New Balance 2002R',brand:'New Balance',model:'2002R',cat:'Fashion',emoji:'👟'},
+    {name:'ASICS Gel-Kayano 14',brand:'ASICS',model:'Gel-Kayano 14',cat:'Fashion',emoji:'👟'},
+    // Fashion - Apparel
+    {name:'Supreme Box Logo Hoodie',brand:'Supreme',model:'Box Logo Hoodie',cat:'Fashion',emoji:'🧥'},
+    {name:'Canada Goose Expedition Parka',brand:'Canada Goose',model:'Expedition Parka',cat:'Fashion',emoji:'🧥'},
+    {name:'North Face Nuptse 700',brand:'The North Face',model:'Nuptse 700',cat:'Fashion',emoji:'🧥'},
+    {name:'Lululemon Align Leggings',brand:'Lululemon',model:'Align 25"',cat:'Fashion',emoji:'👜'},
     {name:'Ray-Ban Wayfarer',brand:'Ray-Ban',model:'Wayfarer',cat:'Fashion',emoji:'👜'},
-    {name:'Lululemon Align Leggings',brand:'Lululemon',model:'Align',cat:'Fashion',emoji:'👜'},
-    // Electronics
-    {name:'Apple iPhone 15 Pro',brand:'Apple',model:'iPhone 15 Pro',cat:'Electronics',emoji:'📱'},
-    {name:'Apple MacBook Pro',brand:'Apple',model:'MacBook Pro M3',cat:'Electronics',emoji:'💻'},
-    {name:'Apple iPad Pro',brand:'Apple',model:'iPad Pro 12.9"',cat:'Electronics',emoji:'💻'},
-    {name:'Apple AirPods Pro',brand:'Apple',model:'AirPods Pro 2',cat:'Electronics',emoji:'📱'},
-    {name:'Sony PlayStation 5',brand:'Sony',model:'PlayStation 5',cat:'Electronics',emoji:'🎮'},
+    {name:'Patagonia Retro-X Fleece',brand:'Patagonia',model:'Retro-X',cat:'Fashion',emoji:'🧥'},
+    // Electronics - iPhones (with model/year depth)
+    {name:'iPhone 16 Pro Max',brand:'Apple',model:'iPhone 16 Pro Max',cat:'Electronics',emoji:'📱'},
+    {name:'iPhone 16 Pro',brand:'Apple',model:'iPhone 16 Pro',cat:'Electronics',emoji:'📱'},
+    {name:'iPhone 16',brand:'Apple',model:'iPhone 16',cat:'Electronics',emoji:'📱'},
+    {name:'iPhone 15 Pro Max',brand:'Apple',model:'iPhone 15 Pro Max',cat:'Electronics',emoji:'📱'},
+    {name:'iPhone 15 Pro',brand:'Apple',model:'iPhone 15 Pro',cat:'Electronics',emoji:'📱'},
+    {name:'iPhone 15',brand:'Apple',model:'iPhone 15',cat:'Electronics',emoji:'📱'},
+    {name:'iPhone 14 Pro Max',brand:'Apple',model:'iPhone 14 Pro Max',cat:'Electronics',emoji:'📱'},
+    {name:'iPhone 14 Pro',brand:'Apple',model:'iPhone 14 Pro',cat:'Electronics',emoji:'📱'},
+    {name:'iPhone 14',brand:'Apple',model:'iPhone 14',cat:'Electronics',emoji:'📱'},
+    {name:'iPhone 13 Pro',brand:'Apple',model:'iPhone 13 Pro',cat:'Electronics',emoji:'📱'},
+    {name:'iPhone 13',brand:'Apple',model:'iPhone 13',cat:'Electronics',emoji:'📱'},
+    {name:'iPhone SE 2022',brand:'Apple',model:'iPhone SE 3rd Gen',cat:'Electronics',emoji:'📱'},
+    // Electronics - Samsung
+    {name:'Samsung Galaxy S24 Ultra',brand:'Samsung',model:'Galaxy S24 Ultra',cat:'Electronics',emoji:'📱'},
+    {name:'Samsung Galaxy S24',brand:'Samsung',model:'Galaxy S24',cat:'Electronics',emoji:'📱'},
+    {name:'Samsung Galaxy S23 Ultra',brand:'Samsung',model:'Galaxy S23 Ultra',cat:'Electronics',emoji:'📱'},
+    {name:'Samsung Galaxy Z Fold 5',brand:'Samsung',model:'Galaxy Z Fold 5',cat:'Electronics',emoji:'📱'},
+    {name:'Samsung Galaxy Z Flip 5',brand:'Samsung',model:'Galaxy Z Flip 5',cat:'Electronics',emoji:'📱'},
+    // Electronics - Laptops
+    {name:'MacBook Pro 16 M3 Max',brand:'Apple',model:'MacBook Pro 16" M3 Max',cat:'Electronics',emoji:'💻'},
+    {name:'MacBook Pro 14 M3 Pro',brand:'Apple',model:'MacBook Pro 14" M3 Pro',cat:'Electronics',emoji:'💻'},
+    {name:'MacBook Air 15 M3',brand:'Apple',model:'MacBook Air 15" M3',cat:'Electronics',emoji:'💻'},
+    {name:'MacBook Air 13 M3',brand:'Apple',model:'MacBook Air 13" M3',cat:'Electronics',emoji:'💻'},
+    // Electronics - Other
+    {name:'iPad Pro 12.9 M2',brand:'Apple',model:'iPad Pro 12.9" M2',cat:'Electronics',emoji:'💻'},
+    {name:'iPad Air M2',brand:'Apple',model:'iPad Air M2',cat:'Electronics',emoji:'💻'},
+    {name:'AirPods Pro 2',brand:'Apple',model:'AirPods Pro 2nd Gen',cat:'Electronics',emoji:'📱'},
+    {name:'AirPods Max',brand:'Apple',model:'AirPods Max',cat:'Electronics',emoji:'📱'},
+    {name:'PlayStation 5 Slim',brand:'Sony',model:'PS5 Slim',cat:'Electronics',emoji:'🎮'},
+    {name:'PlayStation 5 Digital',brand:'Sony',model:'PS5 Digital',cat:'Electronics',emoji:'🎮'},
     {name:'Nintendo Switch OLED',brand:'Nintendo',model:'Switch OLED',cat:'Electronics',emoji:'🎮'},
     {name:'Xbox Series X',brand:'Microsoft',model:'Series X',cat:'Electronics',emoji:'🎮'},
-    {name:'Sony A7 IV Camera',brand:'Sony',model:'A7 IV',cat:'Electronics',emoji:'📷'},
-    {name:'Canon EOS R5',brand:'Canon',model:'EOS R5',cat:'Electronics',emoji:'📷'},
-    {name:'Samsung Galaxy S24',brand:'Samsung',model:'Galaxy S24 Ultra',cat:'Electronics',emoji:'📱'},
-    {name:'Bose QuietComfort Ultra',brand:'Bose',model:'QuietComfort Ultra',cat:'Electronics',emoji:'📱'},
-    {name:'Dyson Airwrap',brand:'Dyson',model:'Airwrap Complete',cat:'Electronics',emoji:'📱'},
-    {name:'DJI Mini 4 Pro Drone',brand:'DJI',model:'Mini 4 Pro',cat:'Electronics',emoji:'📷'},
+    {name:'Steam Deck OLED',brand:'Valve',model:'Steam Deck OLED',cat:'Electronics',emoji:'🎮'},
     {name:'Meta Quest 3',brand:'Meta',model:'Quest 3',cat:'Electronics',emoji:'🎮'},
-    // Watches
-    {name:'Rolex Submariner',brand:'Rolex',model:'Submariner',cat:'Watches',emoji:'⌚'},
-    {name:'Rolex Daytona',brand:'Rolex',model:'Daytona',cat:'Watches',emoji:'⌚'},
-    {name:'Omega Speedmaster',brand:'Omega',model:'Speedmaster Professional',cat:'Watches',emoji:'⌚'},
-    {name:'Patek Philippe Nautilus',brand:'Patek Philippe',model:'Nautilus 5711',cat:'Watches',emoji:'⌚'},
-    {name:'Tudor Black Bay',brand:'Tudor',model:'Black Bay 58',cat:'Watches',emoji:'⌚'},
-    {name:'Seiko Presage',brand:'Seiko',model:'Presage',cat:'Watches',emoji:'⌚'},
-    {name:'Casio G-Shock',brand:'Casio',model:'G-Shock DW-5600',cat:'Watches',emoji:'⌚'},
-    {name:'Apple Watch Ultra',brand:'Apple',model:'Watch Ultra 2',cat:'Watches',emoji:'⌚'},
-    {name:'Cartier Tank',brand:'Cartier',model:'Tank Francaise',cat:'Watches',emoji:'⌚'},
+    {name:'Sony A7 IV',brand:'Sony',model:'A7 IV',cat:'Electronics',emoji:'📷'},
+    {name:'Canon EOS R5',brand:'Canon',model:'EOS R5',cat:'Electronics',emoji:'📷'},
+    {name:'DJI Mini 4 Pro',brand:'DJI',model:'Mini 4 Pro',cat:'Electronics',emoji:'📷'},
+    {name:'DJI Mavic 3 Pro',brand:'DJI',model:'Mavic 3 Pro',cat:'Electronics',emoji:'📷'},
+    {name:'GoPro Hero 12',brand:'GoPro',model:'Hero 12 Black',cat:'Electronics',emoji:'📷'},
+    {name:'Bose QuietComfort Ultra',brand:'Bose',model:'QC Ultra Headphones',cat:'Electronics',emoji:'📱'},
+    {name:'Sony WH-1000XM5',brand:'Sony',model:'WH-1000XM5',cat:'Electronics',emoji:'📱'},
+    {name:'Dyson Airwrap Complete',brand:'Dyson',model:'Airwrap Complete',cat:'Electronics',emoji:'📱'},
+    // Watches - Rolex variants
+    {name:'Rolex Submariner Date',brand:'Rolex',model:'Submariner 126610LN',cat:'Watches',emoji:'⌚'},
+    {name:'Rolex Submariner No Date',brand:'Rolex',model:'Submariner 124060',cat:'Watches',emoji:'⌚'},
+    {name:'Rolex Daytona Ceramic',brand:'Rolex',model:'Daytona 116500LN',cat:'Watches',emoji:'⌚'},
+    {name:'Rolex GMT-Master II Pepsi',brand:'Rolex',model:'GMT-Master II 126710BLRO',cat:'Watches',emoji:'⌚'},
+    {name:'Rolex GMT-Master II Batman',brand:'Rolex',model:'GMT-Master II 126710BLNR',cat:'Watches',emoji:'⌚'},
+    {name:'Rolex Datejust 41',brand:'Rolex',model:'Datejust 126334',cat:'Watches',emoji:'⌚'},
+    {name:'Rolex Explorer I',brand:'Rolex',model:'Explorer 124270',cat:'Watches',emoji:'⌚'},
+    // Watches - Other brands
+    {name:'Omega Speedmaster Moonwatch',brand:'Omega',model:'Speedmaster 310.30.42.50',cat:'Watches',emoji:'⌚'},
+    {name:'Omega Seamaster 300M',brand:'Omega',model:'Seamaster Diver 300M',cat:'Watches',emoji:'⌚'},
+    {name:'Patek Philippe Nautilus 5711',brand:'Patek Philippe',model:'Nautilus 5711/1A',cat:'Watches',emoji:'⌚'},
+    {name:'Patek Philippe Aquanaut',brand:'Patek Philippe',model:'Aquanaut 5167A',cat:'Watches',emoji:'⌚'},
+    {name:'Audemars Piguet Royal Oak 41mm',brand:'Audemars Piguet',model:'Royal Oak 15500ST',cat:'Watches',emoji:'⌚'},
+    {name:'Tudor Black Bay 58',brand:'Tudor',model:'Black Bay 58 79030N',cat:'Watches',emoji:'⌚'},
+    {name:'Tudor Pelagos',brand:'Tudor',model:'Pelagos 25600TN',cat:'Watches',emoji:'⌚'},
+    {name:'Seiko Presage Cocktail Time',brand:'Seiko',model:'Presage SRPB41',cat:'Watches',emoji:'⌚'},
+    {name:'Seiko SKX009',brand:'Seiko',model:'SKX009',cat:'Watches',emoji:'⌚'},
+    {name:'Casio G-Shock DW-5600',brand:'Casio',model:'G-Shock DW-5600E',cat:'Watches',emoji:'⌚'},
+    {name:'Casio G-Shock CasiOak',brand:'Casio',model:'G-Shock GA-2100',cat:'Watches',emoji:'⌚'},
+    {name:'Apple Watch Ultra 2',brand:'Apple',model:'Watch Ultra 2',cat:'Watches',emoji:'⌚'},
+    {name:'Cartier Tank Francaise',brand:'Cartier',model:'Tank Francaise',cat:'Watches',emoji:'⌚'},
+    {name:'Cartier Santos Medium',brand:'Cartier',model:'Santos de Cartier',cat:'Watches',emoji:'⌚'},
     // Home
-    {name:'Herman Miller Aeron',brand:'Herman Miller',model:'Aeron',cat:'Home',emoji:'🪑'},
+    {name:'Herman Miller Aeron',brand:'Herman Miller',model:'Aeron Size B',cat:'Home',emoji:'🪑'},
+    {name:'Herman Miller Eames Lounge',brand:'Herman Miller',model:'Eames Lounge Chair',cat:'Home',emoji:'🪑'},
     {name:'Dyson V15 Detect',brand:'Dyson',model:'V15 Detect',cat:'Home',emoji:'🪑'},
-    {name:'KitchenAid Stand Mixer',brand:'KitchenAid',model:'Artisan',cat:'Home',emoji:'🍲'},
-    {name:'Le Creuset Dutch Oven',brand:'Le Creuset',model:'Dutch Oven',cat:'Home',emoji:'🍲'},
-    {name:'Vitamix Blender',brand:'Vitamix',model:'A3500',cat:'Home',emoji:'🍲'},
-    {name:'Roomba Robot Vacuum',brand:'iRobot',model:'Roomba j7+',cat:'Home',emoji:'🪑'},
-    {name:'Bonsai Tree',brand:'',model:'',cat:'Home',emoji:'🪑'},
+    {name:'KitchenAid Artisan Mixer',brand:'KitchenAid',model:'Artisan 5qt',cat:'Home',emoji:'🍲'},
+    {name:'Le Creuset Dutch Oven',brand:'Le Creuset',model:'Round Dutch Oven 5.5qt',cat:'Home',emoji:'🍲'},
+    {name:'Vitamix A3500',brand:'Vitamix',model:'A3500',cat:'Home',emoji:'🍲'},
+    {name:'Roomba j7+',brand:'iRobot',model:'Roomba j7+',cat:'Home',emoji:'🪑'},
+    {name:'Bonsai Tree',brand:'',model:'',cat:'Home',emoji:'🪴'},
     {name:'Mid-Century Modern Chair',brand:'',model:'',cat:'Home',emoji:'🪑'},
-    {name:'Vintage Rug',brand:'',model:'',cat:'Home',emoji:'🪑'},
-    // Trading Cards
-    {name:'Pokemon Charizard',brand:'Pokemon',model:'Charizard VMAX',cat:'Trading Cards',emoji:'🎮'},
-    {name:'Pokemon Pikachu',brand:'Pokemon',model:'Pikachu VMAX',cat:'Trading Cards',emoji:'🎮'},
-    {name:'Magic The Gathering Black Lotus',brand:'MTG',model:'Black Lotus',cat:'Trading Cards',emoji:'🎮'},
-    {name:'Yu-Gi-Oh Blue Eyes White Dragon',brand:'Yu-Gi-Oh',model:'Blue-Eyes White Dragon',cat:'Trading Cards',emoji:'🎮'},
-    {name:'Pokemon Booster Box',brand:'Pokemon',model:'Booster Box',cat:'Trading Cards',emoji:'🎮'},
-    {name:'Sports Card Topps',brand:'Topps',model:'Baseball Card',cat:'Trading Cards',emoji:'🎮'},
-    {name:'Panini Prizm Basketball',brand:'Panini',model:'Prizm',cat:'Trading Cards',emoji:'🎮'},
-    {name:'Disney Lorcana',brand:'Disney',model:'Lorcana',cat:'Trading Cards',emoji:'🎮'},
-    {name:'One Piece Card Game',brand:'Bandai',model:'One Piece TCG',cat:'Trading Cards',emoji:'🎮'},
-    // Collectibles
-    {name:'Funko Pop Marvel',brand:'Funko',model:'Pop! Marvel',cat:'Collectibles',emoji:'📦'},
-    {name:'Funko Pop Star Wars',brand:'Funko',model:'Pop! Star Wars',cat:'Collectibles',emoji:'📦'},
-    {name:'Funko Pop Anime',brand:'Funko',model:'Pop! Anime',cat:'Collectibles',emoji:'📦'},
-    {name:'Hot Toys Figure',brand:'Hot Toys',model:'',cat:'Collectibles',emoji:'📦'},
-    {name:'Bearbrick 1000%',brand:'Medicom',model:'Bearbrick',cat:'Collectibles',emoji:'📦'},
-    {name:'KAWS Companion',brand:'KAWS',model:'Companion',cat:'Collectibles',emoji:'📦'},
-    {name:'Sideshow Collectibles Statue',brand:'Sideshow',model:'Premium Format',cat:'Collectibles',emoji:'📦'},
-    {name:'Vintage Comic Book',brand:'',model:'',cat:'Collectibles',emoji:'📦'},
-    {name:'Sports Memorabilia',brand:'',model:'',cat:'Collectibles',emoji:'📦'},
-    {name:'Signed Autograph',brand:'',model:'',cat:'Collectibles',emoji:'📦'},
+    {name:'Vintage Persian Rug',brand:'',model:'',cat:'Home',emoji:'🪑'},
+    {name:'Breville Barista Express',brand:'Breville',model:'Barista Express',cat:'Home',emoji:'🍲'},
+    // Trading Cards - Pokemon (with specific sets)
+    {name:'Pokemon Charizard VMAX',brand:'Pokemon',model:'Charizard VMAX 074/073',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Pokemon Charizard Base Set',brand:'Pokemon',model:'Charizard 4/102',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Pokemon Pikachu Illustrator',brand:'Pokemon',model:'Pikachu Illustrator',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Pokemon Booster Box Scarlet Violet',brand:'Pokemon',model:'Scarlet & Violet Booster Box',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Pokemon Booster Box Evolving Skies',brand:'Pokemon',model:'Evolving Skies Booster Box',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Pokemon ETB 151',brand:'Pokemon',model:'151 Elite Trainer Box',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Pokemon Japanese Booster Box',brand:'Pokemon',model:'Japanese Booster Box',cat:'Trading Cards',emoji:'🃏'},
+    // Trading Cards - MTG
+    {name:'MTG Black Lotus',brand:'Magic: The Gathering',model:'Black Lotus Alpha',cat:'Trading Cards',emoji:'🃏'},
+    {name:'MTG Underground Sea',brand:'Magic: The Gathering',model:'Underground Sea Revised',cat:'Trading Cards',emoji:'🃏'},
+    {name:'MTG Mox Pearl',brand:'Magic: The Gathering',model:'Mox Pearl',cat:'Trading Cards',emoji:'🃏'},
+    // Trading Cards - Sports
+    {name:'Topps Baseball Card',brand:'Topps',model:'Baseball Card',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Panini Prizm Basketball',brand:'Panini',model:'Prizm Basketball',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Panini Prizm Football',brand:'Panini',model:'Prizm Football',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Bowman Chrome Baseball',brand:'Bowman',model:'Chrome Baseball',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Upper Deck Hockey',brand:'Upper Deck',model:'Hockey Card',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Disney Lorcana Booster Box',brand:'Disney',model:'Lorcana Booster Box',cat:'Trading Cards',emoji:'🃏'},
+    {name:'One Piece Card Game Booster',brand:'Bandai',model:'One Piece TCG Booster',cat:'Trading Cards',emoji:'🃏'},
+    {name:'Yu-Gi-Oh Blue-Eyes White Dragon',brand:'Yu-Gi-Oh',model:'Blue-Eyes White Dragon LOB',cat:'Trading Cards',emoji:'🃏'},
+    // Collectibles - Comics (with specific issues)
+    {name:'Amazing Spider-Man #129',brand:'Marvel',model:'1st Punisher',cat:'Collectibles',emoji:'📚'},
+    {name:'Amazing Spider-Man #300',brand:'Marvel',model:'1st Venom',cat:'Collectibles',emoji:'📚'},
+    {name:'Amazing Spider-Man #1',brand:'Marvel',model:'1st Issue 1963',cat:'Collectibles',emoji:'📚'},
+    {name:'Amazing Fantasy #15',brand:'Marvel',model:'1st Spider-Man',cat:'Collectibles',emoji:'📚'},
+    {name:'Incredible Hulk #181',brand:'Marvel',model:'1st Wolverine',cat:'Collectibles',emoji:'📚'},
+    {name:'X-Men #1 1963',brand:'Marvel',model:'1st X-Men',cat:'Collectibles',emoji:'📚'},
+    {name:'Batman #1 1940',brand:'DC Comics',model:'1st Issue',cat:'Collectibles',emoji:'📚'},
+    {name:'Detective Comics #27',brand:'DC Comics',model:'1st Batman',cat:'Collectibles',emoji:'📚'},
+    {name:'Action Comics #1',brand:'DC Comics',model:'1st Superman',cat:'Collectibles',emoji:'📚'},
+    {name:'Walking Dead #1',brand:'Image Comics',model:'1st Issue',cat:'Collectibles',emoji:'📚'},
+    // Collectibles - Figures
+    {name:'Funko Pop Marvel Spider-Man',brand:'Funko',model:'Pop! Spider-Man',cat:'Collectibles',emoji:'📦'},
+    {name:'Funko Pop Star Wars Grogu',brand:'Funko',model:'Pop! Grogu',cat:'Collectibles',emoji:'📦'},
+    {name:'Funko Pop Anime Naruto',brand:'Funko',model:'Pop! Naruto',cat:'Collectibles',emoji:'📦'},
+    {name:'Funko Pop Chase Variant',brand:'Funko',model:'Chase Variant',cat:'Collectibles',emoji:'📦'},
+    {name:'Hot Toys Iron Man Mark 85',brand:'Hot Toys',model:'Iron Man Mark LXXXV',cat:'Collectibles',emoji:'📦'},
+    {name:'Hot Toys Spider-Man',brand:'Hot Toys',model:'Spider-Man No Way Home',cat:'Collectibles',emoji:'📦'},
+    {name:'Bearbrick 1000%',brand:'Medicom',model:'Bearbrick 1000%',cat:'Collectibles',emoji:'📦'},
+    {name:'KAWS Companion Open Edition',brand:'KAWS',model:'Companion',cat:'Collectibles',emoji:'📦'},
+    {name:'Sideshow Premium Format',brand:'Sideshow',model:'Premium Format Statue',cat:'Collectibles',emoji:'📦'},
+    {name:'CGC Graded Comic',brand:'CGC',model:'Graded Comic Book',cat:'Collectibles',emoji:'📚'},
+    {name:'Sports Memorabilia Signed',brand:'',model:'Signed Item',cat:'Collectibles',emoji:'📦'},
     // Vinyl & Music
-    {name:'Vinyl Record Beatles',brand:'The Beatles',model:'Abbey Road',cat:'Vinyl & Music',emoji:'🎸'},
-    {name:'Vinyl Record Pink Floyd',brand:'Pink Floyd',model:'Dark Side of the Moon',cat:'Vinyl & Music',emoji:'🎸'},
-    {name:'Vinyl Record Taylor Swift',brand:'Taylor Swift',model:'1989',cat:'Vinyl & Music',emoji:'🎸'},
-    {name:'Vintage Turntable',brand:'Technics',model:'SL-1200',cat:'Vinyl & Music',emoji:'🎸'},
+    {name:'Beatles Abbey Road Vinyl',brand:'The Beatles',model:'Abbey Road LP',cat:'Vinyl & Music',emoji:'🎸'},
+    {name:'Pink Floyd Dark Side Vinyl',brand:'Pink Floyd',model:'Dark Side of the Moon LP',cat:'Vinyl & Music',emoji:'🎸'},
+    {name:'Taylor Swift 1989 Vinyl',brand:'Taylor Swift',model:'1989 TV LP',cat:'Vinyl & Music',emoji:'🎸'},
+    {name:'Nirvana Nevermind Vinyl',brand:'Nirvana',model:'Nevermind LP',cat:'Vinyl & Music',emoji:'🎸'},
+    {name:'Radiohead OK Computer Vinyl',brand:'Radiohead',model:'OK Computer LP',cat:'Vinyl & Music',emoji:'🎸'},
+    {name:'Technics SL-1200',brand:'Technics',model:'SL-1200MK7',cat:'Vinyl & Music',emoji:'🎸'},
     {name:'Limited Edition Vinyl',brand:'',model:'',cat:'Vinyl & Music',emoji:'🎸'},
-    // LEGO
-    {name:'LEGO Star Wars',brand:'LEGO',model:'Millennium Falcon',cat:'LEGO',emoji:'📦'},
-    {name:'LEGO Technic',brand:'LEGO',model:'Technic',cat:'LEGO',emoji:'📦'},
-    {name:'LEGO Creator Expert',brand:'LEGO',model:'Creator Expert',cat:'LEGO',emoji:'📦'},
-    {name:'LEGO Architecture',brand:'LEGO',model:'Architecture',cat:'LEGO',emoji:'📦'},
-    {name:'LEGO Ideas',brand:'LEGO',model:'Ideas',cat:'LEGO',emoji:'📦'},
-    {name:'LEGO City',brand:'LEGO',model:'City',cat:'LEGO',emoji:'📦'},
+    // LEGO (with set numbers)
+    {name:'LEGO Star Wars Millennium Falcon 75192',brand:'LEGO',model:'Millennium Falcon #75192',cat:'LEGO',emoji:'🧱'},
+    {name:'LEGO Star Wars AT-AT 75313',brand:'LEGO',model:'AT-AT #75313',cat:'LEGO',emoji:'🧱'},
+    {name:'LEGO Technic Bugatti Chiron',brand:'LEGO',model:'Bugatti Chiron #42083',cat:'LEGO',emoji:'🧱'},
+    {name:'LEGO Technic Lamborghini',brand:'LEGO',model:'Lamborghini Sian #42115',cat:'LEGO',emoji:'🧱'},
+    {name:'LEGO Creator Expert Taj Mahal',brand:'LEGO',model:'Taj Mahal #10256',cat:'LEGO',emoji:'🧱'},
+    {name:'LEGO Ideas Tree House',brand:'LEGO',model:'Tree House #21318',cat:'LEGO',emoji:'🧱'},
+    {name:'LEGO Architecture Colosseum',brand:'LEGO',model:'Colosseum #10276',cat:'LEGO',emoji:'🧱'},
+    {name:'LEGO City Police Station',brand:'LEGO',model:'Police Station',cat:'LEGO',emoji:'🧱'},
     // Books
-    {name:'First Edition Harry Potter',brand:'J.K. Rowling',model:'First Edition',cat:'Books',emoji:'📦'},
-    {name:'Signed Book',brand:'',model:'Signed Copy',cat:'Books',emoji:'📦'},
-    {name:'Vintage Comic Book',brand:'',model:'',cat:'Books',emoji:'📦'},
-    {name:'Manga Collection',brand:'',model:'',cat:'Books',emoji:'📦'},
-    {name:'Rare Textbook',brand:'',model:'',cat:'Books',emoji:'📦'},
+    {name:'Harry Potter First Edition Sorcerer Stone',brand:'J.K. Rowling',model:"Philosopher's Stone 1st Ed",cat:'Books',emoji:'📚'},
+    {name:'Harry Potter First Edition Chamber',brand:'J.K. Rowling',model:'Chamber of Secrets 1st Ed',cat:'Books',emoji:'📚'},
+    {name:'Signed Book Stephen King',brand:'Stephen King',model:'Signed First Edition',cat:'Books',emoji:'📚'},
+    {name:'Manga One Piece Box Set',brand:'Eiichiro Oda',model:'One Piece Box Set',cat:'Books',emoji:'📚'},
+    {name:'Manga Dragon Ball Complete',brand:'Akira Toriyama',model:'Dragon Ball Complete',cat:'Books',emoji:'📚'},
+    {name:'Rare First Edition',brand:'',model:'First Edition',cat:'Books',emoji:'📚'},
     // Coins & Stamps
-    {name:'Silver Eagle Coin',brand:'US Mint',model:'American Silver Eagle',cat:'Coins & Stamps',emoji:'💎'},
-    {name:'Gold Coin',brand:'',model:'',cat:'Coins & Stamps',emoji:'💎'},
-    {name:'Morgan Silver Dollar',brand:'US Mint',model:'Morgan Dollar',cat:'Coins & Stamps',emoji:'💎'},
+    {name:'American Silver Eagle 2024',brand:'US Mint',model:'Silver Eagle 1oz',cat:'Coins & Stamps',emoji:'💎'},
+    {name:'American Gold Eagle 1oz',brand:'US Mint',model:'Gold Eagle 1oz',cat:'Coins & Stamps',emoji:'💎'},
+    {name:'Morgan Silver Dollar 1921',brand:'US Mint',model:'Morgan Dollar 1921',cat:'Coins & Stamps',emoji:'💎'},
+    {name:'Morgan Silver Dollar 1878',brand:'US Mint',model:'Morgan Dollar 1878',cat:'Coins & Stamps',emoji:'💎'},
+    {name:'Peace Dollar',brand:'US Mint',model:'Peace Dollar',cat:'Coins & Stamps',emoji:'💎'},
+    {name:'PCGS MS-65 Graded Coin',brand:'PCGS',model:'MS-65 Graded',cat:'Coins & Stamps',emoji:'💎'},
+    {name:'Gold Krugerrand 1oz',brand:'South African Mint',model:'Krugerrand 1oz',cat:'Coins & Stamps',emoji:'💎'},
     {name:'Rare Stamp Collection',brand:'',model:'',cat:'Coins & Stamps',emoji:'💎'},
-    {name:'PCGS Graded Coin',brand:'PCGS',model:'',cat:'Coins & Stamps',emoji:'💎'},
     // Sports
-    {name:'Golf Clubs',brand:'Titleist',model:'',cat:'Sports',emoji:'📦'},
-    {name:'Tennis Racket',brand:'Wilson',model:'Pro Staff',cat:'Sports',emoji:'📦'},
-    {name:'Peloton Bike',brand:'Peloton',model:'Bike+',cat:'Sports',emoji:'📦'},
-    {name:'Yeti Cooler',brand:'Yeti',model:'Tundra',cat:'Sports',emoji:'📦'},
+    {name:'Titleist Pro V1 Golf Clubs',brand:'Titleist',model:'Pro V1',cat:'Sports',emoji:'⛳'},
+    {name:'Wilson Pro Staff Tennis Racket',brand:'Wilson',model:'Pro Staff 97',cat:'Sports',emoji:'🎾'},
+    {name:'Peloton Bike+',brand:'Peloton',model:'Bike+',cat:'Sports',emoji:'🚲'},
+    {name:'Yeti Tundra 65 Cooler',brand:'Yeti',model:'Tundra 65',cat:'Sports',emoji:'📦'},
+    {name:'Signed Baseball',brand:'',model:'Autographed',cat:'Sports',emoji:'⚾'},
+    {name:'Signed Basketball',brand:'',model:'Autographed',cat:'Sports',emoji:'🏀'},
     // Art
-    {name:'Original Painting',brand:'',model:'',cat:'Art',emoji:'🖼️'},
-    {name:'Limited Print',brand:'',model:'',cat:'Art',emoji:'🖼️'},
-    {name:'Sculpture',brand:'',model:'',cat:'Art',emoji:'🖼️'},
-    {name:'Photography Print',brand:'',model:'',cat:'Art',emoji:'🖼️'},
+    {name:'Original Oil Painting',brand:'',model:'',cat:'Art',emoji:'🖼️'},
+    {name:'Limited Edition Print Numbered',brand:'',model:'Numbered Print',cat:'Art',emoji:'🖼️'},
+    {name:'KAWS Print',brand:'KAWS',model:'Screenprint',cat:'Art',emoji:'🖼️'},
+    {name:'Banksy Print',brand:'Banksy',model:'',cat:'Art',emoji:'🖼️'},
+    {name:'Photography Print Signed',brand:'',model:'Signed Print',cat:'Art',emoji:'🖼️'},
     // Automotive
-    {name:'Car Parts',brand:'',model:'',cat:'Automotive',emoji:'📦'},
-    {name:'Vintage Car Accessory',brand:'',model:'',cat:'Automotive',emoji:'📦'},
-    {name:'Wheels and Tires',brand:'',model:'',cat:'Automotive',emoji:'📦'},
+    {name:'Car Parts OEM',brand:'',model:'OEM Parts',cat:'Automotive',emoji:'🚗'},
+    {name:'Vintage Car Accessory',brand:'',model:'',cat:'Automotive',emoji:'🚗'},
+    {name:'Aftermarket Wheels',brand:'',model:'',cat:'Automotive',emoji:'🚗'},
     // Tools
-    {name:'Milwaukee Power Drill',brand:'Milwaukee',model:'M18',cat:'Tools',emoji:'📦'},
-    {name:'DeWalt Table Saw',brand:'DeWalt',model:'',cat:'Tools',emoji:'📦'},
-    {name:'Snap-On Tool Set',brand:'Snap-On',model:'',cat:'Tools',emoji:'📦'},
+    {name:'Milwaukee M18 Fuel Drill',brand:'Milwaukee',model:'M18 Fuel',cat:'Tools',emoji:'🔧'},
+    {name:'DeWalt 20V Max Combo Kit',brand:'DeWalt',model:'20V Max',cat:'Tools',emoji:'🔧'},
+    {name:'Snap-On Socket Set',brand:'Snap-On',model:'Socket Set',cat:'Tools',emoji:'🔧'},
+    {name:'Festool Track Saw',brand:'Festool',model:'TS 55 REQ',cat:'Tools',emoji:'🔧'},
     // Toys
-    {name:'Vintage Star Wars Figure',brand:'Kenner',model:'',cat:'Toys',emoji:'📦'},
-    {name:'Transformers Figure',brand:'Hasbro',model:'',cat:'Toys',emoji:'📦'},
-    {name:'American Girl Doll',brand:'American Girl',model:'',cat:'Toys',emoji:'📦'},
-    {name:'Hot Wheels',brand:'Mattel',model:'Hot Wheels',cat:'Toys',emoji:'📦'},
-    {name:'Barbie Collector',brand:'Mattel',model:'Barbie',cat:'Toys',emoji:'📦'},
+    {name:'Vintage Star Wars Boba Fett',brand:'Kenner',model:'Boba Fett 1979',cat:'Toys',emoji:'🧸'},
+    {name:'Transformers G1 Optimus Prime',brand:'Hasbro',model:'G1 Optimus Prime',cat:'Toys',emoji:'🧸'},
+    {name:'American Girl Doll Samantha',brand:'American Girl',model:'Samantha',cat:'Toys',emoji:'🧸'},
+    {name:'Hot Wheels Treasure Hunt',brand:'Mattel',model:'Super Treasure Hunt',cat:'Toys',emoji:'🧸'},
+    {name:'Barbie Collector Limited',brand:'Mattel',model:'Barbie Collector',cat:'Toys',emoji:'🧸'},
+    {name:'Squishmallow 16 inch',brand:'Kellytoy',model:'Squishmallow 16"',cat:'Toys',emoji:'🧸'},
+    {name:'Beanie Baby Princess Diana',brand:'Ty',model:'Princess Bear',cat:'Toys',emoji:'🧸'},
   ];
 
   const getSuggestions = (query, limit = 8) => {
@@ -1256,6 +1361,8 @@ const App = () => {
 
   /* ── Discover Screen (Community Market Data) ── */
   const doDiscoverSearch = async (q, cat) => {
+    setDiscoverSearched(true);
+    setShowSuggestions(false);
     setDiscoverLoading(true);
     const results = await searchCommunityItems(q, cat);
     setDiscoverResults(results);
@@ -1297,20 +1404,21 @@ const App = () => {
               onKeyDown={e => { if (e.key === 'Enter') { setShowSuggestions(false); doDiscoverSearch(discoverQuery, discoverCategory); } }}
               style={{width:'100%',padding:'14px 16px 14px 40px',borderRadius:14,border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.06)',color:'#fff',fontSize:14}}
             />
-            {/* Autocomplete Suggestions Dropdown */}
+            {/* Autocomplete Suggestions Dropdown (fill bar only, no auto-search) */}
             {showSuggestions && discoverQuery.trim().length > 0 && (() => {
               const suggestions = getSuggestions(discoverQuery);
               if (suggestions.length === 0) return null;
               return (
-                <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:50,marginTop:4,background:'#1a1a2e',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,overflow:'hidden',boxShadow:'0 8px 32px rgba(0,0,0,0.5)'}}>
+                <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:50,marginTop:4,background:'#1a1a2e',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,overflow:'hidden',boxShadow:'0 8px 32px rgba(0,0,0,0.5)',maxHeight:280,overflowY:'auto'}}>
                   {suggestions.map((s, i) => (
-                    <div key={i} onClick={() => { setDiscoverQuery(s.text); setShowSuggestions(false); doDiscoverSearch(s.text, discoverCategory); }}
+                    <div key={i} onClick={() => { setDiscoverQuery(s.text); setShowSuggestions(false); }}
                       style={{padding:'12px 16px',display:'flex',alignItems:'center',gap:10,cursor:'pointer',borderBottom: i < suggestions.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',background:'transparent'}}
                       onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
                       onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                       <span style={{fontSize:14}}>{s.emoji}</span>
                       <div style={{flex:1,minWidth:0}}>
                         <p className="truncate" style={{fontSize:13,color:'#fff',fontWeight:500}}>{s.text}</p>
+                        {s.brand && <p style={{fontSize:10,color:'rgba(255,255,255,0.4)',marginTop:1}}>{[s.brand, s.model].filter(Boolean).join(' · ')}</p>}
                       </div>
                       <span style={{fontSize:10,color: s.source === 'inventory' ? '#d4a853' : s.source === 'suggested' ? '#a855f7' : '#64748b',background: s.source === 'inventory' ? 'rgba(212,168,83,0.1)' : s.source === 'suggested' ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.04)',padding:'2px 8px',borderRadius:6,fontWeight:600}}>
                         {s.source === 'inventory' ? 'My Items' : s.source === 'suggested' ? 'Suggested' : 'Try this'}
@@ -1336,7 +1444,7 @@ const App = () => {
         {/* Category Filter Chips */}
         <div className="scroll-hide" style={{padding:'4px 24px 12px',display:'flex',gap:8,overflowX:'auto'}}>
           {categories.map(cat => (
-            <button key={cat} onClick={() => { setDiscoverCategory(cat); if (discoverQuery || cat !== 'All') doDiscoverSearch(discoverQuery, cat); }}
+            <button key={cat} onClick={() => { setDiscoverCategory(cat); if (discoverSearched && discoverQuery) doDiscoverSearch(discoverQuery, cat); }}
               style={{padding:'6px 14px',borderRadius:20,border:'1px solid',whiteSpace:'nowrap',fontSize:12,fontWeight:600,cursor:'pointer',
                 borderColor: discoverCategory === cat ? '#d4a853' : 'rgba(255,255,255,0.1)',
                 background: discoverCategory === cat ? 'rgba(212,168,83,0.15)' : 'rgba(255,255,255,0.04)',
@@ -1348,8 +1456,65 @@ const App = () => {
         </div>
 
         <div style={{padding:'0 24px'}}>
+
+          {/* ── PHASE 1: Browse Mode (before search) ── */}
+          {!discoverSearched && !discoverQuery.trim() && (() => {
+            const showcaseCategories = [
+              {cat:'Trading Cards',emoji:'🃏',label:'Hot in Trading Cards',color:'#F5A623'},
+              {cat:'Fashion',emoji:'👟',label:'Trending in Fashion',color:'#a855f7'},
+              {cat:'Electronics',emoji:'📱',label:'Popular Electronics',color:'#3b82f6'},
+              {cat:'Watches',emoji:'⌚',label:'Watch Market',color:'#C8A951'},
+              {cat:'Collectibles',emoji:'📦',label:'Collectibles & Comics',color:'#ef4444'},
+              {cat:'LEGO',emoji:'🧱',label:'LEGO Sets',color:'#D01012'},
+              {cat:'Vinyl & Music',emoji:'🎸',label:'Vinyl & Music',color:'#22c55e'},
+              {cat:'Coins & Stamps',emoji:'💎',label:'Coins & Bullion',color:'#d4a853'},
+            ];
+            const filtered = discoverCategory === 'All' ? showcaseCategories : showcaseCategories.filter(sc => sc.cat === discoverCategory);
+            const catsToShow = filtered.length > 0 ? filtered : showcaseCategories;
+            return (
+              <div>
+                <p className="text-dim" style={{fontSize:11,textTransform:'uppercase',letterSpacing:0.8,marginBottom:12,fontWeight:600}}>Browse Categories</p>
+                {catsToShow.map(sc => {
+                  const catItems = PRODUCT_DB.filter(p => p.cat === sc.cat).slice(0, 3);
+                  return (
+                    <div key={sc.cat} className="glass anim-fade" style={{borderRadius:16,padding:16,marginBottom:12,border:`1px solid ${sc.color}22`}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                        <span style={{fontSize:16}}>{sc.emoji}</span>
+                        <p style={{fontSize:13,fontWeight:700,color:sc.color}}>{sc.label}</p>
+                      </div>
+                      <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                        {catItems.map((p, pi) => (
+                          <div key={pi} onClick={() => { setDiscoverQuery(p.name); setShowSuggestions(false); }}
+                            style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:10,background:'rgba(255,255,255,0.04)',cursor:'pointer'}}
+                            onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.08)'}
+                            onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                            <span style={{fontSize:14}}>{p.emoji}</span>
+                            <div style={{flex:1,minWidth:0}}>
+                              <p className="truncate" style={{fontSize:12,color:'#fff',fontWeight:500}}>{p.name}</p>
+                              {p.brand && <p style={{fontSize:10,color:'rgba(255,255,255,0.35)',marginTop:1}}>{p.brand}{p.model ? ' · ' + p.model : ''}</p>}
+                            </div>
+                            <span style={{fontSize:10,color:sc.color,fontWeight:600}}>Search →</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {/* ── PHASE 3: Search Results (after clicking Search Market) ── */}
+          {/* Back to Browse button */}
+          {discoverSearched && (
+            <button onClick={() => { setDiscoverSearched(false); setDiscoverQuery(''); setDiscoverResults([]); }}
+              style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',color:'#d4a853',fontSize:12,fontWeight:600,cursor:'pointer',padding:'0 0 12px',marginTop:4}}>
+              ← Back to Browse
+            </button>
+          )}
+
           {/* Web Marketplace Links - category-aware */}
-          {discoverQuery.trim() && (() => {
+          {discoverSearched && discoverQuery.trim() && (() => {
             const marketplaces = getMarketplacesForCategory(discoverCategory, discoverQuery);
             return (
               <div className="glass anim-fade" style={{borderRadius:16,padding:20,marginBottom:16,border:'1px solid rgba(212,168,83,0.15)'}}>
@@ -1380,7 +1545,7 @@ const App = () => {
           })()}
 
           {/* Community Results Header */}
-          {discoverQuery.trim() && !discoverLoading && (
+          {discoverSearched && discoverQuery.trim() && !discoverLoading && (
             <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
               <div style={{width:28,height:28,borderRadius:8,background:'linear-gradient(135deg,#a855f7,#7c3aed)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>👥</div>
               <div>
@@ -1398,17 +1563,17 @@ const App = () => {
             </div>
           )}
 
-          {/* Empty State (before search) */}
-          {!discoverLoading && discoverResults.length === 0 && !discoverQuery && (
-            <div style={{textAlign:'center',padding:'40px 0'}}>
-              <div style={{fontSize:48,marginBottom:16}}>🔍</div>
-              <p style={{fontSize:16,fontWeight:600,color:'#fff',marginBottom:8}}>Search the Market</p>
-              <p className="text-dim" style={{fontSize:13,lineHeight:1.5,maxWidth:280,margin:'0 auto'}}>Search for any item to see what it is buying and selling for across all PrÄperty users. Like a stock ticker for your stuff.</p>
+          {/* Prompt to search when query typed but not yet searched */}
+          {!discoverSearched && discoverQuery.trim() && (
+            <div style={{textAlign:'center',padding:'30px 0'}}>
+              <div style={{fontSize:36,marginBottom:12}}>👆</div>
+              <p style={{fontSize:14,fontWeight:600,color:'#fff',marginBottom:6}}>Ready to search</p>
+              <p className="text-dim" style={{fontSize:12,lineHeight:1.5}}>Hit "Search Market" to see prices for "{discoverQuery}"</p>
             </div>
           )}
 
           {/* No Community Results (web prices still show above) */}
-          {!discoverLoading && discoverResults.length === 0 && discoverQuery && (
+          {discoverSearched && !discoverLoading && discoverResults.length === 0 && discoverQuery && (
             <div className="glass" style={{borderRadius:14,padding:20,textAlign:'center',marginBottom:16}}>
               <p className="text-dim" style={{fontSize:13,lineHeight:1.5,marginBottom:12}}>No community data yet for "{discoverQuery}". Check the web prices above, or be the first to track this item!</p>
               <button onClick={() => setScreen('add-item')} className="gradient-amber" style={{border:'none',borderRadius:12,padding:'10px 20px',fontSize:13,fontWeight:700,color:'#000',cursor:'pointer'}}>
@@ -1418,7 +1583,7 @@ const App = () => {
           )}
 
           {/* Results */}
-          {!discoverLoading && groups.map((group, gi) => {
+          {discoverSearched && !discoverLoading && groups.map((group, gi) => {
             const allPrices = group.items.map(it => it.value).filter(v => v > 0);
             const allCosts = group.items.map(it => it.cost).filter(v => v > 0);
             const allEarnings = group.items.filter(it => it.earnings && it.earnings > 0);
