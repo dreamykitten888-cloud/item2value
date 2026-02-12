@@ -1791,21 +1791,29 @@ const App = () => {
 
   // Keyword hints to infer category from search query
   const CATEGORY_KEYWORDS = {
-    'Fashion': ['shirt','dress','jacket','jeans','sneaker','shoe','boots','bag','purse','handbag','wallet','belt','hat','sunglasses','coat','hoodie','sweater','denim','leather','nike','adidas','jordan','yeezy','supreme','gucci','louis vuitton','chanel','prada','balenciaga','poshmark','grailed','streetwear','vintage clothing','designer'],
-    'Electronics': ['phone','laptop','tablet','camera','headphones','speaker','monitor','gpu','cpu','console','playstation','xbox','nintendo','switch','iphone','ipad','macbook','samsung','sony','apple','airpods','tv','drone','keyboard','mouse','projector','router'],
-    'Home': ['furniture','lamp','rug','plant','bonsai','vase','chair','table','desk','shelf','mirror','clock','decor','candle','pillow','blanket','kitchen','cookware','appliance','blender','pottery','ceramic'],
-    'Watches': ['watch','rolex','omega','seiko','casio','cartier','patek','audemars','breitling','tudor','tag heuer','chronograph','timepiece','wristwatch','g-shock'],
-    'Art': ['painting','sculpture','print','lithograph','canvas','artwork','drawing','illustration','poster','photograph','signed art','limited print','fine art','abstract','oil painting'],
-    'Sports': ['baseball','football','basketball','soccer','tennis','golf','hockey','bat','glove','jersey','helmet','racket','athletic','fitness','weights','bike','cycling','skiing','surfboard'],
-    'Collectibles': ['antique','vintage','memorabilia','figurine','statue','prop','funko','pop vinyl','bobblehead','pin','badge','medal','action figure','collectible','signed','autograph','limited edition'],
-    'Trading Cards': ['pokemon','magic the gathering','mtg','yugioh','baseball card','football card','sports card','tcg','charizard','psa','bgs','graded card','booster','pack','topps','panini','upper deck'],
-    'Vinyl & Music': ['vinyl','record','album','lp','turntable','cassette','cd','band','concert','pressing','first press','discogs','beatles','pink floyd'],
-    'LEGO': ['lego','brick','minifig','minifigure','lego set','technic','star wars lego','creator','modular','bricklink'],
-    'Books': ['book','novel','first edition','signed copy','hardcover','paperback','comic','manga','graphic novel','textbook','rare book','manuscript'],
-    'Coins & Stamps': ['coin','penny','quarter','dollar','stamp','bullion','silver','gold coin','numismatic','mint','proof','currency','banknote','medal'],
-    'Toys': ['toy','doll','barbie','hot wheels','transformer','nerf','board game','puzzle','plush','stuffed animal','rc car','model kit','train set'],
-    'Automotive': ['car','truck','motorcycle','wheel','tire','bumper','engine','exhaust','headlight','seat','steering','obd','auto part','classic car','vintage car'],
-    'Tools': ['drill','saw','wrench','hammer','screwdriver','tool set','power tool','dewalt','milwaukee','makita','craftsman','welder','compressor','level','measuring'],
+    'Fashion': ['shirt','dress','jacket','jeans','sneaker','shoe','boots','bag','purse','handbag','wallet','belt','hat','sunglasses','coat','hoodie','sweater','denim','leather','nike','adidas','jordan','yeezy','supreme','gucci','louis vuitton','chanel','prada','balenciaga','poshmark','grailed','streetwear','vintage clothing','designer','lululemon','hermes','birkin','tiffany','polo','ralph lauren','north face','patagonia'],
+    'Electronics': ['phone','laptop','tablet','camera','headphones','speaker','monitor','gpu','cpu','console','playstation','xbox','nintendo','switch','iphone','ipad','macbook','samsung','sony','apple','airpods','tv','drone','keyboard','mouse','projector','router','gopro','kindle','oculus','quest','steam deck','graphics card','motherboard','ram','ssd'],
+    'Home': ['furniture','lamp','rug','plant','bonsai','vase','chair','table','desk','shelf','mirror','clock','decor','candle','pillow','blanket','kitchen','cookware','appliance','blender','pottery','ceramic','roomba','dyson','vitamix','le creuset','instant pot','air fryer','espresso','coffee maker'],
+    'Watches': ['watch','rolex','omega','seiko','casio','cartier','patek','audemars','breitling','tudor','tag heuer','chronograph','timepiece','wristwatch','g-shock','tissot','hamilton','citizen','orient','swatch'],
+    'Art': ['painting','sculpture','print','lithograph','canvas','artwork','drawing','illustration','photograph','signed art','limited print','fine art','abstract','oil painting','watercolor','banksy','warhol','kaws','shepard fairey'],
+    'Sports': ['baseball','football','basketball','soccer','tennis','golf','hockey','bat','glove','jersey','helmet','racket','athletic','fitness','weights','bike','cycling','skiing','surfboard','cleats','nfl','nba','mlb','nhl'],
+    'Collectibles': ['antique','vintage','memorabilia','figurine','statue','prop','funko','pop vinyl','bobblehead','pin','badge','medal','action figure','collectible','signed','autograph','limited edition','spider-man','batman','superman','marvel','dc comics','star wars','disney','sideshow','hot toys','neca','mcfarlane','spawn','iron man','hulk','x-men','avengers','deadpool','wolverine','cgc','cbcs','slabbed'],
+    'Trading Cards': ['pokemon','magic the gathering','mtg','yugioh','baseball card','football card','sports card','tcg','charizard','psa','bgs','graded card','booster','pack','topps','panini','upper deck','prizm','donruss','fleer','bowman','rookie card','refractor','holo','holographic'],
+    'Vinyl & Music': ['vinyl','record','album','lp','turntable','cassette','cd','band','concert','pressing','first press','discogs','beatles','pink floyd','led zeppelin','nirvana','radiohead','taylor swift','kanye'],
+    'LEGO': ['lego','brick','minifig','minifigure','lego set','technic','star wars lego','creator','modular','bricklink','bionicle','ninjago','duplo'],
+    'Books': ['book','novel','first edition','signed copy','hardcover','paperback','comic','comic book','comics','manga','graphic novel','textbook','rare book','manuscript','amazing spider','detective comics','action comics','walking dead','saga','sandman','watchmen','x-men comic','batman comic','issue #','spider-man #','incredible hulk','fantastic four','dc comic','marvel comic','image comics','dark horse'],
+    'Coins & Stamps': ['coin','penny','quarter','dollar','stamp','bullion','silver','gold coin','numismatic','mint','proof','currency','banknote','medal','morgan dollar','peace dollar','buffalo nickel','wheat penny','silver eagle','krugerrand'],
+    'Toys': ['toy','doll','barbie','hot wheels','transformer','nerf','board game','puzzle','plush','stuffed animal','rc car','model kit','train set','gi joe','power rangers','he-man','teenage mutant','tmnt','beanie baby','tamagotchi','furby','squishmallow'],
+    'Automotive': ['car','truck','motorcycle','wheel','tire','bumper','engine','exhaust','headlight','seat','steering','obd','auto part','classic car','vintage car','mustang','corvette','porsche','ferrari','bmw','mercedes','tesla','turbo','carburetor'],
+    'Tools': ['drill','saw','wrench','hammer','screwdriver','tool set','power tool','dewalt','milwaukee','makita','craftsman','welder','compressor','level','measuring','snap-on','festool','bosch','ryobi'],
+  };
+
+  // Regex patterns that strongly signal a category (e.g. issue numbers for comics)
+  const CATEGORY_PATTERNS = {
+    'Books': [/\#\d+/, /issue\s*\d+/i, /vol(\.|ume)?\s*\d+/i],
+    'Collectibles': [/\#\d+/, /series\s*\d+/i, /wave\s*\d+/i, /chase\s+variant/i],
+    'Coins & Stamps': [/\d{4}\s*(dollar|penny|cent|dime|quarter)/i, /ms\s*\d{2}/i, /pr\s*\d{2}/i],
+    'Trading Cards': [/\#\d+\/\d+/i, /psa\s*\d+/i, /bgs\s*[\d.]+/i, /1st\s*edition/i],
   };
 
   const inferCategoriesFromQuery = (query) => {
@@ -1821,9 +1829,17 @@ const App = () => {
       }
     });
 
-    // Check keyword hints
+    // Check keyword hints (check each word in query against keywords too)
+    const queryWords = q.split(/\s+/).filter(w => w.length > 2);
     Object.entries(CATEGORY_KEYWORDS).forEach(([cat, keywords]) => {
-      if (keywords.some(kw => q.includes(kw) || kw.includes(q))) {
+      if (keywords.some(kw => q.includes(kw) || kw.includes(q) || queryWords.some(w => kw.includes(w) && w.length > 3))) {
+        matched.add(cat);
+      }
+    });
+
+    // Check regex patterns (issue numbers, grading, etc.)
+    Object.entries(CATEGORY_PATTERNS).forEach(([cat, patterns]) => {
+      if (patterns.some(rx => rx.test(query))) {
         matched.add(cat);
       }
     });
