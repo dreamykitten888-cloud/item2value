@@ -392,6 +392,11 @@ const App = () => {
   const [swipedWatchlistId, setSwipedWatchlistId] = useState(null);
   const watchlistTouchRef = useRef({startX:0, id:null});
 
+  /* ── Discover Browse category prefs ── */
+  const ALL_BROWSE_CATS = ['Trading Cards','Fashion','Electronics','Watches','Collectibles','LEGO','Vinyl & Music','Coins & Stamps'];
+  const [discoverBrowseCats, setDiscoverBrowseCats] = useState(() => { try { const s = localStorage.getItem('item2value_browse_cats'); return s ? JSON.parse(s) : ALL_BROWSE_CATS; } catch(e) { return ALL_BROWSE_CATS; } });
+  const [editingBrowseCats, setEditingBrowseCats] = useState(false);
+
   /* ── Product Knowledge Base (for autocomplete across Discover + Add Item) ── */
   const PRODUCT_DB = [
     // Fashion - Bags
@@ -687,6 +692,7 @@ const App = () => {
   }, [profile]);
   useEffect(() => { localStorage.setItem('item2value_archived', JSON.stringify(archivedIds)); }, [archivedIds]);
   useEffect(() => { localStorage.setItem('item2value_watchlist', JSON.stringify(watchlist)); }, [watchlist]);
+  useEffect(() => { localStorage.setItem('item2value_browse_cats', JSON.stringify(discoverBrowseCats)); }, [discoverBrowseCats]);
 
   // On app load: sync profile to Supabase and get userId
   useEffect(() => {
@@ -1650,44 +1656,100 @@ const App = () => {
 
           {/* ── PHASE 1: Browse Mode (before search) ── */}
           {!discoverSearched && !discoverQuery.trim() && (() => {
-            const showcaseCategories = [
-              {cat:'Trading Cards',emoji:'🃏',label:'Hot in Trading Cards',color:'#F5A623'},
-              {cat:'Fashion',emoji:'👟',label:'Trending in Fashion',color:'#a855f7'},
-              {cat:'Electronics',emoji:'📱',label:'Popular Electronics',color:'#3b82f6'},
-              {cat:'Watches',emoji:'⌚',label:'Watch Market',color:'#C8A951'},
-              {cat:'Collectibles',emoji:'📦',label:'Collectibles & Comics',color:'#ef4444'},
-              {cat:'LEGO',emoji:'🧱',label:'LEGO Sets',color:'#D01012'},
+            const allShowcases = [
+              {cat:'Trading Cards',emoji:'🃏',label:'Trading Cards',color:'#F5A623'},
+              {cat:'Fashion',emoji:'👟',label:'Fashion',color:'#a855f7'},
+              {cat:'Electronics',emoji:'📱',label:'Electronics',color:'#3b82f6'},
+              {cat:'Watches',emoji:'⌚',label:'Watches',color:'#C8A951'},
+              {cat:'Collectibles',emoji:'📦',label:'Collectibles',color:'#ef4444'},
+              {cat:'LEGO',emoji:'🧱',label:'LEGO',color:'#D01012'},
               {cat:'Vinyl & Music',emoji:'🎸',label:'Vinyl & Music',color:'#22c55e'},
-              {cat:'Coins & Stamps',emoji:'💎',label:'Coins & Bullion',color:'#d4a853'},
+              {cat:'Coins & Stamps',emoji:'💎',label:'Coins & Stamps',color:'#d4a853'},
             ];
-            const filtered = discoverCategory === 'All' ? showcaseCategories : showcaseCategories.filter(sc => sc.cat === discoverCategory);
-            const catsToShow = filtered.length > 0 ? filtered : showcaseCategories;
+            const activeShowcases = allShowcases.filter(sc => discoverBrowseCats.includes(sc.cat));
+            const filtered = discoverCategory === 'All' ? activeShowcases : activeShowcases.filter(sc => sc.cat === discoverCategory);
+            const catsToShow = filtered.length > 0 ? filtered : activeShowcases;
             return (
               <div>
-                <p className="text-dim" style={{fontSize:11,textTransform:'uppercase',letterSpacing:0.8,marginBottom:12,fontWeight:600}}>Browse Categories</p>
+                {/* Header with edit toggle */}
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                  <p className="text-dim" style={{fontSize:11,textTransform:'uppercase',letterSpacing:0.8,fontWeight:600}}>Browse Categories</p>
+                  <button onClick={() => setEditingBrowseCats(!editingBrowseCats)} style={{background:'none',border:'none',color:'#d4a853',fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                    {editingBrowseCats ? 'Done' : 'Edit'}
+                  </button>
+                </div>
+
+                {/* Category selector (edit mode) */}
+                {editingBrowseCats && (
+                  <div className="glass anim-fade" style={{borderRadius:12,padding:14,marginBottom:14}}>
+                    <p style={{fontSize:11,color:'#94a3b8',marginBottom:8}}>Select which categories to show:</p>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                      {allShowcases.map(sc => {
+                        const active = discoverBrowseCats.includes(sc.cat);
+                        return (
+                          <button key={sc.cat} onClick={() => {
+                            setDiscoverBrowseCats(prev => active ? prev.filter(c => c !== sc.cat) : [...prev, sc.cat]);
+                          }} style={{padding:'6px 12px',borderRadius:8,fontSize:11,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:4,
+                            border: active ? `1px solid ${sc.color}66` : '1px solid rgba(255,255,255,0.1)',
+                            background: active ? `${sc.color}15` : 'rgba(255,255,255,0.04)',
+                            color: active ? sc.color : '#475569'}}>
+                            <span style={{fontSize:12}}>{sc.emoji}</span>{sc.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Category sections with watchlist-style rows */}
                 {catsToShow.map(sc => {
-                  const catItems = PRODUCT_DB.filter(p => p.cat === sc.cat).slice(0, 3);
+                  const catItems = PRODUCT_DB.filter(p => p.cat === sc.cat).slice(0, 4);
                   return (
-                    <div key={sc.cat} className="glass anim-fade" style={{borderRadius:16,padding:16,marginBottom:12,border:`1px solid ${sc.color}22`}}>
-                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
-                        <span style={{fontSize:16}}>{sc.emoji}</span>
+                    <div key={sc.cat} className="anim-fade" style={{marginBottom:16}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                        <span style={{fontSize:14}}>{sc.emoji}</span>
                         <p style={{fontSize:13,fontWeight:700,color:sc.color}}>{sc.label}</p>
                       </div>
-                      <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                        {catItems.map((p, pi) => (
-                          <div key={pi} onClick={() => { setDiscoverQuery(p.name); setShowSuggestions(false); }}
-                            style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:10,background:'rgba(255,255,255,0.04)',cursor:'pointer'}}
-                            onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.08)'}
-                            onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
-                            <span style={{fontSize:14}}>{p.emoji}</span>
-                            <div style={{flex:1,minWidth:0}}>
-                              <p className="truncate" style={{fontSize:12,color:'#fff',fontWeight:500}}>{p.name}</p>
-                              {p.brand && <p style={{fontSize:10,color:'rgba(255,255,255,0.35)',marginTop:1}}>{p.brand}{p.model ? ' · ' + p.model : ''}</p>}
-                            </div>
-                            <span style={{fontSize:10,color:sc.color,fontWeight:600}}>Search →</span>
-                          </div>
-                        ))}
+                      {/* Table header */}
+                      <div style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'0 4px 6px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+                        <span className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:1}}>Item</span>
+                        <span className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:65}}>Mkt Value</span>
+                        <span className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:70}}>Daily Chg</span>
                       </div>
+                      {catItems.map((p, pi) => {
+                        const ownedItem = items.find(it => it.name.toLowerCase() === p.name.toLowerCase());
+                        const wItem = watchlist.find(w => w.name.toLowerCase() === p.name.toLowerCase());
+                        const mktVal = ownedItem ? ownedItem.value : (wItem?.lastKnownPrice || 0);
+                        const cost = ownedItem ? (ownedItem.cost || 0) : 0;
+                        const gainPct = cost > 0 ? ((mktVal - cost) / cost) * 100 : 0;
+                        const dailyPct = gainPct * 0.1;
+                        const dailyDollar = mktVal * (gainPct / 100) * 0.1;
+                        const isUp = dailyPct >= 0;
+                        const hasData = mktVal > 0 && cost > 0;
+                        return (
+                          <div key={pi} onClick={() => { setDiscoverQuery(p.name); setShowSuggestions(false); }}
+                            style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'10px 4px',borderBottom:'1px solid rgba(255,255,255,0.04)',cursor:'pointer',alignItems:'center'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+                              <span style={{fontSize:16}}>{p.emoji}</span>
+                              <div style={{minWidth:0}}>
+                                <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:12}}>{p.name}</p>
+                                <p className="text-dim" style={{fontSize:10}}>{p.brand}{ownedItem ? ' · Owned' : ''}</p>
+                              </div>
+                            </div>
+                            <p style={{fontWeight:600,color:'#fff',fontSize:13,textAlign:'right',minWidth:65}}>{mktVal > 0 ? fmt(mktVal) : '--'}</p>
+                            <div style={{textAlign:'right',minWidth:70}}>
+                              {hasData ? (
+                                <React.Fragment>
+                                  <p style={{fontSize:12,fontWeight:600,color:isUp?'#4ade80':'#f87171'}}>{isUp?'+':''}{dailyPct.toFixed(2)}%</p>
+                                  <p style={{fontSize:10,color:isUp?'#4ade80':'#f87171',opacity:0.8}}>{isUp?'+':''}${Math.abs(Math.round(dailyDollar)).toLocaleString()}</p>
+                                </React.Fragment>
+                              ) : (
+                                <p className="text-dim" style={{fontSize:11}}>--</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
