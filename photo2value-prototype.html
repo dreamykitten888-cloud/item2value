@@ -602,12 +602,97 @@ const App = () => {
     {name:'Yeti Tundra 65 Cooler',brand:'Yeti',model:'Tundra 65',cat:'Sports',emoji:'📦'},
     {name:'Signed Baseball',brand:'',model:'Autographed',cat:'Sports',emoji:'⚾'},
     {name:'Signed Basketball',brand:'',model:'Autographed',cat:'Sports',emoji:'🏀'},
-    // Art
-    {name:'Original Oil Painting',brand:'',model:'',cat:'Art',emoji:'🖼️'},
-    {name:'Limited Edition Print Numbered',brand:'',model:'Numbered Print',cat:'Art',emoji:'🖼️'},
+    // Art - Prints & Street Art
     {name:'KAWS Print',brand:'KAWS',model:'Screenprint',cat:'Art',emoji:'🖼️'},
-    {name:'Banksy Print',brand:'Banksy',model:'',cat:'Art',emoji:'🖼️'},
+    {name:'KAWS Companion Sculpture',brand:'KAWS',model:'Companion Figure',cat:'Art',emoji:'🖼️'},
+    {name:'Banksy Print Girl With Balloon',brand:'Banksy',model:'Girl With Balloon',cat:'Art',emoji:'🖼️'},
+    {name:'Banksy Print Flower Thrower',brand:'Banksy',model:'Flower Thrower',cat:'Art',emoji:'🖼️'},
+    {name:'Takashi Murakami Flower Print',brand:'Takashi Murakami',model:'Flower Print',cat:'Art',emoji:'🖼️'},
+    {name:'Takashi Murakami DOB Figure',brand:'Takashi Murakami',model:'Mr. DOB',cat:'Art',emoji:'🖼️'},
+    {name:'Shepard Fairey Obey Print',brand:'Shepard Fairey',model:'Obey Giant',cat:'Art',emoji:'🖼️'},
+    {name:'Daniel Arsham Eroded Figure',brand:'Daniel Arsham',model:'Eroded Sculpture',cat:'Art',emoji:'🖼️'},
+    // Art - Fine Art & Photography
+    {name:'Original Oil Painting',brand:'',model:'Oil on Canvas',cat:'Art',emoji:'🖼️'},
+    {name:'Original Acrylic Painting',brand:'',model:'Acrylic on Canvas',cat:'Art',emoji:'🖼️'},
+    {name:'Limited Edition Print Numbered',brand:'',model:'Numbered Print',cat:'Art',emoji:'🖼️'},
     {name:'Photography Print Signed',brand:'',model:'Signed Print',cat:'Art',emoji:'🖼️'},
+    {name:'Ansel Adams Print',brand:'Ansel Adams',model:'Silver Gelatin Print',cat:'Art',emoji:'🖼️'},
+    {name:'Andy Warhol Print',brand:'Andy Warhol',model:'Screenprint',cat:'Art',emoji:'🖼️'},
+    {name:'Jean-Michel Basquiat Print',brand:'Basquiat',model:'Print',cat:'Art',emoji:'🖼️'},
+    {name:'Keith Haring Print',brand:'Keith Haring',model:'Screenprint',cat:'Art',emoji:'🖼️'},
+    // Art - Sculpture & Mixed Media
+    {name:'Bronze Sculpture Signed',brand:'',model:'Bronze Cast',cat:'Art',emoji:'🖼️'},
+    {name:'Glass Art Dale Chihuly',brand:'Dale Chihuly',model:'Blown Glass',cat:'Art',emoji:'🖼️'},
+    {name:'Ceramic Art Piece',brand:'',model:'Studio Ceramic',cat:'Art',emoji:'🖼️'},
+    {name:'Art Toy BE@RBRICK 400%',brand:'Medicom',model:'BE@RBRICK 400%',cat:'Art',emoji:'🖼️'},
+    {name:'Art Toy BE@RBRICK 1000%',brand:'Medicom',model:'BE@RBRICK 1000%',cat:'Art',emoji:'🖼️'},
+    {name:'NFT Physical Print',brand:'',model:'NFT Backed Print',cat:'Art',emoji:'🖼️'},
+    // Musical Instruments - Guitars
+    {name:'Fender Stratocaster American Pro II',brand:'Fender',model:'Stratocaster Am Pro II',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Fender Telecaster American Pro II',brand:'Fender',model:'Telecaster Am Pro II',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Fender Player Stratocaster',brand:'Fender',model:'Player Stratocaster',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Fender Vintera 50s Stratocaster',brand:'Fender',model:'Vintera 50s Strat',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Gibson Les Paul Standard 50s',brand:'Gibson',model:'Les Paul Standard 50s',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Gibson Les Paul Standard 60s',brand:'Gibson',model:'Les Paul Standard 60s',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Gibson SG Standard',brand:'Gibson',model:'SG Standard',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Gibson ES-335',brand:'Gibson',model:'ES-335',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Epiphone Les Paul Standard',brand:'Epiphone',model:'Les Paul Standard',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'PRS Custom 24',brand:'PRS',model:'Custom 24',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'PRS Silver Sky',brand:'PRS',model:'Silver Sky',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Ibanez RG550',brand:'Ibanez',model:'RG550',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Taylor 814ce',brand:'Taylor',model:'814ce',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Taylor 214ce',brand:'Taylor',model:'214ce',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Martin D-28',brand:'Martin',model:'D-28',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Martin D-18',brand:'Martin',model:'D-18',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Martin 000-15M',brand:'Martin',model:'000-15M',cat:'Musical Instruments',emoji:'🎸'},
+    // Musical Instruments - Bass
+    {name:'Fender Precision Bass American Pro',brand:'Fender',model:'Precision Bass Am Pro',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Fender Jazz Bass American Pro',brand:'Fender',model:'Jazz Bass Am Pro',cat:'Musical Instruments',emoji:'🎸'},
+    {name:'Music Man StingRay',brand:'Music Man',model:'StingRay',cat:'Musical Instruments',emoji:'🎸'},
+    // Musical Instruments - Keys & Synths
+    {name:'Yamaha C3 Grand Piano',brand:'Yamaha',model:'C3 Grand',cat:'Musical Instruments',emoji:'🎹'},
+    {name:'Yamaha U1 Upright Piano',brand:'Yamaha',model:'U1 Upright',cat:'Musical Instruments',emoji:'🎹'},
+    {name:'Roland RD-2000 Stage Piano',brand:'Roland',model:'RD-2000',cat:'Musical Instruments',emoji:'🎹'},
+    {name:'Nord Stage 4',brand:'Nord',model:'Stage 4 88',cat:'Musical Instruments',emoji:'🎹'},
+    {name:'Korg Minilogue XD',brand:'Korg',model:'Minilogue XD',cat:'Musical Instruments',emoji:'🎹'},
+    {name:'Moog Subsequent 37',brand:'Moog',model:'Subsequent 37',cat:'Musical Instruments',emoji:'🎹'},
+    {name:'Moog Grandmother',brand:'Moog',model:'Grandmother',cat:'Musical Instruments',emoji:'🎹'},
+    {name:'Sequential Prophet-6',brand:'Sequential',model:'Prophet-6',cat:'Musical Instruments',emoji:'🎹'},
+    {name:'Arturia MiniBrute 2',brand:'Arturia',model:'MiniBrute 2',cat:'Musical Instruments',emoji:'🎹'},
+    // Musical Instruments - Drums
+    {name:'DW Collectors Series Drum Kit',brand:'DW',model:'Collectors Series',cat:'Musical Instruments',emoji:'🥁'},
+    {name:'Pearl Masters Maple Complete',brand:'Pearl',model:'Masters Maple Complete',cat:'Musical Instruments',emoji:'🥁'},
+    {name:'Tama Starclassic Walnut Birch',brand:'Tama',model:'Starclassic WB',cat:'Musical Instruments',emoji:'🥁'},
+    {name:'Ludwig Classic Maple',brand:'Ludwig',model:'Classic Maple',cat:'Musical Instruments',emoji:'🥁'},
+    {name:'Roland TD-27KV Electronic Kit',brand:'Roland',model:'TD-27KV',cat:'Musical Instruments',emoji:'🥁'},
+    // Musical Instruments - Amps & Pedals
+    {name:'Fender Twin Reverb',brand:'Fender',model:'Twin Reverb 65 Reissue',cat:'Musical Instruments',emoji:'🔊'},
+    {name:'Fender Deluxe Reverb',brand:'Fender',model:'Deluxe Reverb 65 Reissue',cat:'Musical Instruments',emoji:'🔊'},
+    {name:'Marshall JCM800',brand:'Marshall',model:'JCM800 2203',cat:'Musical Instruments',emoji:'🔊'},
+    {name:'Vox AC30',brand:'Vox',model:'AC30C2',cat:'Musical Instruments',emoji:'🔊'},
+    {name:'Mesa Boogie Dual Rectifier',brand:'Mesa Boogie',model:'Dual Rectifier',cat:'Musical Instruments',emoji:'🔊'},
+    {name:'Boss Katana 100',brand:'Boss',model:'Katana 100 MkII',cat:'Musical Instruments',emoji:'🔊'},
+    {name:'Strymon Timeline Delay',brand:'Strymon',model:'Timeline',cat:'Musical Instruments',emoji:'🔊'},
+    {name:'Strymon BigSky Reverb',brand:'Strymon',model:'BigSky',cat:'Musical Instruments',emoji:'🔊'},
+    {name:'JHS Morning Glory Pedal',brand:'JHS',model:'Morning Glory V4',cat:'Musical Instruments',emoji:'🔊'},
+    // Musical Instruments - DJ & Production
+    {name:'Pioneer DJ CDJ-3000',brand:'Pioneer DJ',model:'CDJ-3000',cat:'Musical Instruments',emoji:'🎧'},
+    {name:'Pioneer DJ DJM-900NXS2',brand:'Pioneer DJ',model:'DJM-900NXS2',cat:'Musical Instruments',emoji:'🎧'},
+    {name:'Akai MPC Live II',brand:'Akai',model:'MPC Live II',cat:'Musical Instruments',emoji:'🎧'},
+    {name:'Native Instruments Maschine+',brand:'Native Instruments',model:'Maschine+',cat:'Musical Instruments',emoji:'🎧'},
+    {name:'Universal Audio Apollo Twin X',brand:'Universal Audio',model:'Apollo Twin X',cat:'Musical Instruments',emoji:'🎧'},
+    {name:'Shure SM7B Microphone',brand:'Shure',model:'SM7B',cat:'Musical Instruments',emoji:'🎤'},
+    {name:'Neumann U87 Microphone',brand:'Neumann',model:'U87 Ai',cat:'Musical Instruments',emoji:'🎤'},
+    {name:'Rode NT1-A Microphone',brand:'Rode',model:'NT1-A',cat:'Musical Instruments',emoji:'🎤'},
+    // Musical Instruments - Orchestral & Other
+    {name:'Yamaha YAS-62 Alto Saxophone',brand:'Yamaha',model:'YAS-62 III',cat:'Musical Instruments',emoji:'🎷'},
+    {name:'Selmer Paris Series III Tenor Sax',brand:'Selmer',model:'Series III Tenor',cat:'Musical Instruments',emoji:'🎷'},
+    {name:'Bach Stradivarius Trumpet',brand:'Bach',model:'Stradivarius 180S37',cat:'Musical Instruments',emoji:'🎺'},
+    {name:'Yamaha YTR-8335 Trumpet',brand:'Yamaha',model:'Xeno YTR-8335',cat:'Musical Instruments',emoji:'🎺'},
+    {name:'Conn 8D French Horn',brand:'Conn',model:'8D Double French Horn',cat:'Musical Instruments',emoji:'🎺'},
+    {name:'Stradivarius Violin Copy',brand:'',model:'Strad Copy',cat:'Musical Instruments',emoji:'🎻'},
+    {name:'Yamaha Silent Violin SV-255',brand:'Yamaha',model:'SV-255',cat:'Musical Instruments',emoji:'🎻'},
+    {name:'Ukulele Kamaka HF-1',brand:'Kamaka',model:'HF-1 Soprano',cat:'Musical Instruments',emoji:'🎸'},
     // Automotive
     {name:'Car Parts OEM',brand:'',model:'OEM Parts',cat:'Automotive',emoji:'🚗'},
     {name:'Vintage Car Accessory',brand:'',model:'',cat:'Automotive',emoji:'🚗'},
@@ -1653,7 +1738,7 @@ const App = () => {
     });
     const groups = Object.values(grouped).sort((a, b) => b.items.length - a.items.length);
 
-    const categories = ['All', 'Fashion', 'Electronics', 'Home', 'Watches', 'Sports', 'Collectibles', 'Trading Cards', 'Vinyl & Music', 'LEGO', 'Coins & Stamps', 'Art', 'Automotive', 'Books', 'Toys', 'Tools', 'Other'];
+    const categories = ['All', 'Fashion', 'Electronics', 'Home', 'Watches', 'Sports', 'Collectibles', 'Trading Cards', 'Vinyl & Music', 'Musical Instruments', 'LEGO', 'Coins & Stamps', 'Art', 'Automotive', 'Books', 'Toys', 'Tools', 'Other'];
 
     return (
       <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
@@ -2296,7 +2381,7 @@ const App = () => {
 
   /* ── Add Item Form ── */
   const emojiOptions = ['📦','👜','👟','🪑','📷','⌚','🍲','📱','🎒','🎮','💻','🖼️','🎸','💎','🧥'];
-  const categoryOptions = ['Fashion','Electronics','Home','Watches','Art','Sports','Collectibles','Trading Cards','Vinyl & Music','LEGO','Books','Coins & Stamps','Toys','Automotive','Tools','Other'];
+  const categoryOptions = ['Fashion','Electronics','Home','Watches','Art','Musical Instruments','Sports','Collectibles','Trading Cards','Vinyl & Music','LEGO','Books','Coins & Stamps','Toys','Automotive','Tools','Other'];
   const conditionOptions = ['New','Like New','Excellent','Very Good','Good','Fair'];
 
   /* ── Marketplace Config (category-aware) ── */
