@@ -830,6 +830,37 @@ const App = () => {
     return [...myItems, ...dbMatches, ...dynamicSuggestions.slice(0, Math.max(0, limit - myItems.length - dbMatches.length))].slice(0, limit);
   };
   const [communityComps, setCommunityComps] = useState([]);
+
+  /* ── eBay Live Prices ── */
+  const [ebayComps, setEbayComps] = useState([]);
+  const [ebayLoading, setEbayLoading] = useState(false);
+  const [ebayError, setEbayError] = useState(null);
+  const fetchEbayComps = async (item) => {
+    if (!item) return;
+    setEbayLoading(true);
+    setEbayError(null);
+    try {
+      const terms = [item.name, item.brand, item.model].filter(Boolean);
+      const seen = new Set();
+      const query = terms.join(' ').split(/\s+/).filter(w => {
+        const l = w.toLowerCase();
+        if (seen.has(l)) return false;
+        seen.add(l);
+        return true;
+      }).join(' ');
+      const res = await fetch(`https://tzasuddushojjurbzqfe.supabase.co/functions/v1/ebay-proxy?q=${encodeURIComponent(query)}&limit=6`);
+      if (!res.ok) throw new Error('eBay search failed');
+      const data = await res.json();
+      setEbayComps(data.items || []);
+      if (supabaseUserIdRef.current) logEvent(supabaseUserIdRef.current, 'ebay_search', { itemName: item.name, query, resultsCount: (data.items || []).length, totalAvailable: data.total });
+    } catch (e) {
+      console.log('eBay search error:', e);
+      setEbayError('Could not load eBay prices. Try again.');
+      setEbayComps([]);
+    }
+    setEbayLoading(false);
+  };
+
   const [researchQuery, setResearchQuery] = useState('');
   const [researchData, setResearchData] = useState(null);
   const [researchLoading, setResearchLoading] = useState(false);
@@ -957,7 +988,7 @@ const App = () => {
       return 0;
     });
 
-  const goItem = (id) => { setSelectedId(id); setPhotoIndex(0); setCommunityComps([]); setScreen('detail'); };
+  const goItem = (id) => { setSelectedId(id); setPhotoIndex(0); setCommunityComps([]); setEbayComps([]); setEbayError(null); setScreen('detail'); };
   // Barcode product lookup via UPCitemdb (free trial, no key needed)
   const lookupBarcode = async (code) => {
     setScanStatus('Looking up product...');
@@ -3600,6 +3631,101 @@ const App = () => {
               <button onClick={() => {setAddingComp(true);setEditingCompId(null);setCompForm({title:'',url:'',price:'',source:'eBay',condition:'Good'});}} className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,padding:'14px 0',fontSize:13,fontWeight:600,color:'#d4a853',cursor:'pointer',background:'rgba(255,255,255,0.04)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:10}}>
                 <Icons.Plus size={16} color="#d4a853"/>Add Comparable
               </button>
+            )}
+          </div>
+
+          {/* eBay Market Prices */}
+          <div className="glass" style={{borderRadius:16,padding:20,marginBottom:20}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+              <div>
+                <h3 style={{fontSize:16,fontWeight:700,color:'#fff',display:'flex',alignItems:'center',gap:8}}>
+                  eBay Market Prices
+                  {ebayComps.length > 0 && <span style={{fontSize:9,fontWeight:700,color:'#4ade80',background:'rgba(74,222,128,0.12)',padding:'2px 8px',borderRadius:10,letterSpacing:0.5}}>LIVE</span>}
+                </h3>
+                <p className="text-dim" style={{fontSize:11}}>Real listings with real prices</p>
+              </div>
+              <button onClick={() => fetchEbayComps(selected)} disabled={ebayLoading} style={{background:'rgba(59,130,246,0.15)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:10,padding:'8px 14px',fontSize:12,fontWeight:600,color:'#60a5fa',cursor:ebayLoading?'wait':'pointer',opacity:ebayLoading?0.6:1}}>
+                {ebayLoading ? 'Searching...' : ebayComps.length > 0 ? '↻ Refresh' : '🔍 Search eBay'}
+              </button>
+            </div>
+
+            {ebayLoading && (
+              <div style={{padding:'24px 0',textAlign:'center'}}>
+                <div style={{width:24,height:24,border:'2px solid rgba(96,165,250,0.3)',borderTopColor:'#60a5fa',borderRadius:'50%',margin:'0 auto',animation:'spin 0.8s linear infinite'}}/>
+                <p className="text-dim" style={{fontSize:12,marginTop:10}}>Searching eBay for "{selected.name}"...</p>
+              </div>
+            )}
+
+            {ebayError && !ebayLoading && (
+              <p style={{fontSize:12,color:'#f87171',textAlign:'center',padding:'12px 0'}}>{ebayError}</p>
+            )}
+
+            {!ebayLoading && !ebayError && ebayComps.length === 0 && (
+              <p className="text-dim" style={{fontSize:12,textAlign:'center',padding:'12px 0'}}>Tap "Search eBay" to find real listings for this item.</p>
+            )}
+
+            {!ebayLoading && ebayComps.length > 0 && (
+              <>
+                {/* Average price banner */}
+                {(() => {
+                  const prices = ebayComps.map(c => c.price && c.price.value).filter(p => p > 0);
+                  if (prices.length === 0) return null;
+                  const avg = Math.round(prices.reduce((s,p) => s+p, 0) / prices.length);
+                  const diff = selected.value ? avg - selected.value : 0;
+                  return (
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',borderRadius:10,background:'rgba(59,130,246,0.06)',border:'1px solid rgba(59,130,246,0.15)',marginBottom:12}}>
+                      <span style={{fontSize:12,color:'#94a3b8'}}>Avg eBay Price ({prices.length})</span>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{fontSize:16,fontWeight:700,color:'#60a5fa'}}>{fmt(avg)}</span>
+                        {selected.value > 0 && <span style={{fontSize:11,fontWeight:600,color:diff>=0?'#4ade80':'#f87171'}}>{diff>=0?'+':''}{Math.round((diff/selected.value)*100)}% vs yours</span>}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Listing cards */}
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {ebayComps.map((listing, idx) => (
+                    <div key={listing.id || idx} style={{display:'flex',gap:12,padding:12,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:12,transition:'border-color 0.2s'}}
+                      onMouseEnter={e => e.currentTarget.style.borderColor='rgba(59,130,246,0.3)'}
+                      onMouseLeave={e => e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'}>
+                      {listing.image && (
+                        <div style={{width:64,height:64,borderRadius:8,overflow:'hidden',flexShrink:0,background:'rgba(255,255,255,0.06)'}}>
+                          <img src={listing.image} alt="" loading="lazy" style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e => { e.target.parentElement.style.display='none'; }}/>
+                        </div>
+                      )}
+                      <div style={{flex:1,minWidth:0}}>
+                        <p className="truncate" style={{color:'#fff',fontSize:12,fontWeight:500,marginBottom:4,lineHeight:1.3}}>{listing.title}</p>
+                        <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                          <span style={{fontSize:15,fontWeight:700,color:'#d4a853'}}>${listing.price && listing.price.value ? listing.price.value.toLocaleString() : '?'}</span>
+                          {listing.shippingCost === 0 && <span style={{fontSize:9,color:'#4ade80',fontWeight:700,background:'rgba(74,222,128,0.1)',padding:'1px 6px',borderRadius:4}}>FREE SHIP</span>}
+                          {listing.shippingCost > 0 && <span className="text-dim" style={{fontSize:10}}>+${listing.shippingCost} ship</span>}
+                        </div>
+                        <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',marginBottom:6}}>
+                          <span style={{fontSize:10,color:'#94a3b8',background:'rgba(255,255,255,0.06)',padding:'2px 6px',borderRadius:4}}>{listing.condition || 'N/A'}</span>
+                          {listing.seller && <span className="text-dim" style={{fontSize:10}}>⭐ {listing.seller.feedbackPercent}%</span>}
+                        </div>
+                        <div style={{display:'flex',gap:6}}>
+                          <a href={listing.itemUrl} target="_blank" rel="noopener noreferrer" style={{background:'rgba(59,130,246,0.15)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:8,padding:'5px 10px',fontSize:11,fontWeight:600,color:'#60a5fa',textDecoration:'none',display:'inline-flex',alignItems:'center',gap:4}}>
+                            Buy on eBay ↗
+                          </a>
+                          <button onClick={() => {
+                            const newComp = { id: Date.now() + idx, source: 'eBay', title: listing.title, price: listing.price ? listing.price.value : 0, condition: listing.condition || 'Good', date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), url: listing.itemUrl };
+                            setItems(prev => prev.map(it => it.id === selected.id ? {...it, comps: [...(it.comps||[]), newComp]} : it));
+                            setTimeout(() => recalcMarketFromComps(selected.id), 50);
+                            showToast('Added as comp!');
+                            if (supabaseUserIdRef.current) logEvent(supabaseUserIdRef.current, 'ebay_comp_added', { itemName: selected.name, compTitle: listing.title, price: listing.price ? listing.price.value : 0 });
+                          }} style={{background:'rgba(212,168,83,0.12)',border:'1px solid rgba(212,168,83,0.25)',borderRadius:8,padding:'5px 10px',fontSize:11,fontWeight:600,color:'#d4a853',cursor:'pointer',border:'1px solid rgba(212,168,83,0.3)'}}>
+                            + Comp
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-dim" style={{fontSize:9,textAlign:'center',marginTop:10,opacity:0.5}}>Prices from eBay · Tap "Buy on eBay" to purchase</p>
+              </>
             )}
           </div>
 
