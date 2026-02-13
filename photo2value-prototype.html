@@ -1529,28 +1529,27 @@ const App = () => {
                   return (
                     <div key={w.id} style={{position:'relative',overflow:'hidden',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
                       {/* Delete behind layer */}
-                      <div style={{position:'absolute',top:0,right:0,bottom:0,width:70,background:'#ef4444',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'opacity 0.2s',opacity:isSwiped?1:0}} onClick={() => { removeFromWatchlist(w.id); setSwipedWatchlistId(null); }}>
+                      <div style={{position:'absolute',top:0,right:0,bottom:0,width:70,background:'#ef4444',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}} onClick={() => { removeFromWatchlist(w.id); setSwipedWatchlistId(null); }}>
                         <Icons.Trash2 size={20} color="#fff"/>
                       </div>
                       {/* Main row */}
                       <div className="anim-right"
-                        onTouchStart={e => { watchlistTouchRef.current = {startX: e.touches[0].clientX, startY: e.touches[0].clientY, id: w.id, swiping: false}; }}
+                        onTouchStart={e => { const t = e.touches[0]; watchlistTouchRef.current = {startX: t.clientX, startY: t.clientY, id: w.id, swiping: false, el: e.currentTarget, startTx: isSwiped ? -70 : 0, currentTx: isSwiped ? -70 : 0}; }}
                         onTouchMove={e => {
                           const ref = watchlistTouchRef.current;
+                          if (ref.id !== w.id) return;
                           const dx = e.touches[0].clientX - ref.startX;
                           const dy = e.touches[0].clientY - ref.startY;
-                          if (!ref.swiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) { ref.swiping = true; }
-                          if (ref.swiping) { e.preventDefault(); }
-                          if (ref.swiping && dx < -40 && ref.id === w.id) setSwipedWatchlistId(w.id);
-                          if (ref.swiping && dx > 20 && swipedWatchlistId === w.id) setSwipedWatchlistId(null);
+                          if (!ref.swiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) { ref.swiping = true; if (ref.el) ref.el.style.transition = 'none'; }
+                          if (ref.swiping && ref.el) { ref.currentTx = Math.max(-70, Math.min(0, ref.startTx + dx)); ref.el.style.transform = 'translateX(' + ref.currentTx + 'px)'; }
                         }}
-                        onTouchEnd={() => { watchlistTouchRef.current.swiping = false; }}
+                        onTouchEnd={() => { const ref = watchlistTouchRef.current; if (ref.id === w.id && ref.swiping && ref.el) { ref.el.style.transition = 'transform 0.25s ease'; if (ref.currentTx < -35) { ref.el.style.transform = 'translateX(-70px)'; setSwipedWatchlistId(w.id); } else { ref.el.style.transform = 'translateX(0)'; setSwipedWatchlistId(null); } } ref.swiping = false; }}
                         onClick={() => {
                           if (isSwiped) { setSwipedWatchlistId(null); return; }
                           if (linkedItem) goItem(linkedItem.id);
                           else { setDiscoverQuery(w.name); setDiscoverSearched(false); setScreen('discover'); }
                         }}
-                        style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'12px 4px',alignItems:'center',animationDelay:`${i*0.04}s`,cursor:'pointer',background:'#0a0a0f',position:'relative',transition:'transform 0.25s ease',transform: isSwiped ? 'translateX(-70px)' : 'translateX(0)'}}>
+                        style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'12px 4px',alignItems:'center',animationDelay:`${i*0.04}s`,cursor:'pointer',background:'#0a0a0f',position:'relative',transition:'transform 0.25s ease',transform: isSwiped ? 'translateX(-70px)' : 'translateX(0)',touchAction:'pan-y',WebkitUserSelect:'none',userSelect:'none'}}>
                         <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0}}>
                           <span style={{fontSize:20}}>{w.emoji}</span>
                           <div style={{minWidth:0}}>
