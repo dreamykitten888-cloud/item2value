@@ -1586,12 +1586,22 @@ const App = () => {
       setBarcodeScanning(true);
       setScanStatus('Starting camera...');
       setTimeout(() => {
-        if (scannerRef.current) { try { scannerRef.current.stop().catch(()=>{}); } catch(e){} }
-        const scanner = new Html5Qrcode("barcode-reader");
+        if (scannerRef.current) { try { scannerRef.current.stop().catch(()=>{}); } catch(e){} scannerRef.current = null; }
+        // Specify barcode formats explicitly for product scanning
+        const formatsToSupport = [];
+        if (typeof Html5QrcodeSupportedFormats !== 'undefined') {
+          [Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.ITF, Html5QrcodeSupportedFormats.QR_CODE].forEach(f => { if (f !== undefined) formatsToSupport.push(f); });
+        }
+        const scannerConfig = formatsToSupport.length > 0 ? { formatsToSupport, verbose: false } : { verbose: false };
+        const scanner = new Html5Qrcode("barcode-reader", scannerConfig);
         scannerRef.current = scanner;
+        // Responsive scan box
+        const containerW = document.getElementById("barcode-reader")?.clientWidth || 280;
+        const qrW = Math.min(containerW - 40, 280);
+        const qrH = Math.min(Math.round(qrW * 0.5), 150);
         scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
+          { fps: 15, qrbox: { width: qrW, height: qrH } },
           (decodedText) => {
             scanner.stop().catch(()=>{});
             scannerRef.current = null;
@@ -1602,13 +1612,22 @@ const App = () => {
           },
           () => {} // ignore scan failures (normal while searching)
         ).then(() => {
-          setScanStatus('Point camera at barcode...');
+          setScanStatus('Point camera at barcode. Hold steady, about 6 inches away.');
         }).catch((err) => {
           console.log('Camera error:', err);
           setBarcodeScanning(false);
-          setScanStatus('Camera access denied. Check permissions.');
+          const errStr = String(err);
+          if (errStr.includes('NotAllowed') || errStr.includes('Permission')) {
+            setScanStatus('Camera blocked. Tap the lock icon in your browser bar to allow camera access, then try again.');
+          } else if (errStr.includes('NotFound')) {
+            setScanStatus('No camera found on this device.');
+          } else if (errStr.includes('NotReadable') || errStr.includes('TrackStart') || errStr.includes('AbortError')) {
+            setScanStatus('Camera busy. Close other apps using the camera and try again.');
+          } else {
+            setScanStatus('Camera error. Try refreshing the page or use photo mode instead.');
+          }
         });
-      }, 200);
+      }, 350);
     };
 
     const handlePhotoCapture = async (e) => {
@@ -1653,7 +1672,7 @@ const App = () => {
       <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'0 24px',overflow:'hidden'}}>
         {scanMode === 'barcode' ? (
           <div style={{width:'100%',maxWidth:320}}>
-            <div id="barcode-reader" style={{width:'100%',borderRadius:16,overflow:'hidden',background:'#000',minHeight:240}}></div>
+            <div id="barcode-reader" style={{width:'100%',borderRadius:16,overflow:'hidden',background:'#000',minHeight:260,position:'relative'}}></div>
             {!barcodeScanning && !scanData && (
               <button onClick={startBarcodeScanner} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:700,color:'#000',cursor:'pointer',marginTop:16}}>
                 Start Scanning
@@ -1662,7 +1681,8 @@ const App = () => {
             {barcodeScanning && (
               <div style={{textAlign:'center',marginTop:16}}>
                 <div style={{width:32,height:32,border:'3px solid rgba(212,168,83,0.3)',borderTopColor:'#d4a853',borderRadius:'50%',animation:'spin 0.8s linear infinite',margin:'0 auto 12px'}}></div>
-                <p style={{fontSize:13,color:'#94a3b8'}}>Searching for barcode...</p>
+                <p style={{fontSize:13,color:'#94a3b8',marginBottom:12}}>Searching for barcode...</p>
+                <button onClick={() => { stopBarcodeScanner(); setScanStatus('Scanning cancelled.'); }} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,padding:'8px 20px',color:'#94a3b8',fontSize:12,cursor:'pointer'}}>Stop Scanning</button>
               </div>
             )}
           </div>
