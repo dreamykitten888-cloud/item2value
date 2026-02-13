@@ -393,9 +393,11 @@ const App = () => {
   const watchlistTouchRef = useRef({startX:0, id:null});
 
   /* ── Discover Browse category prefs ── */
-  const ALL_BROWSE_CATS = ['Trading Cards','Fashion','Electronics','Watches','Collectibles','LEGO','Vinyl & Music','Coins & Stamps'];
-  const [discoverBrowseCats, setDiscoverBrowseCats] = useState(() => { try { const s = localStorage.getItem('item2value_browse_cats'); return s ? JSON.parse(s) : ALL_BROWSE_CATS; } catch(e) { return ALL_BROWSE_CATS; } });
+  const DEFAULT_BROWSE_CATS = ['Trading Cards','Fashion','Electronics','Watches','Nike','Louis Vuitton'];
+  const [discoverBrowseCats, setDiscoverBrowseCats] = useState(() => { try { const s = localStorage.getItem('item2value_browse_cats'); return s ? JSON.parse(s) : DEFAULT_BROWSE_CATS; } catch(e) { return DEFAULT_BROWSE_CATS; } });
   const [editingBrowseCats, setEditingBrowseCats] = useState(false);
+  const [browseCatQuery, setBrowseCatQuery] = useState('');
+  const [showBrowseSuggestions, setShowBrowseSuggestions] = useState(false);
 
   /* ── Product Knowledge Base (for autocomplete across Discover + Add Item) ── */
   const PRODUCT_DB = [
@@ -1656,45 +1658,79 @@ const App = () => {
 
           {/* ── PHASE 1: Browse Mode (before search) ── */}
           {!discoverSearched && !discoverQuery.trim() && (() => {
-            const allShowcases = [
-              {cat:'Trading Cards',emoji:'🃏',label:'Trading Cards',color:'#F5A623'},
-              {cat:'Fashion',emoji:'👟',label:'Fashion',color:'#a855f7'},
-              {cat:'Electronics',emoji:'📱',label:'Electronics',color:'#3b82f6'},
-              {cat:'Watches',emoji:'⌚',label:'Watches',color:'#C8A951'},
-              {cat:'Collectibles',emoji:'📦',label:'Collectibles',color:'#ef4444'},
-              {cat:'LEGO',emoji:'🧱',label:'LEGO',color:'#D01012'},
-              {cat:'Vinyl & Music',emoji:'🎸',label:'Vinyl & Music',color:'#22c55e'},
-              {cat:'Coins & Stamps',emoji:'💎',label:'Coins & Stamps',color:'#d4a853'},
-            ];
-            const activeShowcases = allShowcases.filter(sc => discoverBrowseCats.includes(sc.cat));
-            const filtered = discoverCategory === 'All' ? activeShowcases : activeShowcases.filter(sc => sc.cat === discoverCategory);
-            const catsToShow = filtered.length > 0 ? filtered : activeShowcases;
+            const catMeta = {'Trading Cards':{emoji:'🃏',color:'#F5A623'},'Fashion':{emoji:'👟',color:'#a855f7'},'Electronics':{emoji:'📱',color:'#3b82f6'},'Watches':{emoji:'⌚',color:'#C8A951'},'Collectibles':{emoji:'📦',color:'#ef4444'},'LEGO':{emoji:'🧱',color:'#D01012'},'Vinyl & Music':{emoji:'🎸',color:'#22c55e'},'Coins & Stamps':{emoji:'💎',color:'#d4a853'}};
+            const brandColors = ['#f59e0b','#ec4899','#8b5cf6','#06b6d4','#10b981','#f43f5e','#6366f1','#14b8a6'];
+            const getTermMeta = (term) => {
+              if (catMeta[term]) return catMeta[term];
+              const matchItems = PRODUCT_DB.filter(p => p.name.toLowerCase().includes(term.toLowerCase()) || (p.brand && p.brand.toLowerCase() === term.toLowerCase()) || (p.cat && p.cat.toLowerCase() === term.toLowerCase()));
+              const hash = term.split('').reduce((a,c) => a + c.charCodeAt(0), 0);
+              return { emoji: matchItems[0]?.emoji || '🔍', color: brandColors[hash % brandColors.length] };
+            };
+            const getItemsForTerm = (term) => {
+              const lower = term.toLowerCase();
+              return PRODUCT_DB.filter(p => p.name.toLowerCase().includes(lower) || (p.brand && p.brand.toLowerCase().includes(lower)) || (p.cat && p.cat.toLowerCase().includes(lower))).slice(0, 5);
+            };
+            // Suggestions for browse category search
+            const browseSuggestions = (() => {
+              if (!browseCatQuery.trim()) return [];
+              const lower = browseCatQuery.toLowerCase();
+              const seen = new Set();
+              const results = [];
+              PRODUCT_DB.forEach(p => { if (p.brand && p.brand.toLowerCase().includes(lower) && !seen.has(p.brand) && !discoverBrowseCats.includes(p.brand)) { seen.add(p.brand); results.push({text:p.brand,type:'Brand',emoji:p.emoji}); }});
+              PRODUCT_DB.forEach(p => { if (p.cat && p.cat.toLowerCase().includes(lower) && !seen.has(p.cat) && !discoverBrowseCats.includes(p.cat)) { seen.add(p.cat); results.push({text:p.cat,type:'Category',emoji:p.emoji}); }});
+              PRODUCT_DB.forEach(p => { if (p.model && p.model.toLowerCase().includes(lower) && !seen.has(p.model) && !discoverBrowseCats.includes(p.model)) { seen.add(p.model); results.push({text:p.model,type:'Model',emoji:p.emoji}); }});
+              return results.slice(0, 8);
+            })();
             return (
               <div>
                 {/* Header with edit toggle */}
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
                   <p className="text-dim" style={{fontSize:11,textTransform:'uppercase',letterSpacing:0.8,fontWeight:600}}>Browse Categories</p>
-                  <button onClick={() => setEditingBrowseCats(!editingBrowseCats)} style={{background:'none',border:'none',color:'#d4a853',fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                  <button onClick={() => { setEditingBrowseCats(!editingBrowseCats); setBrowseCatQuery(''); setShowBrowseSuggestions(false); }} style={{background:'none',border:'none',color:'#d4a853',fontSize:11,fontWeight:600,cursor:'pointer'}}>
                     {editingBrowseCats ? 'Done' : 'Edit'}
                   </button>
                 </div>
 
-                {/* Category selector (edit mode) */}
+                {/* Category editor with search to add */}
                 {editingBrowseCats && (
                   <div className="glass anim-fade" style={{borderRadius:12,padding:14,marginBottom:14}}>
-                    <p style={{fontSize:11,color:'#94a3b8',marginBottom:8}}>Select which categories to show:</p>
+                    <p style={{fontSize:11,color:'#94a3b8',marginBottom:8}}>Search to add any brand, category, or model:</p>
+                    <div style={{position:'relative',marginBottom:10}}>
+                      <input
+                        placeholder="e.g. Nike, Coach, Fujifilm, Disney..."
+                        value={browseCatQuery}
+                        onChange={e => { setBrowseCatQuery(e.target.value); setShowBrowseSuggestions(e.target.value.length > 0); }}
+                        onFocus={() => { if (browseCatQuery.length > 0) setShowBrowseSuggestions(true); }}
+                        onBlur={() => setTimeout(() => setShowBrowseSuggestions(false), 200)}
+                        onKeyDown={e => { if (e.key === 'Enter' && browseCatQuery.trim() && !discoverBrowseCats.includes(browseCatQuery.trim())) { setDiscoverBrowseCats(prev => [...prev, browseCatQuery.trim()]); setBrowseCatQuery(''); setShowBrowseSuggestions(false); }}}
+                        className="form-input"
+                        style={{width:'100%',padding:'10px 14px',borderRadius:10,border:'1px solid rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.06)',color:'#fff',fontSize:13}}
+                      />
+                      {showBrowseSuggestions && browseSuggestions.length > 0 && (
+                        <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:50,marginTop:4,background:'#1a1a2e',border:'1px solid rgba(255,255,255,0.12)',borderRadius:10,overflow:'hidden',boxShadow:'0 8px 32px rgba(0,0,0,0.5)',maxHeight:220,overflowY:'auto'}}>
+                          {browseSuggestions.map((s, i) => (
+                            <div key={i} onClick={() => { setDiscoverBrowseCats(prev => [...prev, s.text]); setBrowseCatQuery(''); setShowBrowseSuggestions(false); }}
+                              style={{padding:'10px 14px',display:'flex',alignItems:'center',gap:8,cursor:'pointer',borderBottom: i < browseSuggestions.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none'}}
+                              onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
+                              onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                              <span style={{fontSize:14}}>{s.emoji}</span>
+                              <span style={{flex:1,fontSize:13,color:'#fff',fontWeight:500}}>{s.text}</span>
+                              <span style={{fontSize:10,color:'#94a3b8',background:'rgba(255,255,255,0.06)',padding:'2px 8px',borderRadius:6,fontWeight:600}}>{s.type}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* Current categories as removable chips */}
                     <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-                      {allShowcases.map(sc => {
-                        const active = discoverBrowseCats.includes(sc.cat);
+                      {discoverBrowseCats.map(term => {
+                        const meta = getTermMeta(term);
                         return (
-                          <button key={sc.cat} onClick={() => {
-                            setDiscoverBrowseCats(prev => active ? prev.filter(c => c !== sc.cat) : [...prev, sc.cat]);
-                          }} style={{padding:'6px 12px',borderRadius:8,fontSize:11,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:4,
-                            border: active ? `1px solid ${sc.color}66` : '1px solid rgba(255,255,255,0.1)',
-                            background: active ? `${sc.color}15` : 'rgba(255,255,255,0.04)',
-                            color: active ? sc.color : '#475569'}}>
-                            <span style={{fontSize:12}}>{sc.emoji}</span>{sc.label}
-                          </button>
+                          <div key={term} style={{display:'flex',alignItems:'center',gap:4,padding:'5px 10px',borderRadius:8,fontSize:11,fontWeight:600,
+                            border:`1px solid ${meta.color}44`,background:`${meta.color}15`,color:meta.color}}>
+                            <span style={{fontSize:11}}>{meta.emoji}</span>{term}
+                            <button onClick={() => setDiscoverBrowseCats(prev => prev.filter(c => c !== term))} style={{background:'none',border:'none',color:meta.color,cursor:'pointer',fontSize:14,padding:'0 0 0 4px',lineHeight:1}}>x</button>
+                          </div>
                         );
                       })}
                     </div>
@@ -1702,13 +1738,15 @@ const App = () => {
                 )}
 
                 {/* Category sections with watchlist-style rows */}
-                {catsToShow.map(sc => {
-                  const catItems = PRODUCT_DB.filter(p => p.cat === sc.cat).slice(0, 4);
+                {discoverBrowseCats.map(term => {
+                  const meta = getTermMeta(term);
+                  const catItems = getItemsForTerm(term);
+                  if (catItems.length === 0) return null;
                   return (
-                    <div key={sc.cat} className="anim-fade" style={{marginBottom:16}}>
+                    <div key={term} className="anim-fade" style={{marginBottom:16}}>
                       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                        <span style={{fontSize:14}}>{sc.emoji}</span>
-                        <p style={{fontSize:13,fontWeight:700,color:sc.color}}>{sc.label}</p>
+                        <span style={{fontSize:14}}>{meta.emoji}</span>
+                        <p style={{fontSize:13,fontWeight:700,color:meta.color}}>{term}</p>
                       </div>
                       {/* Table header */}
                       <div style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'0 4px 6px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
@@ -1818,10 +1856,16 @@ const App = () => {
 
           {/* Prompt to search when query typed but not yet searched */}
           {!discoverSearched && discoverQuery.trim() && (
-            <div style={{textAlign:'center',padding:'30px 0'}}>
-              <div style={{fontSize:36,marginBottom:12}}>👆</div>
-              <p style={{fontSize:14,fontWeight:600,color:'#fff',marginBottom:6}}>Ready to search</p>
-              <p className="text-dim" style={{fontSize:12,lineHeight:1.5}}>Hit "Search Market" to see prices for "{discoverQuery}"</p>
+            <div>
+              <button onClick={() => { setDiscoverQuery(''); setDiscoverResults([]); }}
+                style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',color:'#d4a853',fontSize:12,fontWeight:600,cursor:'pointer',padding:'0 0 8px',marginTop:4}}>
+                ← Back to Browse
+              </button>
+              <div style={{textAlign:'center',padding:'30px 0'}}>
+                <div style={{fontSize:36,marginBottom:12}}>👆</div>
+                <p style={{fontSize:14,fontWeight:600,color:'#fff',marginBottom:6}}>Ready to search</p>
+                <p className="text-dim" style={{fontSize:12,lineHeight:1.5}}>Hit "Search Market" to see prices for "{discoverQuery}"</p>
+              </div>
             </div>
           )}
 
