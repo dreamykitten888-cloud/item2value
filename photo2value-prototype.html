@@ -31,6 +31,11 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes spinReverse { to { transform: rotate(-360deg); } }
   @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  @keyframes glowGreen { 0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); } 50% { box-shadow: 0 0 12px 2px rgba(74,222,128,0.25); } }
+  @keyframes glowRed { 0%,100% { box-shadow: 0 0 0 0 rgba(248,113,113,0); } 50% { box-shadow: 0 0 12px 2px rgba(248,113,113,0.2); } }
+  .glow-up { animation: glowGreen 3s ease-in-out infinite; border: 1px solid rgba(74,222,128,0.15) !important; }
+  .glow-down { animation: glowRed 3s ease-in-out infinite; border: 1px solid rgba(248,113,113,0.12) !important; }
+  .bulk-selected { border: 2px solid #d4a853 !important; background: rgba(212,168,83,0.08) !important; }
 
   .anim-up { animation: slideUp 0.5s ease-out both; }
   .anim-right { animation: slideRight 0.5s ease-out both; }
@@ -386,6 +391,9 @@ const App = () => {
   /* ── Feature 6: Archive ── */
   const [archivedIds, setArchivedIds] = useState(() => { try { return JSON.parse(localStorage.getItem('item2value_archived') || '[]'); } catch(e) { return []; } });
   const [showArchived, setShowArchived] = useState(false);
+  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+  const [bulkSelectedIds, setBulkSelectedIds] = useState([]);
+  const [bulkCategoryPicker, setBulkCategoryPicker] = useState(false);
 
   /* ── Feature 8: Independent Watchlist ── */
   const [watchlist, setWatchlist] = useState(() => { try { return JSON.parse(localStorage.getItem('item2value_watchlist') || '[]'); } catch(e) { return []; } });
@@ -2922,9 +2930,16 @@ const App = () => {
             <h1 style={{fontSize:24,fontWeight:700,color:'#fff'}}>Inventory</h1>
             {items.length > 0 && <span style={{background:'rgba(212,168,83,0.15)',color:'#d4a853',fontSize:12,fontWeight:700,padding:'4px 10px',borderRadius:20}}>{items.length}</span>}
           </div>
-          <button onClick={() => setViewMode(viewMode==='grid'?'list':'grid')} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}>
-            {viewMode==='grid' ? <Icons.List size={22}/> : <Icons.Grid size={22}/>}
-          </button>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            {items.length > 1 && (
+              <button onClick={() => { setBulkSelectMode(!bulkSelectMode); setBulkSelectedIds([]); setBulkCategoryPicker(false); }} style={{background: bulkSelectMode ? 'rgba(212,168,83,0.15)' : 'none', border: bulkSelectMode ? '1px solid rgba(212,168,83,0.4)' : 'none', color: bulkSelectMode ? '#d4a853' : '#94a3b8', fontSize:12, fontWeight:600, borderRadius:8, padding:'5px 10px', cursor:'pointer'}}>
+                {bulkSelectMode ? 'Done' : 'Select'}
+              </button>
+            )}
+            <button onClick={() => setViewMode(viewMode==='grid'?'list':'grid')} style={{background:'none',border:'none',color:'#fff',cursor:'pointer'}}>
+              {viewMode==='grid' ? <Icons.List size={22}/> : <Icons.Grid size={22}/>}
+            </button>
+          </div>
         </div>
 
         {/* Search */}
@@ -2959,6 +2974,16 @@ const App = () => {
         </div>
       </div>
 
+      {/* Bulk select bar */}
+      {bulkSelectMode && filtered.length > 0 && (
+        <div style={{padding:'0 24px 8px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <button onClick={() => setBulkSelectedIds(bulkSelectedIds.length === filtered.length ? [] : filtered.map(i => i.id))} style={{background:'none',border:'none',color:'#d4a853',fontSize:12,fontWeight:600,cursor:'pointer'}}>
+            {bulkSelectedIds.length === filtered.length ? 'Deselect All' : `Select All (${filtered.length})`}
+          </button>
+          {bulkSelectedIds.length > 0 && <span style={{fontSize:12,color:'#94a3b8'}}>{bulkSelectedIds.length} selected</span>}
+        </div>
+      )}
+
       {/* Items */}
       <div style={{padding:'12px 24px'}}>
         {filtered.length === 0 ? (
@@ -2971,7 +2996,12 @@ const App = () => {
         ) : viewMode === 'grid' ? (
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             {filtered.map((item,i) => (
-              <div key={item.id} onClick={() => goItem(item.id)} className="glass glass-hover anim-up" style={{borderRadius:16,overflow:'hidden',cursor:'pointer',animationDelay:`${i*0.06}s`}}>
+              <div key={item.id} onClick={() => { if (bulkSelectMode) { setBulkSelectedIds(prev => prev.includes(item.id) ? prev.filter(x=>x!==item.id) : [...prev, item.id]); } else { goItem(item.id); }}} className={`glass glass-hover anim-up${getItemGain(item) > 0 ? ' glow-up' : getItemGain(item) < -5 ? ' glow-down' : ''}${bulkSelectMode && bulkSelectedIds.includes(item.id) ? ' bulk-selected' : ''}`} style={{borderRadius:16,overflow:'hidden',cursor:'pointer',animationDelay:`${i*0.06}s`,position:'relative'}}>
+                {bulkSelectMode && (
+                  <div style={{position:'absolute',top:8,left:8,zIndex:5,width:24,height:24,borderRadius:12,border: bulkSelectedIds.includes(item.id) ? 'none' : '2px solid rgba(255,255,255,0.4)',background: bulkSelectedIds.includes(item.id) ? '#d4a853' : 'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.2s'}}>
+                    {bulkSelectedIds.includes(item.id) && <Icons.Check size={14} color="#000"/>}
+                  </div>
+                )}
                 <div style={{width:'100%',height:120,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:44,overflow:'hidden',position:'relative'}}>
                   {item.photos && item.photos.length > 0 ? <img src={item.photos[0]} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : item.emoji}
                   {item.earnings && item.earnings > 0 && <div style={{position:'absolute',top:6,right:6,background:'rgba(34,197,94,0.9)',borderRadius:6,padding:'2px 6px',fontSize:9,fontWeight:700,color:'#fff'}}>SOLD</div>}
@@ -2990,7 +3020,12 @@ const App = () => {
         ) : (
           <div style={{display:'flex',flexDirection:'column',gap:10}}>
             {filtered.map((item,i) => (
-              <div key={item.id} onClick={() => goItem(item.id)} className="glass glass-hover anim-right" style={{borderRadius:14,padding:16,display:'flex',alignItems:'center',gap:14,cursor:'pointer',animationDelay:`${i*0.04}s`}}>
+              <div key={item.id} onClick={() => { if (bulkSelectMode) { setBulkSelectedIds(prev => prev.includes(item.id) ? prev.filter(x=>x!==item.id) : [...prev, item.id]); } else { goItem(item.id); }}} className={`glass glass-hover anim-right${getItemGain(item) > 0 ? ' glow-up' : getItemGain(item) < -5 ? ' glow-down' : ''}${bulkSelectMode && bulkSelectedIds.includes(item.id) ? ' bulk-selected' : ''}`} style={{borderRadius:14,padding:16,display:'flex',alignItems:'center',gap:14,cursor:'pointer',animationDelay:`${i*0.04}s`}}>
+                {bulkSelectMode && (
+                  <div style={{width:24,height:24,borderRadius:12,border: bulkSelectedIds.includes(item.id) ? 'none' : '2px solid rgba(255,255,255,0.4)',background: bulkSelectedIds.includes(item.id) ? '#d4a853' : 'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all 0.2s'}}>
+                    {bulkSelectedIds.includes(item.id) && <Icons.Check size={14} color="#000"/>}
+                  </div>
+                )}
                 <div style={{width:56,height:56,borderRadius:12,background:'linear-gradient(135deg,#334155,#1e293b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,flexShrink:0,overflow:'hidden'}}>
                   {item.photos && item.photos.length > 0 ? <img src={item.photos[0]} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : item.emoji}
                 </div>
@@ -3007,6 +3042,53 @@ const App = () => {
           </div>
         )}
       </div>
+
+      {/* Bulk action bar */}
+      {bulkSelectMode && bulkSelectedIds.length > 0 && (
+        <div className="anim-up" style={{position:'fixed',bottom:80,left:16,right:16,background:'rgba(30,41,59,0.95)',backdropFilter:'blur(20px)',borderRadius:16,padding:14,display:'flex',alignItems:'center',justifyContent:'space-around',gap:8,zIndex:50,border:'1px solid rgba(212,168,83,0.3)',boxShadow:'0 -4px 24px rgba(0,0,0,0.5)'}}>
+          <button onClick={() => {
+            const ids = [...bulkSelectedIds];
+            setArchivedIds(prev => [...new Set([...prev, ...ids])]);
+            setBulkSelectedIds([]);
+            setBulkSelectMode(false);
+            showToast(`${ids.length} item${ids.length===1?'':'s'} archived`);
+          }} style={{flex:1,background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'10px 0',color:'#fff',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+            <Icons.Package size={18} color="#94a3b8"/>Archive
+          </button>
+          <button onClick={() => setBulkCategoryPicker(!bulkCategoryPicker)} style={{flex:1,background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'10px 0',color:'#fff',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+            <Icons.Edit size={18} color="#d4a853"/>Category
+          </button>
+          <button onClick={() => {
+            if (!confirm(`Delete ${bulkSelectedIds.length} item${bulkSelectedIds.length===1?'':'s'}? This can't be undone.`)) return;
+            const ids = [...bulkSelectedIds];
+            setItems(prev => prev.filter(i => !ids.includes(i.id)));
+            setBulkSelectedIds([]);
+            setBulkSelectMode(false);
+            showToast(`${ids.length} item${ids.length===1?'':'s'} deleted`);
+          }} style={{flex:1,background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:10,padding:'10px 0',color:'#f87171',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+            <Icons.Trash2 size={18} color="#f87171"/>Delete
+          </button>
+        </div>
+      )}
+
+      {/* Category picker overlay */}
+      {bulkCategoryPicker && bulkSelectedIds.length > 0 && (
+        <div className="anim-fade" style={{position:'fixed',bottom:144,left:16,right:16,background:'rgba(30,41,59,0.98)',backdropFilter:'blur(20px)',borderRadius:14,padding:16,zIndex:51,border:'1px solid rgba(255,255,255,0.12)',boxShadow:'0 -4px 24px rgba(0,0,0,0.5)',maxHeight:240,overflowY:'auto'}}>
+          <p style={{fontSize:12,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:1,marginBottom:10}}>Move {bulkSelectedIds.length} item{bulkSelectedIds.length===1?'':'s'} to:</p>
+          <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+            {categoryOptions.map(cat => (
+              <button key={cat} onClick={() => {
+                const ids = [...bulkSelectedIds];
+                setItems(prev => prev.map(i => ids.includes(i.id) ? {...i, category: cat} : i));
+                setBulkCategoryPicker(false);
+                setBulkSelectedIds([]);
+                setBulkSelectMode(false);
+                showToast(`${ids.length} item${ids.length===1?'':'s'} moved to ${cat}`);
+              }} style={{padding:'8px 14px',borderRadius:10,fontSize:12,fontWeight:600,cursor:'pointer',border:'1px solid rgba(255,255,255,0.1)',background:'rgba(255,255,255,0.04)',color:'#e2e8f0',transition:'all 0.15s'}} className="glass-hover">{cat}</button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
