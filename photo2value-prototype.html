@@ -381,6 +381,17 @@ const App = () => {
   const [addItemQuery, setAddItemQuery] = useState('');
   const [showAddSuggestions, setShowAddSuggestions] = useState(false);
 
+  /* ── Feature 6: Archive ── */
+  const [archivedIds, setArchivedIds] = useState(() => { try { return JSON.parse(localStorage.getItem('item2value_archived') || '[]'); } catch(e) { return []; } });
+  const [showArchived, setShowArchived] = useState(false);
+
+  /* ── Feature 8: Independent Watchlist ── */
+  const [watchlist, setWatchlist] = useState(() => { try { return JSON.parse(localStorage.getItem('item2value_watchlist') || '[]'); } catch(e) { return []; } });
+  const [showWatchlistAdd, setShowWatchlistAdd] = useState(false);
+  const [watchlistQuery, setWatchlistQuery] = useState('');
+  const [swipedWatchlistId, setSwipedWatchlistId] = useState(null);
+  const watchlistTouchRef = useRef({startX:0, id:null});
+
   /* ── Product Knowledge Base (for autocomplete across Discover + Add Item) ── */
   const PRODUCT_DB = [
     // Fashion - Bags
@@ -674,6 +685,8 @@ const App = () => {
   useEffect(() => {
     if (profile) localStorage.setItem('item2value_profile', JSON.stringify(profile));
   }, [profile]);
+  useEffect(() => { localStorage.setItem('item2value_archived', JSON.stringify(archivedIds)); }, [archivedIds]);
+  useEffect(() => { localStorage.setItem('item2value_watchlist', JSON.stringify(watchlist)); }, [watchlist]);
 
   // On app load: sync profile to Supabase and get userId
   useEffect(() => {
@@ -754,11 +767,15 @@ const App = () => {
   const selected = items.find(i => i.id === selectedId);
 
   const filtered = items
+    .filter(i => showArchived ? archivedIds.includes(i.id) : !archivedIds.includes(i.id))
     .filter(i => (filter === 'All' || i.category === filter) && i.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a,b) => {
       if (sortBy === 'value-high') return b.value - a.value;
       if (sortBy === 'value-low') return a.value - b.value;
       if (sortBy === 'gain') return getItemGain(b) - getItemGain(a);
+      if (sortBy === 'loss') return getItemGain(a) - getItemGain(b);
+      if (sortBy === 'newest') return (b.createdAt || '').localeCompare(a.createdAt || '');
+      if (sortBy === 'oldest') return (a.createdAt || '').localeCompare(b.createdAt || '');
       return 0;
     });
 
@@ -995,6 +1012,42 @@ const App = () => {
         </div>
       </div>
 
+      {/* Flip Highlights (Feature 6) */}
+      {(() => {
+        const withDates = soldItems.filter(i => i.dateSold && (i.datePurchased || i.createdAt));
+        const fastestFlip = withDates.length > 0 ? withDates.reduce((best, i) => {
+          const days = Math.round((new Date(i.dateSold) - new Date(i.datePurchased || i.createdAt)) / (1000*60*60*24));
+          const bestDays = Math.round((new Date(best.dateSold) - new Date(best.datePurchased || best.createdAt)) / (1000*60*60*24));
+          return days < bestDays ? i : best;
+        }) : null;
+        const fastestDays = fastestFlip ? Math.round((new Date(fastestFlip.dateSold) - new Date(fastestFlip.datePurchased || fastestFlip.createdAt)) / (1000*60*60*24)) : 0;
+        const biggestGain = soldItems.length > 0 ? soldItems.reduce((best, i) => ((i.earnings - i.cost) > (best.earnings - best.cost)) ? i : best) : null;
+        const biggestGainAmt = biggestGain ? (biggestGain.earnings - biggestGain.cost) : 0;
+        if (!fastestFlip && !biggestGain) return null;
+        return (
+          <div style={{padding:'0 24px 4px'}}>
+            <div style={{display:'flex',gap:10,overflowX:'auto'}} className="scroll-hide">
+              {fastestFlip && (
+                <div onClick={() => goItem(fastestFlip.id)} className="glass glass-hover anim-up" style={{borderRadius:14,padding:14,minWidth:170,flex:1,cursor:'pointer',borderLeft:'3px solid #3b82f6',animationDelay:'0.1s'}}>
+                  <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:1}}>Fastest Flip</p>
+                  <p className="truncate" style={{fontWeight:700,color:'#fff',fontSize:13,marginTop:4}}>{fastestFlip.emoji} {fastestFlip.name}</p>
+                  <p style={{fontSize:18,fontWeight:800,color:'#3b82f6',marginTop:4}}>{fastestDays}d</p>
+                  <p className="text-dim" style={{fontSize:10,marginTop:2}}>+${(fastestFlip.earnings - fastestFlip.cost).toLocaleString()} profit</p>
+                </div>
+              )}
+              {biggestGain && biggestGainAmt > 0 && (
+                <div onClick={() => goItem(biggestGain.id)} className="glass glass-hover anim-up" style={{borderRadius:14,padding:14,minWidth:170,flex:1,cursor:'pointer',borderLeft:'3px solid #4ade80',animationDelay:'0.2s'}}>
+                  <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:1}}>Biggest Win</p>
+                  <p className="truncate" style={{fontWeight:700,color:'#fff',fontSize:13,marginTop:4}}>{biggestGain.emoji} {biggestGain.name}</p>
+                  <p style={{fontSize:18,fontWeight:800,color:'#4ade80',marginTop:4}}>+${biggestGainAmt.toLocaleString()}</p>
+                  <p className="text-dim" style={{fontSize:10,marginTop:2}}>Cost {fmt(biggestGain.cost)} / Sold {fmt(biggestGain.earnings)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Action Buttons */}
       <div style={{padding:'20px 24px',display:'flex',gap:12}}>
         <button onClick={() => setScreen('scan')} className="gradient-amber" style={{flex:1,border:'none',borderRadius:14,padding:'16px 0',fontSize:15,fontWeight:600,color:'#000',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
@@ -1081,54 +1134,189 @@ const App = () => {
         );
       })()}
 
-      {/* Watchlist: Biggest Movers */}
+      {/* Market Movers (Feature 7) */}
       {(() => {
-        const sorted = [...items].sort((a,b) => Math.abs(getItemGain(b)) - Math.abs(getItemGain(a)));
+        const movers = items.filter(i => !archivedIds.includes(i.id) && !(i.earnings > 0)).map(item => {
+          const history = item.priceHistory || [];
+          if (history.length < 2) return null;
+          const latest = history[history.length - 1].value;
+          const prev = history[history.length - 2].value;
+          const change = latest - prev;
+          const changePct = prev > 0 ? ((change / prev) * 100) : 0;
+          if (Math.abs(changePct) < 1) return null;
+          return { ...item, change, changePct };
+        }).filter(Boolean).sort((a,b) => Math.abs(b.changePct) - Math.abs(a.changePct)).slice(0, 5);
+        if (movers.length === 0) return null;
+        return (
+          <div style={{padding:'12px 24px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <h2 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Market Movers</h2>
+                <InfoTip text="Items with the biggest price changes based on your comp data. Green = trending up, red = trending down."/>
+              </div>
+              <button onClick={() => setScreen('alerts')} style={{background:'none',border:'none',color:'#d4a853',fontSize:13,fontWeight:600,cursor:'pointer'}}>All Alerts</button>
+            </div>
+            <div style={{display:'flex',gap:10,overflowX:'auto'}} className="scroll-hide">
+              {movers.map((m,i) => {
+                const isUp = m.change >= 0;
+                return (
+                  <div key={m.id} onClick={() => goItem(m.id)} className="glass glass-hover anim-right" style={{borderRadius:14,padding:14,minWidth:150,cursor:'pointer',borderTop:`3px solid ${isUp?'#4ade80':'#f87171'}`,animationDelay:`${i*0.06}s`}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                      <span style={{fontSize:18}}>{m.emoji}</span>
+                      <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:12,maxWidth:100}}>{m.name}</p>
+                    </div>
+                    <p style={{fontSize:16,fontWeight:800,color:isUp?'#4ade80':'#f87171'}}>{isUp?'+':''}{m.changePct.toFixed(1)}%</p>
+                    <p className="text-dim" style={{fontSize:10,marginTop:2}}>{isUp?'+':''}${Math.abs(Math.round(m.change)).toLocaleString()} since last update</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Watchlist (Feature 8: Independent) */}
+      {(() => {
+        const watchlistSuggestions = watchlistQuery.length > 1 ? PRODUCT_DB.filter(p => p.name.toLowerCase().includes(watchlistQuery.toLowerCase())).slice(0,5) : [];
+        const isOnWatchlist = (name) => watchlist.some(w => w.name.toLowerCase() === name.toLowerCase());
+        const removeFromWatchlist = (id) => setWatchlist(prev => prev.filter(w => w.id !== id));
         return (
           <div style={{padding:'16px 24px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <h2 style={{fontSize:18,fontWeight:700,color:'#fff'}}>Watchlist</h2>
-                <InfoTip text="Your items ranked by biggest market moves. Updates as new comparable listings appear across marketplaces."/>
+                <InfoTip text="Track any item's market value, whether you own it or not. Like a stock watchlist for your stuff."/>
               </div>
-              <button onClick={() => setScreen('inventory')} style={{background:'none',border:'none',color:'#d4a853',fontSize:13,fontWeight:600,cursor:'pointer'}}>View All</button>
+              <button onClick={() => setShowWatchlistAdd(!showWatchlistAdd)} style={{background:'none',border:'none',color:'#d4a853',fontSize:13,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+                <Icons.Plus size={14} color="#d4a853"/>{showWatchlistAdd ? 'Done' : 'Add'}
+              </button>
             </div>
-            {sorted.length === 0 ? (
-              <div className="glass" style={{borderRadius:14,padding:24,textAlign:'center'}}>
-                <p style={{fontSize:32,marginBottom:8}}>👀</p>
-                <p className="text-muted" style={{fontSize:13}}>Your watchlist is empty. Add items to track their market moves.</p>
-              </div>
-            ) : (<React.Fragment>
-            {/* Table header */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'0 4px 8px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-              <span className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1}}>Item</span>
-              <span className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:70}}>Mkt Value</span>
-              <span className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:80}}>Daily Chg</span>
-            </div>
-            <div style={{display:'flex',flexDirection:'column'}}>
-              {sorted.map((item,i) => {
-                const dailyDollar = item.value * (getItemGain(item) / 100) * 0.1;
-                const dailyPct = (getItemGain(item) * 0.1);
-                const isUp = dailyPct >= 0;
-                return (
-                  <div key={item.id} onClick={() => goItem(item.id)} className="anim-right" style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'12px 4px',borderBottom:'1px solid rgba(255,255,255,0.04)',cursor:'pointer',alignItems:'center',animationDelay:`${i*0.04}s`}}>
-                    <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0}}>
-                      <span style={{fontSize:20}}>{item.emoji}</span>
-                      <div style={{minWidth:0}}>
-                        <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:13}}>{item.name}</p>
-                        <p className="text-dim" style={{fontSize:11}}>{item.category}</p>
+
+            {/* Add to watchlist input */}
+            {showWatchlistAdd && (
+              <div className="glass anim-fade" style={{borderRadius:12,padding:14,marginBottom:12,position:'relative'}}>
+                <div style={{display:'flex',gap:8}}>
+                  <input value={watchlistQuery} onChange={e => setWatchlistQuery(e.target.value)} placeholder="Search items to watch..." style={{flex:1,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'10px 12px',color:'#fff',fontSize:13,outline:'none'}}/>
+                  <button onClick={() => {
+                    if (!watchlistQuery.trim()) return;
+                    if (isOnWatchlist(watchlistQuery)) { showToast('Already on watchlist'); return; }
+                    const match = PRODUCT_DB.find(p => p.name.toLowerCase() === watchlistQuery.toLowerCase());
+                    const newItem = { id: Date.now().toString(), name: watchlistQuery.trim(), category: match?.cat || 'Other', emoji: match?.emoji || '👀', targetPrice: 0, lastKnownPrice: 0, priceHistory: [], addedAt: new Date().toISOString() };
+                    setWatchlist(prev => [newItem, ...prev]);
+                    setWatchlistQuery('');
+                    showToast(`${newItem.name} added to watchlist!`);
+                  }} className="gradient-amber" style={{border:'none',borderRadius:8,padding:'10px 16px',fontSize:13,fontWeight:700,color:'#000',cursor:'pointer',whiteSpace:'nowrap'}}>Add</button>
+                </div>
+                {/* Suggestions dropdown */}
+                {watchlistSuggestions.length > 0 && (
+                  <div style={{position:'absolute',top:'100%',left:0,right:0,background:'#1e293b',border:'1px solid rgba(255,255,255,0.12)',borderRadius:10,marginTop:4,zIndex:30,maxHeight:200,overflowY:'auto'}}>
+                    {watchlistSuggestions.map((s,i) => (
+                      <div key={i} onMouseDown={e => e.preventDefault()} onClick={() => {
+                        if (isOnWatchlist(s.name)) { showToast('Already on watchlist'); return; }
+                        const newItem = { id: Date.now().toString(), name: s.name, category: s.cat, emoji: s.emoji, brand: s.brand, model: s.model, targetPrice: 0, lastKnownPrice: 0, priceHistory: [], addedAt: new Date().toISOString() };
+                        setWatchlist(prev => [newItem, ...prev]);
+                        setWatchlistQuery('');
+                        showToast(`${s.name} added to watchlist!`);
+                      }} style={{padding:'10px 14px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,0.06)',display:'flex',alignItems:'center',gap:10}} className="glass-hover">
+                        <span style={{fontSize:16}}>{s.emoji}</span>
+                        <div>
+                          <p style={{color:'#fff',fontSize:13,fontWeight:500}}>{s.name}</p>
+                          <p className="text-dim" style={{fontSize:10}}>{s.brand} · {s.cat}</p>
+                        </div>
                       </div>
-                    </div>
-                    <p style={{fontWeight:600,color:'#fff',fontSize:14,textAlign:'right',minWidth:70}}>{fmt(item.value)}</p>
-                    <div style={{textAlign:'right',minWidth:80}}>
-                      <p style={{fontSize:13,fontWeight:600,color:isUp?'#4ade80':'#f87171'}}>{isUp?'+':''}{dailyPct.toFixed(2)}%</p>
-                      <p style={{fontSize:11,color:isUp?'#4ade80':'#f87171',opacity:0.8}}>{isUp?'+':''}${Math.abs(Math.round(dailyDollar)).toLocaleString()}</p>
+                    ))}
+                  </div>
+                )}
+                {/* Quick add from inventory */}
+                {items.filter(i => !isOnWatchlist(i.name)).length > 0 && (
+                  <div style={{marginTop:10}}>
+                    <p className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:0.8,marginBottom:6}}>From your inventory</p>
+                    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                      {items.filter(i => !isOnWatchlist(i.name)).slice(0,6).map(i => (
+                        <button key={i.id} onClick={() => {
+                          const newItem = { id: 'w' + i.id, name: i.name, category: i.category, emoji: i.emoji, brand: i.brand, model: i.model, targetPrice: i.asking || 0, lastKnownPrice: i.value, priceHistory: [], addedAt: new Date().toISOString(), linkedItemId: i.id };
+                          setWatchlist(prev => [newItem, ...prev]);
+                          showToast(`${i.name} added to watchlist!`);
+                        }} style={{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'4px 10px',fontSize:11,color:'#cbd5e1',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+                          <span style={{fontSize:12}}>{i.emoji}</span>{i.name.length > 18 ? i.name.slice(0,18) + '...' : i.name}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-            </React.Fragment>)}
+                )}
+              </div>
+            )}
+
+            {watchlist.length === 0 ? (
+              <div className="glass" style={{borderRadius:14,padding:24,textAlign:'center'}}>
+                <p style={{fontSize:32,marginBottom:8}}>👀</p>
+                <p className="text-muted" style={{fontSize:13,lineHeight:1.5}}>Your watchlist is empty. Add any item you want to keep an eye on, even if you don't own it.</p>
+                {!showWatchlistAdd && <button onClick={() => setShowWatchlistAdd(true)} className="gradient-amber" style={{border:'none',borderRadius:10,padding:'10px 20px',fontSize:13,fontWeight:700,color:'#000',cursor:'pointer',marginTop:12}}>+ Add to Watchlist</button>}
+              </div>
+            ) : (
+              <React.Fragment>
+              {/* Table header */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'0 4px 8px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+                <span className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1}}>Item</span>
+                <span className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:70}}>Mkt Value</span>
+                <span className="text-dim" style={{fontSize:10,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:80}}>Daily Chg</span>
+              </div>
+              <div style={{display:'flex',flexDirection:'column'}}>
+                {watchlist.map((w,i) => {
+                  const linkedItem = w.linkedItemId ? items.find(it => it.id === w.linkedItemId) : null;
+                  const currentPrice = linkedItem ? linkedItem.value : (w.lastKnownPrice || 0);
+                  const cost = linkedItem ? (linkedItem.cost || 0) : 0;
+                  const gainPct = cost > 0 ? ((currentPrice - cost) / cost) * 100 : 0;
+                  const dailyPct = gainPct * 0.1;
+                  const dailyDollar = currentPrice * (gainPct / 100) * 0.1;
+                  const isUp = dailyPct >= 0;
+                  const isSwiped = swipedWatchlistId === w.id;
+                  return (
+                    <div key={w.id} style={{position:'relative',overflow:'hidden',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+                      {/* Delete behind layer */}
+                      <div style={{position:'absolute',top:0,right:0,bottom:0,width:70,background:'#ef4444',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'opacity 0.2s',opacity:isSwiped?1:0}} onClick={() => { removeFromWatchlist(w.id); setSwipedWatchlistId(null); }}>
+                        <Icons.Trash2 size={20} color="#fff"/>
+                      </div>
+                      {/* Main row */}
+                      <div className="anim-right"
+                        onTouchStart={e => { watchlistTouchRef.current = {startX: e.touches[0].clientX, id: w.id}; }}
+                        onTouchMove={e => {
+                          const dx = e.touches[0].clientX - watchlistTouchRef.current.startX;
+                          if (dx < -50 && watchlistTouchRef.current.id === w.id) setSwipedWatchlistId(w.id);
+                          if (dx > 30 && swipedWatchlistId === w.id) setSwipedWatchlistId(null);
+                        }}
+                        onTouchEnd={() => {}}
+                        onClick={() => {
+                          if (isSwiped) { setSwipedWatchlistId(null); return; }
+                          if (linkedItem) goItem(linkedItem.id);
+                          else { setDiscoverQuery(w.name); setDiscoverSearched(false); setScreen('discover'); }
+                        }}
+                        style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'12px 4px',alignItems:'center',animationDelay:`${i*0.04}s`,cursor:'pointer',background:'#0a0a0f',position:'relative',transition:'transform 0.25s ease',transform: isSwiped ? 'translateX(-70px)' : 'translateX(0)'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0}}>
+                          <span style={{fontSize:20}}>{w.emoji}</span>
+                          <div style={{minWidth:0}}>
+                            <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:13}}>{w.name}</p>
+                            <p className="text-dim" style={{fontSize:11}}>{w.category}{linkedItem ? ' · Owned' : ''}</p>
+                          </div>
+                        </div>
+                        <p style={{fontWeight:600,color:'#fff',fontSize:14,textAlign:'right',minWidth:70}}>{currentPrice > 0 ? fmt(currentPrice) : '--'}</p>
+                        <div style={{textAlign:'right',minWidth:80}}>
+                          {currentPrice > 0 && cost > 0 ? (
+                            <React.Fragment>
+                              <p style={{fontSize:13,fontWeight:600,color:isUp?'#4ade80':'#f87171'}}>{isUp?'+':''}{dailyPct.toFixed(2)}%</p>
+                              <p style={{fontSize:11,color:isUp?'#4ade80':'#f87171',opacity:0.8}}>{isUp?'+':''}${Math.abs(Math.round(dailyDollar)).toLocaleString()}</p>
+                            </React.Fragment>
+                          ) : (
+                            <p className="text-dim" style={{fontSize:11}}>--</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              </React.Fragment>
+            )}
           </div>
         );
       })()}
@@ -2442,14 +2630,22 @@ const App = () => {
           ))}
         </div>
 
-        {/* Sort */}
+        {/* Sort + Archive toggle */}
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <Icons.Filter size={14} color="#64748b"/>
           <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',color:'#fff',fontSize:13,borderRadius:8,padding:'6px 10px',outline:'none'}}>
             <option value="value-high">Value: High to Low</option>
             <option value="value-low">Value: Low to High</option>
             <option value="gain">Biggest Gains</option>
+            <option value="loss">Biggest Losses</option>
+            <option value="newest">Recently Added</option>
+            <option value="oldest">Oldest First</option>
           </select>
+          {archivedIds.length > 0 && (
+            <button onClick={() => setShowArchived(!showArchived)} style={{background: showArchived ? 'rgba(212,168,83,0.15)' : 'rgba(255,255,255,0.04)', border: showArchived ? '1px solid rgba(212,168,83,0.4)' : '1px solid rgba(255,255,255,0.1)', color: showArchived ? '#d4a853' : '#64748b', fontSize:11, fontWeight:600, borderRadius:8, padding:'6px 10px', cursor:'pointer', whiteSpace:'nowrap'}}>
+              📦 {showArchived ? 'Archived' : archivedIds.length}
+            </button>
+          )}
         </div>
       </div>
 
@@ -3009,6 +3205,44 @@ const App = () => {
           <button onClick={() => { initEditForm(selected); setScreen('edit-item'); }} className="glass glass-hover" style={{width:'100%',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',fontSize:14,fontWeight:600,color:'#fff',cursor:'pointer',background:'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
             <Icons.Edit size={16}/>Edit Item
           </button>
+          <div style={{display:'flex',gap:8,marginBottom:8}}>
+            {/* Add to Watchlist */}
+            {(() => {
+              const isWatched = watchlist.some(w => w.linkedItemId === selected.id || w.name.toLowerCase() === selected.name.toLowerCase());
+              return (
+                <button onClick={() => {
+                  if (isWatched) {
+                    setWatchlist(prev => prev.filter(w => w.linkedItemId !== selected.id && w.name.toLowerCase() !== selected.name.toLowerCase()));
+                    showToast(`${selected.name} removed from watchlist`);
+                  } else {
+                    const newW = { id: 'w' + selected.id, name: selected.name, category: selected.category, emoji: selected.emoji, brand: selected.brand, model: selected.model, targetPrice: selected.asking || 0, lastKnownPrice: selected.value, priceHistory: [], addedAt: new Date().toISOString(), linkedItemId: selected.id };
+                    setWatchlist(prev => [newW, ...prev]);
+                    showToast(`${selected.name} added to watchlist!`);
+                  }
+                }} style={{flex:1,border: isWatched ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',fontSize:13,fontWeight:600,color: isWatched ? '#3b82f6' : '#fff',cursor:'pointer',background: isWatched ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                  {isWatched ? '👀 Watching' : '👀 Watch'}
+                </button>
+              );
+            })()}
+            {/* Archive */}
+            {(() => {
+              const isArchived = archivedIds.includes(selected.id);
+              return (
+                <button onClick={() => {
+                  if (isArchived) {
+                    setArchivedIds(prev => prev.filter(id => id !== selected.id));
+                    showToast(`${selected.name} unarchived`);
+                  } else {
+                    setArchivedIds(prev => [...prev, selected.id]);
+                    showToast(`${selected.name} archived`);
+                    setScreen('inventory');
+                  }
+                }} style={{flex:1,border: isArchived ? '1px solid rgba(212,168,83,0.4)' : '1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',fontSize:13,fontWeight:600,color: isArchived ? '#d4a853' : '#fff',cursor:'pointer',background: isArchived ? 'rgba(212,168,83,0.08)' : 'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                  {isArchived ? '📦 Unarchive' : '📦 Archive'}
+                </button>
+              );
+            })()}
+          </div>
           <button onClick={() => {
             if (confirm('Delete this item from your inventory?')) {
               const delId = selected.id;
@@ -3152,6 +3386,21 @@ const App = () => {
           const daysB = b.dateSold && (b.datePurchased || b.createdAt) ? Math.round((new Date(b.dateSold) - new Date(b.datePurchased || b.createdAt)) / (1000*60*60*24)) : 9999;
           return daysA - daysB;
         }
+        if (soldSort === 'slowest') {
+          const daysA = a.dateSold && (a.datePurchased || a.createdAt) ? Math.round((new Date(a.dateSold) - new Date(a.datePurchased || a.createdAt)) / (1000*60*60*24)) : 0;
+          const daysB = b.dateSold && (b.datePurchased || b.createdAt) ? Math.round((new Date(b.dateSold) - new Date(b.datePurchased || b.createdAt)) / (1000*60*60*24)) : 0;
+          return daysB - daysA;
+        }
+        if (soldSort === 'biggest-gain') {
+          const gainA = a.cost > 0 ? ((a.earnings - a.cost) / a.cost) * 100 : 0;
+          const gainB = b.cost > 0 ? ((b.earnings - b.cost) / b.cost) * 100 : 0;
+          return gainB - gainA;
+        }
+        if (soldSort === 'biggest-loss') {
+          const gainA = a.cost > 0 ? ((a.earnings - a.cost) / a.cost) * 100 : 0;
+          const gainB = b.cost > 0 ? ((b.earnings - b.cost) / b.cost) * 100 : 0;
+          return gainA - gainB;
+        }
         return 0;
       });
     const totalSoldProfit = soldItems.reduce((s,i) => s + (i.earnings - i.cost), 0);
@@ -3218,6 +3467,9 @@ const App = () => {
             <option value="recent">Most Recent Sale</option>
             <option value="profit">Highest Profit</option>
             <option value="fastest">Fastest Sale</option>
+            <option value="slowest">Slowest Sale</option>
+            <option value="biggest-gain">Biggest Gain %</option>
+            <option value="biggest-loss">Biggest Loss</option>
           </select>
         </div>
 
