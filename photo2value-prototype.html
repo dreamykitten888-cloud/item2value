@@ -1491,39 +1491,41 @@ const App = () => {
 
             {/* Add to watchlist input */}
             {showWatchlistAdd && (
-              <div className="glass anim-fade" style={{borderRadius:12,padding:14,marginBottom:12,position:'relative'}}>
-                <div style={{display:'flex',gap:8}}>
-                  <input value={watchlistQuery} onChange={e => setWatchlistQuery(e.target.value)} placeholder="Search items to watch..." style={{flex:1,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'10px 12px',color:'#fff',fontSize:13,outline:'none'}}/>
-                  <button onClick={() => {
-                    if (!watchlistQuery.trim()) return;
-                    if (isOnWatchlist(watchlistQuery)) { showToast('Already on watchlist'); return; }
-                    const match = PRODUCT_DB.find(p => p.name.toLowerCase() === watchlistQuery.toLowerCase());
-                    const newItem = { id: Date.now().toString(), name: watchlistQuery.trim(), category: match?.cat || 'Other', emoji: match?.emoji || '👀', targetPrice: 0, lastKnownPrice: 0, priceHistory: [], addedAt: new Date().toISOString() };
-                    setWatchlist(prev => [newItem, ...prev]);
-                    setWatchlistQuery('');
-                    showToast(`${newItem.name} added to watchlist!`);
-                  }} className="gradient-amber" style={{border:'none',borderRadius:8,padding:'10px 16px',fontSize:13,fontWeight:700,color:'#000',cursor:'pointer',whiteSpace:'nowrap'}}>Add</button>
-                </div>
-                {/* Suggestions dropdown */}
-                {watchlistSuggestions.length > 0 && (
-                  <div style={{position:'absolute',top:'100%',left:0,right:0,background:'#1e293b',border:'1px solid rgba(255,255,255,0.12)',borderRadius:10,marginTop:4,zIndex:30,maxHeight:200,overflowY:'auto'}}>
-                    {watchlistSuggestions.map((s,i) => (
-                      <div key={i} onMouseDown={e => e.preventDefault()} onClick={() => {
-                        if (isOnWatchlist(s.name)) { showToast('Already on watchlist'); return; }
-                        const newItem = { id: Date.now().toString(), name: s.name, category: s.cat, emoji: s.emoji, brand: s.brand, model: s.model, targetPrice: 0, lastKnownPrice: 0, priceHistory: [], addedAt: new Date().toISOString() };
-                        setWatchlist(prev => [newItem, ...prev]);
-                        setWatchlistQuery('');
-                        showToast(`${s.name} added to watchlist!`);
-                      }} style={{padding:'10px 14px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,0.06)',display:'flex',alignItems:'center',gap:10}} className="glass-hover">
-                        <span style={{fontSize:16}}>{s.emoji}</span>
-                        <div>
-                          <p style={{color:'#fff',fontSize:13,fontWeight:500}}>{s.name}</p>
-                          <p className="text-dim" style={{fontSize:10}}>{s.brand} · {s.cat}</p>
-                        </div>
-                      </div>
-                    ))}
+              <div className="anim-fade" style={{borderRadius:12,padding:14,marginBottom:12,overflow:'visible',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)'}}>
+                <div style={{position:'relative',zIndex:40}}>
+                  <div style={{display:'flex',gap:8}}>
+                    <input value={watchlistQuery} onChange={e => setWatchlistQuery(e.target.value)} placeholder="Search items to watch..." style={{flex:1,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'10px 12px',color:'#fff',fontSize:13,outline:'none'}}/>
+                    <button onClick={() => {
+                      if (!watchlistQuery.trim()) return;
+                      if (isOnWatchlist(watchlistQuery)) { showToast('Already on watchlist'); return; }
+                      const match = PRODUCT_DB.find(p => p.name.toLowerCase() === watchlistQuery.toLowerCase());
+                      const newItem = { id: Date.now().toString(), name: watchlistQuery.trim(), category: match?.cat || 'Other', emoji: match?.emoji || '👀', targetPrice: 0, lastKnownPrice: 0, priceHistory: [], addedAt: new Date().toISOString() };
+                      setWatchlist(prev => [newItem, ...prev]);
+                      setWatchlistQuery('');
+                      showToast(`${newItem.name} added to watchlist!`);
+                    }} className="gradient-amber" style={{border:'none',borderRadius:8,padding:'10px 16px',fontSize:13,fontWeight:700,color:'#000',cursor:'pointer',whiteSpace:'nowrap'}}>Add</button>
                   </div>
-                )}
+                  {/* Suggestions dropdown */}
+                  {watchlistSuggestions.length > 0 && (
+                    <div style={{position:'absolute',top:'100%',left:0,right:0,background:'#1a1a2e',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,marginTop:4,zIndex:50,maxHeight:220,overflowY:'auto',boxShadow:'0 8px 32px rgba(0,0,0,0.6)'}}>
+                      {watchlistSuggestions.map((s,i) => (
+                        <div key={i} onMouseDown={e => e.preventDefault()} onClick={() => {
+                          if (isOnWatchlist(s.name)) { showToast('Already on watchlist'); return; }
+                          const newItem = { id: Date.now().toString(), name: s.name, category: s.cat, emoji: s.emoji, brand: s.brand, model: s.model, targetPrice: 0, lastKnownPrice: 0, priceHistory: [], addedAt: new Date().toISOString() };
+                          setWatchlist(prev => [newItem, ...prev]);
+                          setWatchlistQuery('');
+                          showToast(`${s.name} added to watchlist!`);
+                        }} style={{padding:'10px 14px',cursor:'pointer',borderBottom:'1px solid rgba(255,255,255,0.06)',display:'flex',alignItems:'center',gap:10}} className="glass-hover">
+                          <span style={{fontSize:16}}>{s.emoji}</span>
+                          <div>
+                            <p style={{color:'#fff',fontSize:13,fontWeight:500}}>{s.name}</p>
+                            <p className="text-dim" style={{fontSize:10}}>{s.brand} · {s.cat}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {/* Quick add from inventory */}
                 {items.filter(i => !isOnWatchlist(i.name)).length > 0 && (
                   <div style={{marginTop:10}}>
