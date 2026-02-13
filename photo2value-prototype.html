@@ -398,6 +398,7 @@ const App = () => {
   const [editingBrowseCats, setEditingBrowseCats] = useState(false);
   const [browseCatQuery, setBrowseCatQuery] = useState('');
   const [showBrowseSuggestions, setShowBrowseSuggestions] = useState(false);
+  const [expandedBrowseCats, setExpandedBrowseCats] = useState([]);
 
   /* ── Product Knowledge Base (for autocomplete across Discover + Add Item) ── */
   const PRODUCT_DB = [
@@ -1811,57 +1812,69 @@ const App = () => {
                   </div>
                 )}
 
-                {/* Category sections with watchlist-style rows */}
+                {/* Category sections with collapsible watchlist-style rows */}
                 {discoverBrowseCats.map(term => {
                   const meta = getTermMeta(term);
                   const catItems = getItemsForTerm(term);
                   if (catItems.length === 0) return null;
+                  const isExpanded = expandedBrowseCats.includes(term);
                   return (
-                    <div key={term} className="anim-fade" style={{marginBottom:16}}>
-                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                        <span style={{fontSize:14}}>{meta.emoji}</span>
-                        <p style={{fontSize:13,fontWeight:700,color:meta.color}}>{term}</p>
+                    <div key={term} className="anim-fade" style={{marginBottom:12}}>
+                      {/* Collapsible header */}
+                      <div onClick={() => setExpandedBrowseCats(prev => prev.includes(term) ? prev.filter(t => t !== term) : [...prev, term])}
+                        style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 8px',borderRadius:10,cursor:'pointer',background: isExpanded ? 'rgba(255,255,255,0.04)' : 'transparent',transition:'background 0.2s'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <span style={{fontSize:14}}>{meta.emoji}</span>
+                          <p style={{fontSize:13,fontWeight:700,color:meta.color}}>{term}</p>
+                          <span className="text-dim" style={{fontSize:11,fontWeight:500}}>({catItems.length})</span>
+                        </div>
+                        <span style={{fontSize:10,color:'#64748b',transition:'transform 0.2s',transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
                       </div>
-                      {/* Table header */}
-                      <div style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'0 4px 6px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-                        <span className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:1}}>Item</span>
-                        <span className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:65}}>Mkt Value</span>
-                        <span className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:70}}>Daily Chg</span>
-                      </div>
-                      {catItems.map((p, pi) => {
-                        const ownedItem = items.find(it => it.name.toLowerCase() === p.name.toLowerCase());
-                        const wItem = watchlist.find(w => w.name.toLowerCase() === p.name.toLowerCase());
-                        const mktVal = ownedItem ? ownedItem.value : (wItem?.lastKnownPrice || 0);
-                        const cost = ownedItem ? (ownedItem.cost || 0) : 0;
-                        const gainPct = cost > 0 ? ((mktVal - cost) / cost) * 100 : 0;
-                        const dailyPct = gainPct * 0.1;
-                        const dailyDollar = mktVal * (gainPct / 100) * 0.1;
-                        const isUp = dailyPct >= 0;
-                        const hasData = mktVal > 0 && cost > 0;
-                        return (
-                          <div key={pi} onClick={() => { setDiscoverQuery(p.name); setShowSuggestions(false); }}
-                            style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'10px 4px',borderBottom:'1px solid rgba(255,255,255,0.04)',cursor:'pointer',alignItems:'center'}}>
-                            <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
-                              <span style={{fontSize:16}}>{p.emoji}</span>
-                              <div style={{minWidth:0}}>
-                                <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:12}}>{p.name}</p>
-                                <p className="text-dim" style={{fontSize:10}}>{p.brand}{ownedItem ? ' · Owned' : ''}</p>
-                              </div>
-                            </div>
-                            <p style={{fontWeight:600,color:'#fff',fontSize:13,textAlign:'right',minWidth:65}}>{mktVal > 0 ? fmt(mktVal) : '--'}</p>
-                            <div style={{textAlign:'right',minWidth:70}}>
-                              {hasData ? (
-                                <React.Fragment>
-                                  <p style={{fontSize:12,fontWeight:600,color:isUp?'#4ade80':'#f87171'}}>{isUp?'+':''}{dailyPct.toFixed(2)}%</p>
-                                  <p style={{fontSize:10,color:isUp?'#4ade80':'#f87171',opacity:0.8}}>{isUp?'+':''}${Math.abs(Math.round(dailyDollar)).toLocaleString()}</p>
-                                </React.Fragment>
-                              ) : (
-                                <p className="text-dim" style={{fontSize:11}}>--</p>
-                              )}
-                            </div>
+                      {/* Expandable content */}
+                      {isExpanded && (
+                        <div className="anim-fade" style={{marginTop:4}}>
+                          {/* Table header */}
+                          <div style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'0 4px 6px',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+                            <span className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:1}}>Item</span>
+                            <span className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:65}}>Mkt Value</span>
+                            <span className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:1,textAlign:'right',minWidth:70}}>Daily Chg</span>
                           </div>
-                        );
-                      })}
+                          {catItems.map((p, pi) => {
+                            const ownedItem = items.find(it => it.name.toLowerCase() === p.name.toLowerCase());
+                            const wItem = watchlist.find(w => w.name.toLowerCase() === p.name.toLowerCase());
+                            const mktVal = ownedItem ? ownedItem.value : (wItem?.lastKnownPrice || 0);
+                            const cost = ownedItem ? (ownedItem.cost || 0) : 0;
+                            const gainPct = cost > 0 ? ((mktVal - cost) / cost) * 100 : 0;
+                            const dailyPct = gainPct * 0.1;
+                            const dailyDollar = mktVal * (gainPct / 100) * 0.1;
+                            const isUp = dailyPct >= 0;
+                            const hasData = mktVal > 0 && cost > 0;
+                            return (
+                              <div key={pi} onClick={() => { setDiscoverQuery(p.name); setShowSuggestions(false); }}
+                                style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,padding:'10px 4px',borderBottom:'1px solid rgba(255,255,255,0.04)',cursor:'pointer',alignItems:'center'}}>
+                                <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+                                  <span style={{fontSize:16}}>{p.emoji}</span>
+                                  <div style={{minWidth:0}}>
+                                    <p className="truncate" style={{fontWeight:600,color:'#fff',fontSize:12}}>{p.name}</p>
+                                    <p className="text-dim" style={{fontSize:10}}>{p.brand}{ownedItem ? ' · Owned' : ''}</p>
+                                  </div>
+                                </div>
+                                <p style={{fontWeight:600,color:'#fff',fontSize:13,textAlign:'right',minWidth:65}}>{mktVal > 0 ? fmt(mktVal) : '--'}</p>
+                                <div style={{textAlign:'right',minWidth:70}}>
+                                  {hasData ? (
+                                    <React.Fragment>
+                                      <p style={{fontSize:12,fontWeight:600,color:isUp?'#4ade80':'#f87171'}}>{isUp?'+':''}{dailyPct.toFixed(2)}%</p>
+                                      <p style={{fontSize:10,color:isUp?'#4ade80':'#f87171',opacity:0.8}}>{isUp?'+':''}${Math.abs(Math.round(dailyDollar)).toLocaleString()}</p>
+                                    </React.Fragment>
+                                  ) : (
+                                    <p className="text-dim" style={{fontSize:11}}>--</p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
