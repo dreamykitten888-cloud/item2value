@@ -383,6 +383,8 @@ const App = () => {
   const [discoverLoading, setDiscoverLoading] = useState(false);
   const [discoverCategory, setDiscoverCategory] = useState('All');
   const [discoverSearched, setDiscoverSearched] = useState(false);
+  const [discoverEbay, setDiscoverEbay] = useState([]);
+  const [discoverEbayLoading, setDiscoverEbayLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchInputRef = useRef(null);
   const [addItemQuery, setAddItemQuery] = useState('');
@@ -1864,7 +1866,21 @@ const App = () => {
     setDiscoverSearched(true);
     setShowSuggestions(false);
     setDiscoverLoading(true);
-    const results = await searchCommunityItems(q, cat);
+    setDiscoverEbayLoading(true);
+    setDiscoverEbay([]);
+    // Run community search and eBay search in parallel
+    const [results] = await Promise.all([
+      searchCommunityItems(q, cat),
+      (async () => {
+        try {
+          const res = await fetch(`https://tzasuddushojjurbzqfe.supabase.co/functions/v1/ebay-proxy?q=${encodeURIComponent(q)}&limit=8`);
+          if (!res.ok) throw new Error('eBay failed');
+          const data = await res.json();
+          setDiscoverEbay(data.items || []);
+        } catch(e) { console.log('Discover eBay error:', e); setDiscoverEbay([]); }
+        setDiscoverEbayLoading(false);
+      })()
+    ]);
     setDiscoverResults(results);
     setDiscoverLoading(false);
   };
@@ -2111,7 +2127,7 @@ const App = () => {
           {/* ── PHASE 3: Search Results (after clicking Search Market) ── */}
           {/* Back to Browse button */}
           {discoverSearched && (
-            <button onClick={() => { setDiscoverSearched(false); setDiscoverQuery(''); setDiscoverResults([]); }}
+            <button onClick={() => { setDiscoverSearched(false); setDiscoverQuery(''); setDiscoverResults([]); setDiscoverEbay([]); }}
               style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',color:'#d4a853',fontSize:12,fontWeight:600,cursor:'pointer',padding:'0 0 12px',marginTop:4}}>
               ← Back to Browse
             </button>
@@ -2147,6 +2163,89 @@ const App = () => {
               </div>
             );
           })()}
+
+          {/* eBay Live Results */}
+          {discoverSearched && discoverQuery.trim() && (
+            <div className="glass anim-fade" style={{borderRadius:16,padding:20,marginBottom:16,border:'1px solid rgba(59,130,246,0.15)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+                <div style={{width:28,height:28,borderRadius:8,background:'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>🛒</div>
+                <div style={{flex:1}}>
+                  <p style={{fontWeight:700,color:'#fff',fontSize:14,display:'flex',alignItems:'center',gap:6}}>
+                    eBay Prices
+                    {discoverEbay.length > 0 && <span style={{fontSize:9,fontWeight:700,color:'#4ade80',background:'rgba(74,222,128,0.12)',padding:'2px 8px',borderRadius:10}}>LIVE</span>}
+                  </p>
+                  <p className="text-dim" style={{fontSize:11}}>
+                    {discoverEbayLoading ? 'Searching eBay...' : discoverEbay.length > 0 ? `${discoverEbay.length} active listings` : 'No eBay results'}
+                  </p>
+                </div>
+              </div>
+
+              {discoverEbayLoading && (
+                <div style={{padding:'16px 0',textAlign:'center'}}>
+                  <div style={{width:20,height:20,border:'2px solid rgba(96,165,250,0.3)',borderTopColor:'#60a5fa',borderRadius:'50%',margin:'0 auto',animation:'spin 0.8s linear infinite'}}/>
+                </div>
+              )}
+
+              {!discoverEbayLoading && discoverEbay.length > 0 && (() => {
+                const prices = discoverEbay.map(c => c.price && c.price.value).filter(p => p > 0);
+                const avg = prices.length > 0 ? Math.round(prices.reduce((s,p) => s+p, 0) / prices.length) : 0;
+                const low = prices.length > 0 ? Math.min(...prices) : 0;
+                const high = prices.length > 0 ? Math.max(...prices) : 0;
+                return (
+                  <>
+                    {/* Price range banner */}
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:12}}>
+                      <div style={{background:'rgba(59,130,246,0.06)',borderRadius:10,padding:'8px 10px',textAlign:'center'}}>
+                        <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.5}}>Low</p>
+                        <p style={{fontSize:15,fontWeight:700,color:'#f87171',marginTop:2}}>{fmt(low)}</p>
+                      </div>
+                      <div style={{background:'rgba(59,130,246,0.08)',borderRadius:10,padding:'8px 10px',textAlign:'center'}}>
+                        <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.5}}>Average</p>
+                        <p style={{fontSize:15,fontWeight:700,color:'#60a5fa',marginTop:2}}>{fmt(avg)}</p>
+                      </div>
+                      <div style={{background:'rgba(59,130,246,0.06)',borderRadius:10,padding:'8px 10px',textAlign:'center'}}>
+                        <p className="text-dim" style={{fontSize:9,textTransform:'uppercase',letterSpacing:0.5}}>High</p>
+                        <p style={{fontSize:15,fontWeight:700,color:'#4ade80',marginTop:2}}>{fmt(high)}</p>
+                      </div>
+                    </div>
+
+                    {/* Listing cards */}
+                    <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                      {discoverEbay.map((listing, idx) => (
+                        <div key={listing.id || idx} style={{display:'flex',gap:10,padding:10,background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:10}}>
+                          {listing.image && (
+                            <div style={{width:56,height:56,borderRadius:8,overflow:'hidden',flexShrink:0,background:'rgba(255,255,255,0.06)'}}>
+                              <img src={listing.image} alt="" loading="lazy" style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e => { e.target.parentElement.style.display='none'; }}/>
+                            </div>
+                          )}
+                          <div style={{flex:1,minWidth:0}}>
+                            <p className="truncate" style={{color:'#fff',fontSize:11,fontWeight:500,marginBottom:3,lineHeight:1.3}}>{listing.title}</p>
+                            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
+                              <span style={{fontSize:14,fontWeight:700,color:'#d4a853'}}>${listing.price && listing.price.value ? listing.price.value.toLocaleString() : '?'}</span>
+                              {listing.shippingCost === 0 && <span style={{fontSize:8,color:'#4ade80',fontWeight:700,background:'rgba(74,222,128,0.1)',padding:'1px 5px',borderRadius:3}}>FREE SHIP</span>}
+                              {listing.shippingCost > 0 && <span className="text-dim" style={{fontSize:9}}>+${listing.shippingCost} ship</span>}
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:6}}>
+                              <span style={{fontSize:9,color:'#94a3b8',background:'rgba(255,255,255,0.06)',padding:'1px 5px',borderRadius:3}}>{listing.condition || 'N/A'}</span>
+                              {listing.seller && <span className="text-dim" style={{fontSize:9}}>⭐ {listing.seller.feedbackPercent}%</span>}
+                              <a href={listing.itemUrl} target="_blank" rel="noopener noreferrer" style={{marginLeft:'auto',background:'rgba(59,130,246,0.15)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:6,padding:'3px 8px',fontSize:10,fontWeight:600,color:'#60a5fa',textDecoration:'none'}}>
+                                Buy ↗
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-dim" style={{fontSize:9,textAlign:'center',marginTop:8,opacity:0.5}}>Live prices from eBay · Tap "Buy" to purchase</p>
+                  </>
+                );
+              })()}
+
+              {!discoverEbayLoading && discoverEbay.length === 0 && (
+                <p className="text-dim" style={{fontSize:11,textAlign:'center',padding:'4px 0'}}>No eBay listings found for this search.</p>
+              )}
+            </div>
+          )}
 
           {/* Community Results Header */}
           {discoverSearched && discoverQuery.trim() && !discoverLoading && (
