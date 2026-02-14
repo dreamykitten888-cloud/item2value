@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Home, Package, Search, Settings, Star, Camera } from 'lucide-react'
-import type { Screen, Alert, WatchlistItem } from '@/types'
+import type { Screen, WatchlistItem } from '@/types'
 import HomeScreen from '@/components/screens/home-screen'
 import InventoryScreen from '@/components/screens/inventory-screen'
 import DetailScreen from '@/components/screens/detail-screen'
@@ -33,7 +33,7 @@ export default function AppShell() {
   const [researchQuery, setResearchQuery] = useState('')
   const [scanData, setScanData] = useState<any>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
-  const [alerts, setAlerts] = useState<Alert[]>([])
+  const _alertsPlaceholder = null // alerts computed inside AlertsScreen from items
 
   const selectedItem = selectedItemId ? items.find(i => i.id === selectedItemId) : null
 
@@ -86,7 +86,7 @@ export default function AppShell() {
       case 'sold-items':
         return <SoldItemsScreen onNavigate={setScreen} onViewItem={navigateToDetail} />
       case 'alerts':
-        return <AlertsScreen onNavigate={setScreen} alerts={alerts} />
+        return <AlertsScreen onNavigate={setScreen} onViewItem={navigateToDetail} />
       case 'watchlist':
         return (
           <WatchlistScreen

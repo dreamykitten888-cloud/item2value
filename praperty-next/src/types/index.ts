@@ -82,13 +82,23 @@ export interface WatchlistItem {
   linkedItemId: string | null
 }
 
+export type AlertType =
+  | 'Top Gainer' | 'Fastest Flip' | 'Biggest Win'
+  | 'Strong Performer' | 'Below Cost' | 'Priced High' | 'Underpriced'
+  | 'Needs Comps' | 'Set Market Value' | 'Add Photo'
+  | 'New Item Added'
+  | 'High Concentration' | 'Stale Item' | 'Ready to Sell'
+
+export type AlertCategory = 'highlights' | 'pricing' | 'action' | 'activity' | 'insights'
+
 export interface Alert {
-  id: string
-  type: 'price_drop' | 'price_spike' | 'no_comps' | 'stale_price' | 'watchlist_target'
-  title: string
-  message: string
+  id: number
+  type: AlertType
+  category: AlertCategory
+  msg: string
+  emoji: string
   itemId?: string
-  severity: 'info' | 'warning' | 'success'
+  priority: number
 }
 
 export type Screen =

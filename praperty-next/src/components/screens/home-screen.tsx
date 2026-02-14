@@ -1,9 +1,11 @@
 'use client'
 
+import { useMemo } from 'react'
 import { Package, DollarSign, BarChart3, Bell, Camera, Plus, Search } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, getGreeting } from '@/lib/utils'
+import { generateAlerts } from '@/lib/alerts-engine'
 import type { Screen } from '@/types'
 
 interface Props {
@@ -23,8 +25,9 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
   const totalValue = activeItems.reduce((sum, i) => sum + (i.value || 0), 0)
   const totalEarnings = soldItems.reduce((sum, i) => sum + (i.earnings || i.value || 0), 0)
 
-  // Simple alerts count (items with no value or stale data)
-  const alertCount = activeItems.filter(i => !i.value || i.value === 0).length
+  // Real alert count from the engine
+  const alerts = useMemo(() => generateAlerts(items), [items])
+  const alertCount = alerts.length
 
   const stats = [
     {

@@ -33,10 +33,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        set({ user: session.user, session })
-        await get().loadProfile(session.user.id)
+      // Timeout after 5s so we don't spin forever on slow connections
+      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
+      const sessionPromise = supabase.auth.getSession()
+      const result = await Promise.race([sessionPromise, timeout])
+
+      if (result && 'data' in result && result.data.session?.user) {
+        set({ user: result.data.session.user, session: result.data.session })
+        try {
+          await get().loadProfile(result.data.session.user.id)
+        } catch (profileErr) {
+          console.error('Profile load error:', profileErr)
+        }
       }
     } catch (e) {
       console.error('Auth init error:', e)
@@ -86,10 +94,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signIn: async (email, password) => {
     set({ error: null })
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
-    set({ user: data.user, session: data.session })
-    await get().loadProfile(data.user.id)
+    const timeoutMs = 10000
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      clearTimeout(timer)
+      if (error) throw error
+      set({ user: data.user, session: data.session })
+      await get().loadProfile(data.user.id)
+    } catch (e: any) {
+      clearTimeout(timer)
+      if (e?.name === 'AbortError') throw new Error('Sign in timed out. Check your internet connection.')
+      throw e
+    }
   },
 
   signOut: async () => {
