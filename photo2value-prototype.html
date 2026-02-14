@@ -71,23 +71,86 @@ const SUPABASE_URL = 'https://tzasuddushojjurbzqfe.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6YXN1ZGR1c2hvamp1cmJ6cWZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjU1MTUsImV4cCI6MjA4NjE0MTUxNX0.vKGMXcTkddpCwzH-zRPPzbVNWCvx5UNHNxdtvFZNZIM';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* ── Supabase Sync Helpers ── */
-const syncProfile = async (profile) => {
-  if (!profile || !profile.email) return null;
-  try {
-    // Check if profile exists by email
-    const { data: existing } = await supabase.from('profiles').select('id').eq('email', profile.email).single();
-    if (existing) {
-      await supabase.from('profiles').update({ name: profile.name }).eq('id', existing.id);
-      return existing.id;
-    } else {
-      const { data: created } = await supabase.from('profiles').insert({ name: profile.name, email: profile.email }).select('id').single();
-      await logEvent(created?.id, 'user_signup', { name: profile.name });
-      return created?.id || null;
-    }
-  } catch(e) { console.log('Sync profile error:', e); return null; }
+/* ── Supabase Auth + Sync Helpers ── */
+
+// Auth helpers
+const authSignUp = async (email, password, name) => {
+  // Profile creation/linking is handled by DB trigger (handle_new_user)
+  // which fires on auth.users INSERT and bypasses RLS via SECURITY DEFINER
+  const { data: authData, error: authErr } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
+  if (authErr) throw authErr;
+  const hasSession = !!authData.session;
+  let profileId = null;
+  if (hasSession) {
+    // Email confirmation disabled: user is authenticated, can query via RLS
+    await new Promise(r => setTimeout(r, 500));
+    const { data: profile } = await supabase.from('profiles').select('id').eq('auth_user_id', authData.user.id).maybeSingle();
+    profileId = profile ? profile.id : null;
+  }
+  // If no session (email confirmation enabled), profileId stays null
+  // onAuthStateChange will handle loading when user confirms email
+  return { user: authData.user, profileId, hasSession };
 };
 
+const authSignIn = async (email, password) => {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data;
+};
+
+const authSignOut = async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+};
+
+const authResetPassword = async (email) => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  if (error) throw error;
+};
+
+const authSendMagicLink = async (email) => {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.origin + window.location.pathname }
+  });
+  if (error) throw error;
+};
+
+// Get profile for authenticated user
+const getAuthProfile = async (authUserId) => {
+  const { data, error } = await supabase.from('profiles').select('id, name, email, created_at, last_login_at').eq('auth_user_id', authUserId).single();
+  if (error) throw error;
+  return data;
+};
+
+// Load all user data from Supabase (source of truth)
+const loadUserData = async (profileId) => {
+  const [itemsRes, watchlistRes] = await Promise.all([
+    supabase.from('items').select('*').eq('user_id', profileId).order('created_at', { ascending: false }),
+    supabase.from('watchlist').select('*').eq('user_id', profileId).order('created_at', { ascending: false })
+  ]);
+  const parseJson = (val) => typeof val === 'string' ? JSON.parse(val) : (val || []);
+  const items = (itemsRes.data || []).map(row => ({
+    id: row.id, name: row.name, brand: row.brand, model: row.model,
+    category: row.category, condition: row.condition, cost: Number(row.cost) || 0,
+    asking: Number(row.asking) || 0, value: Number(row.value) || 0,
+    earnings: row.earnings ? Number(row.earnings) : null, emoji: row.emoji, notes: row.notes,
+    datePurchased: row.date_purchased, dateSold: row.date_sold, soldPlatform: row.sold_platform || null,
+    photos: parseJson(row.photos), comps: parseJson(row.comps), priceHistory: parseJson(row.price_history),
+    createdAt: row.created_at
+  }));
+  const watchlist = (watchlistRes.data || []).map(row => ({
+    id: row.id, name: row.name, category: row.category, emoji: row.emoji,
+    brand: row.brand, model: row.model, targetPrice: Number(row.target_price) || 0,
+    lastKnownPrice: Number(row.last_known_price) || 0, priceHistory: parseJson(row.price_history),
+    addedAt: row.added_at, linkedItemId: row.linked_item_id
+  }));
+  return { items, watchlist };
+};
+
+// Sync single item to server
 const syncItem = async (item, userId) => {
   if (!userId) return;
   try {
@@ -104,10 +167,7 @@ const syncItem = async (item, userId) => {
   } catch(e) { console.log('Sync item error:', e); }
 };
 
-const syncDeleteItem = async (itemId) => {
-  try { await supabase.from('items').delete().eq('id', itemId); } catch(e) { console.log('Delete sync error:', e); }
-};
-
+// Batch sync all items
 const syncAllItems = async (items, userId) => {
   if (!userId || items.length === 0) return;
   try {
@@ -124,10 +184,52 @@ const syncAllItems = async (items, userId) => {
   } catch(e) { console.log('Bulk sync error:', e); }
 };
 
+// Delete item from server
+const syncDeleteItem = async (itemId) => {
+  try { await supabase.from('items').delete().eq('id', itemId); } catch(e) { console.log('Delete sync error:', e); }
+};
+
+// Sync single watchlist item to server
+const syncWatchlistItem = async (item, userId) => {
+  if (!userId) return;
+  try {
+    await supabase.from('watchlist').upsert({
+      id: String(item.id), user_id: userId, name: item.name, category: item.category || 'Other',
+      emoji: item.emoji || '👀', brand: item.brand || null, model: item.model || null,
+      target_price: item.targetPrice || 0, last_known_price: item.lastKnownPrice || 0,
+      price_history: JSON.stringify(item.priceHistory || []),
+      added_at: item.addedAt || new Date().toISOString(), linked_item_id: item.linkedItemId || null,
+    }, { onConflict: 'id' });
+  } catch(e) { console.log('Sync watchlist error:', e); }
+};
+
+// Delete watchlist item from server
+const syncDeleteWatchlist = async (watchlistId) => {
+  try { await supabase.from('watchlist').delete().eq('id', String(watchlistId)); } catch(e) { console.log('Delete watchlist sync error:', e); }
+};
+
+// Analytics logging
 const logEvent = async (userId, eventType, metadata = {}) => {
+  if (!userId) return;
   try {
     await supabase.from('analytics_events').insert({ user_id: userId, event_type: eventType, metadata });
   } catch(e) { console.log('Event log error:', e); }
+};
+
+// Migrate localStorage data to server (first login only)
+const migrateLocalData = async (profileId) => {
+  try {
+    const localItems = JSON.parse(localStorage.getItem('item2value_items') || '[]');
+    const localWatchlist = JSON.parse(localStorage.getItem('item2value_watchlist') || '[]');
+    if (localItems.length > 0) {
+      await syncAllItems(localItems, profileId);
+      await logEvent(profileId, 'data_migration', { type: 'items', count: localItems.length });
+    }
+    if (localWatchlist.length > 0) {
+      for (const w of localWatchlist) await syncWatchlistItem(w, profileId);
+      await logEvent(profileId, 'data_migration', { type: 'watchlist', count: localWatchlist.length });
+    }
+  } catch(e) { console.log('Migration error:', e); }
 };
 
 /* ── Discover / Community Search Helpers ── */
@@ -164,7 +266,6 @@ const fetchCommunityComps = async (itemName, itemBrand) => {
         if (c.price > 0) allComps.push({ ...c, fromItem: it.name, fromBrand: it.brand });
       });
     });
-    // Dedupe by title+price
     const seen = new Set();
     return allComps.filter(c => {
       const key = (c.title + c.price).toLowerCase();
@@ -338,9 +439,18 @@ const App = () => {
 
   const [profile, setProfile] = useState(loadProfile);
   const [items, setItems] = useState(loadItems);
-  const [screen, setScreen] = useState(loadProfile() ? 'home' : 'setup');
+  const [screen, setScreen] = useState('setup');
   const [toastMsg, setToastMsg] = useState('');
   const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(''), 2500); };
+
+  // Auth state
+  const [authUser, setAuthUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
+  const [authMode, setAuthMode] = useState('signin'); // 'signin' | 'signup' | 'forgot'
+  const [authProcessing, setAuthProcessing] = useState(false);
+  const authPasswordRef = useRef(null);
+
   const [editingProfile, setEditingProfile] = useState(false);
   const profileNameRef = useRef(null);
   const profileEmailRef = useRef(null);
@@ -886,20 +996,20 @@ const App = () => {
   const supabaseUserIdRef = useRef(null);
   const syncTimerRef = useRef(null);
 
-  // Save to localStorage whenever items or profile change (with overflow protection)
+  // Save to localStorage as cache + sync to server
   useEffect(() => {
     try {
       localStorage.setItem('item2value_items', JSON.stringify(items));
     } catch(e) {
-      alert('Storage is almost full! Your latest change may not have saved. Go to Profile > Export Backup to save your data, then try removing some photos.');
+      alert('Storage is almost full! Export your backup from Profile settings.');
     }
-    // Debounced sync to Supabase (waits 2s after last change to avoid spamming)
+    // Debounced sync to Supabase
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(() => {
       if (supabaseUserIdRef.current && items.length > 0) {
         syncAllItems(items, supabaseUserIdRef.current);
       }
-    }, 2000);
+    }, 3000);
   }, [items]);
   useEffect(() => {
     if (profile) localStorage.setItem('item2value_profile', JSON.stringify(profile));
@@ -908,22 +1018,102 @@ const App = () => {
   useEffect(() => { localStorage.setItem('item2value_watchlist', JSON.stringify(watchlist)); }, [watchlist]);
   useEffect(() => { localStorage.setItem('item2value_browse_cats', JSON.stringify(discoverBrowseCats)); }, [discoverBrowseCats]);
 
-  // On app load: sync profile to Supabase and get userId
+  // Sync watchlist changes to server
   useEffect(() => {
-    const initSync = async () => {
-      const p = loadProfile();
-      if (p && p.email) {
-        const userId = await syncProfile(p);
-        if (userId) {
-          supabaseUserIdRef.current = userId;
-          logEvent(userId, 'app_open', { name: p.name });
-          // Sync any existing local items on first load
-          const localItems = loadItems();
-          if (localItems.length > 0) syncAllItems(localItems, userId);
+    if (supabaseUserIdRef.current && watchlist.length > 0) {
+      // Debounced watchlist sync
+      const timer = setTimeout(() => {
+        watchlist.forEach(w => syncWatchlistItem(w, supabaseUserIdRef.current));
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [watchlist]);
+
+  // Auth initialization on mount
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+        if (sessionErr) throw sessionErr;
+
+        if (sessionData.session?.user) {
+          setAuthUser(sessionData.session.user);
+          try {
+            const prof = await getAuthProfile(sessionData.session.user.id);
+            if (prof) {
+              setProfile({ name: prof.name, email: prof.email, createdAt: prof.created_at });
+              supabaseUserIdRef.current = prof.id;
+              // Load data from server (source of truth)
+              const { items: serverItems, watchlist: serverWatchlist } = await loadUserData(prof.id);
+              if (serverItems.length > 0) {
+                setItems(serverItems);
+              } else {
+                // First login: migrate localStorage data
+                const localItems = JSON.parse(localStorage.getItem('item2value_items') || '[]');
+                if (localItems.length > 0) {
+                  setItems(localItems);
+                  await migrateLocalData(prof.id);
+                }
+              }
+              if (serverWatchlist.length > 0) {
+                setWatchlist(serverWatchlist);
+              }
+              await supabase.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', prof.id);
+              logEvent(prof.id, 'app_open', { name: prof.name });
+              setScreen('home');
+            } else {
+              setScreen('setup');
+            }
+          } catch(e) {
+            console.log('Profile load error:', e);
+            setScreen('setup');
+          }
+        } else {
+          // No session: check if legacy profile exists (offer migration path)
+          const legacyProfile = loadProfile();
+          if (legacyProfile) {
+            // Show setup screen so they can create a real account
+            setScreen('setup');
+            setAuthMode('signup');
+          } else {
+            setScreen('setup');
+          }
         }
+      } catch(e) {
+        console.log('Auth init error:', e);
+        setScreen('setup');
       }
+      setAuthLoading(false);
     };
-    initSync();
+
+    initAuth();
+
+    // Listen for auth state changes (login/logout/token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setAuthUser(session.user);
+        try {
+          const prof = await getAuthProfile(session.user.id);
+          if (prof) {
+            setProfile({ name: prof.name, email: prof.email, createdAt: prof.created_at });
+            supabaseUserIdRef.current = prof.id;
+            const { items: serverItems, watchlist: serverWatchlist } = await loadUserData(prof.id);
+            if (serverItems.length > 0) setItems(serverItems);
+            if (serverWatchlist.length > 0) setWatchlist(serverWatchlist);
+            setScreen('home');
+          }
+        } catch(e) { console.log('Auth change profile error:', e); }
+      } else if (event === 'SIGNED_OUT') {
+        setAuthUser(null);
+        setProfile(null);
+        supabaseUserIdRef.current = null;
+        setItems([]);
+        setWatchlist([]);
+        setScreen('setup');
+      }
+    });
+
+    return () => subscription?.unsubscribe();
   }, []);
 
   // Record a price history snapshot (dedupes same-day entries)
@@ -1218,41 +1408,179 @@ const App = () => {
 
   /* ════════════════════════ SCREENS ════════════════════════ */
 
-  const SetupScreen = () => (
-    <div style={{height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32}}>
-      <div style={{width:80,height:80,borderRadius:20,background:'linear-gradient(135deg,#d4a853,#b8860b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,marginBottom:24}}>💎</div>
-      <h1 style={{fontSize:26,fontWeight:700,color:'#fff',marginBottom:6}}>Welcome to PrÄperty</h1>
-      <p className="text-muted" style={{fontSize:14,textAlign:'center',marginBottom:32,lineHeight:1.5}}>Track your inventory, monitor market values, and maximize your returns.</p>
-
-      <div style={{width:'100%',maxWidth:320}}>
-        <FormField label="Your Name" required>
-          <input ref={profileNameRef} className="form-input" defaultValue="" placeholder="e.g. Jordan" style={inputStyle}/>
-        </FormField>
-        <FormField label="Email" required>
-          <input ref={profileEmailRef} className="form-input" type="email" defaultValue="" placeholder="e.g. you@email.com" style={inputStyle}/>
-        </FormField>
-
-        <button onClick={() => {
-          const name = profileNameRef.current?.value?.trim() || '';
-          const email = profileEmailRef.current?.value?.trim() || '';
-          if (!name) { alert('Please enter your name.'); return; }
-          if (!email) { alert('Please enter your email.'); return; }
-          const newProfile = { name, email, createdAt: new Date().toISOString() };
-          setProfile(newProfile);
-          setScreen('home');
-          // Show tutorial for new users
-          setShowTutorial(true);
-          setTutorialStep(0);
-          // Sync new profile to Supabase
-          syncProfile(newProfile).then(userId => {
-            if (userId) { supabaseUserIdRef.current = userId; }
-          });
-        }} className="gradient-amber" style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:16,fontWeight:700,color:'#000',cursor:'pointer',marginTop:8}}>
-          Get Started
-        </button>
+  const SetupScreen = () => {
+    if (authLoading) return (
+      <div style={{height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+        <div style={{fontSize:36,animation:'spin 1s linear infinite'}}>💎</div>
+        <p className="text-muted" style={{fontSize:14,marginTop:16}}>Loading...</p>
       </div>
-    </div>
-  );
+    );
+
+    const handleSignUp = async () => {
+      const name = profileNameRef.current?.value?.trim();
+      const email = profileEmailRef.current?.value?.trim();
+      const password = authPasswordRef.current?.value;
+      if (!name) { setAuthError('Please enter your name.'); return; }
+      if (!email) { setAuthError('Please enter your email.'); return; }
+      if (!password || password.length < 6) { setAuthError('Password must be at least 6 characters.'); return; }
+      setAuthProcessing(true); setAuthError(null);
+      try {
+        const { user, profileId, hasSession } = await authSignUp(email, password, name);
+        if (hasSession && profileId) {
+          // Email confirmation disabled: user is fully authenticated
+          setAuthUser(user);
+          setProfile({ name, email, createdAt: new Date().toISOString() });
+          supabaseUserIdRef.current = profileId;
+          await migrateLocalData(profileId);
+          const { items: serverItems, watchlist: serverWatchlist } = await loadUserData(profileId);
+          if (serverItems.length > 0) setItems(serverItems);
+          if (serverWatchlist.length > 0) setWatchlist(serverWatchlist);
+          logEvent(profileId, 'user_signup', { method: 'email_password', name });
+          setScreen('home');
+          setShowTutorial(true); setTutorialStep(0);
+          showToast('Welcome! Account created.');
+        } else {
+          // Email confirmation enabled: tell user to check email
+          showToast('Check your email to confirm your account!');
+          setAuthMode('signin');
+        }
+      } catch(e) {
+        setAuthError(e.message || 'Sign up failed. Try again.');
+      }
+      setAuthProcessing(false);
+    };
+
+    const handleSignIn = async () => {
+      const email = profileEmailRef.current?.value?.trim();
+      const password = authPasswordRef.current?.value;
+      if (!email) { setAuthError('Please enter your email.'); return; }
+      if (!password) { setAuthError('Please enter your password.'); return; }
+      setAuthProcessing(true); setAuthError(null);
+      try {
+        await authSignIn(email, password);
+        // onAuthStateChange handles the rest (profile load, data load, screen change)
+        showToast('Signed in!');
+      } catch(e) {
+        setAuthError(e.message || 'Sign in failed. Check your credentials.');
+      }
+      setAuthProcessing(false);
+    };
+
+    const handleMagicLink = async () => {
+      const email = profileEmailRef.current?.value?.trim();
+      if (!email) { setAuthError('Enter your email first.'); return; }
+      setAuthProcessing(true); setAuthError(null);
+      try {
+        await authSendMagicLink(email);
+        showToast('Check your email for the login link!');
+        setAuthError(null);
+      } catch(e) {
+        setAuthError(e.message || 'Could not send magic link.');
+      }
+      setAuthProcessing(false);
+    };
+
+    const handleResetPassword = async () => {
+      const email = profileEmailRef.current?.value?.trim();
+      if (!email) { setAuthError('Enter your email first.'); return; }
+      setAuthProcessing(true); setAuthError(null);
+      try {
+        await authResetPassword(email);
+        showToast('Password reset link sent to your email!');
+        setAuthMode('signin');
+      } catch(e) {
+        setAuthError(e.message || 'Could not send reset link.');
+      }
+      setAuthProcessing(false);
+    };
+
+    return (
+      <div style={{height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32}}>
+        <div style={{width:80,height:80,borderRadius:20,background:'linear-gradient(135deg,#d4a853,#b8860b)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36,marginBottom:24}}>💎</div>
+        <h1 style={{fontSize:26,fontWeight:700,color:'#fff',marginBottom:6}}>Welcome to PrÄperty</h1>
+        <p className="text-muted" style={{fontSize:14,textAlign:'center',marginBottom:24,lineHeight:1.5}}>
+          {authMode === 'signin' ? 'Sign in to your account' : authMode === 'signup' ? 'Create your account' : 'Reset your password'}
+        </p>
+
+        {authError && (
+          <div style={{width:'100%',maxWidth:320,background:'rgba(248,113,113,0.1)',border:'1px solid rgba(248,113,113,0.3)',borderRadius:10,padding:12,marginBottom:16,color:'#fca5a5',fontSize:13,textAlign:'center'}}>
+            {authError}
+          </div>
+        )}
+
+        <div style={{width:'100%',maxWidth:320}}>
+          {authMode === 'signup' && (
+            <FormField label="Your Name" required>
+              <input ref={profileNameRef} className="form-input" placeholder="e.g. Jordan" style={inputStyle}/>
+            </FormField>
+          )}
+
+          <FormField label="Email" required>
+            <input ref={profileEmailRef} className="form-input" type="email" placeholder="you@email.com" style={inputStyle}/>
+          </FormField>
+
+          {authMode !== 'forgot' && (
+            <FormField label="Password" required>
+              <input ref={authPasswordRef} className="form-input" type="password" placeholder={authMode === 'signup' ? 'Min 6 characters' : 'Your password'} style={inputStyle}
+                onKeyDown={e => { if (e.key === 'Enter') authMode === 'signup' ? handleSignUp() : handleSignIn(); }}
+              />
+            </FormField>
+          )}
+
+          {authMode === 'signin' && (<>
+            <button onClick={handleSignIn} disabled={authProcessing} className="gradient-amber"
+              style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:16,fontWeight:700,color:'#000',cursor:authProcessing?'not-allowed':'pointer',opacity:authProcessing?0.6:1,marginTop:8}}>
+              {authProcessing ? 'Signing in...' : 'Sign In'}
+            </button>
+            <button onClick={handleMagicLink} disabled={authProcessing}
+              style={{width:'100%',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'12px 0',fontSize:14,fontWeight:600,color:'#cbd5e1',cursor:authProcessing?'not-allowed':'pointer',marginTop:10}}>
+              Send Magic Link Instead
+            </button>
+          </>)}
+
+          {authMode === 'signup' && (
+            <button onClick={handleSignUp} disabled={authProcessing} className="gradient-amber"
+              style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:16,fontWeight:700,color:'#000',cursor:authProcessing?'not-allowed':'pointer',opacity:authProcessing?0.6:1,marginTop:8}}>
+              {authProcessing ? 'Creating account...' : 'Create Account'}
+            </button>
+          )}
+
+          {authMode === 'forgot' && (<>
+            <button onClick={handleResetPassword} disabled={authProcessing} className="gradient-amber"
+              style={{width:'100%',border:'none',borderRadius:14,padding:'16px 0',fontSize:16,fontWeight:700,color:'#000',cursor:authProcessing?'not-allowed':'pointer',opacity:authProcessing?0.6:1,marginTop:8}}>
+              {authProcessing ? 'Sending...' : 'Send Reset Link'}
+            </button>
+          </>)}
+
+          <div style={{textAlign:'center',marginTop:20}}>
+            {authMode === 'signin' && (<>
+              <button onClick={() => { setAuthMode('signup'); setAuthError(null); }}
+                style={{background:'none',border:'none',color:'#d4a853',cursor:'pointer',fontSize:14}}>
+                Don't have an account? Sign up
+              </button>
+              <br/>
+              <button onClick={() => { setAuthMode('forgot'); setAuthError(null); }}
+                style={{background:'none',border:'none',color:'#64748b',cursor:'pointer',fontSize:12,marginTop:8}}>
+                Forgot password?
+              </button>
+            </>)}
+            {authMode === 'signup' && (
+              <button onClick={() => { setAuthMode('signin'); setAuthError(null); }}
+                style={{background:'none',border:'none',color:'#d4a853',cursor:'pointer',fontSize:14}}>
+                Already have an account? Sign in
+              </button>
+            )}
+            {authMode === 'forgot' && (
+              <button onClick={() => { setAuthMode('signin'); setAuthError(null); }}
+                style={{background:'none',border:'none',color:'#d4a853',cursor:'pointer',fontSize:14}}>
+                Back to Sign In
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const HomeScreen = () => (
     <div className="scroll-hide" style={{height:'100%',overflowY:'auto',paddingBottom:100}}>
@@ -1476,7 +1804,10 @@ const App = () => {
       {(() => {
         const watchlistSuggestions = watchlistQuery.length > 1 ? PRODUCT_DB.filter(p => p.name.toLowerCase().includes(watchlistQuery.toLowerCase())).slice(0,5) : [];
         const isOnWatchlist = (name) => watchlist.some(w => w.name.toLowerCase() === name.toLowerCase());
-        const removeFromWatchlist = (id) => setWatchlist(prev => prev.filter(w => w.id !== id));
+        const removeFromWatchlist = (id) => {
+          setWatchlist(prev => prev.filter(w => w.id !== id));
+          syncDeleteWatchlist(id);
+        };
         return (
           <div style={{padding:'16px 24px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
@@ -3899,11 +4230,15 @@ const App = () => {
               return (
                 <button onClick={() => {
                   if (isWatched) {
-                    setWatchlist(prev => prev.filter(w => w.linkedItemId !== selected.id && w.name.toLowerCase() !== selected.name.toLowerCase()));
+                    const removedItems = watchlist.filter(w => w.linkedItemId !== selected.id && w.name.toLowerCase() !== selected.name.toLowerCase());
+                    const itemsToRemove = watchlist.filter(w => w.linkedItemId === selected.id || w.name.toLowerCase() === selected.name.toLowerCase());
+                    setWatchlist(removedItems);
+                    itemsToRemove.forEach(item => syncDeleteWatchlist(item.id));
                     showToast(`${selected.name} removed from watchlist`);
                   } else {
                     const newW = { id: 'w' + selected.id, name: selected.name, category: selected.category, emoji: selected.emoji, brand: selected.brand, model: selected.model, targetPrice: selected.asking || 0, lastKnownPrice: selected.value, priceHistory: [], addedAt: new Date().toISOString(), linkedItemId: selected.id };
                     setWatchlist(prev => [newW, ...prev]);
+                    syncWatchlistItem(newW, supabaseUserIdRef.current);
                     showToast(`${selected.name} added to watchlist!`);
                   }
                 }} style={{flex:1,border: isWatched ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.12)',borderRadius:14,padding:'14px 0',fontSize:13,fontWeight:600,color: isWatched ? '#3b82f6' : '#fff',cursor:'pointer',background: isWatched ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
@@ -4400,13 +4735,11 @@ const App = () => {
           <Icons.Help size={16} color="#d4a853"/>Replay Tutorial
         </button>
 
-        <button onClick={() => {
-          if (confirm('Sign out? This will clear your profile but your inventory data stays on this device. You can sign back in by entering your name and email.')) {
-            if (supabaseUserIdRef.current) logEvent(supabaseUserIdRef.current, 'user_signout', {});
-            localStorage.removeItem('item2value_profile');
-            setProfile(null);
-            supabaseUserIdRef.current = null;
-            setScreen('setup');
+        <button onClick={async () => {
+          if (confirm('Sign out? Your data is saved securely. Sign back in anytime with your email and password.')) {
+            if (supabaseUserIdRef.current) await logEvent(supabaseUserIdRef.current, 'user_signout', {});
+            await authSignOut();
+            // onAuthStateChange handles cleanup
           }
         }} style={{width:'100%',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:12,padding:'14px 0',color:'#f87171',fontSize:15,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
           <Icons.LogOut size={16} color="#f87171"/>Sign Out
@@ -4435,9 +4768,9 @@ const App = () => {
                 setProfile(updatedProfile);
                 setEditingProfile(false);
                 // Re-sync profile to Supabase
-                syncProfile(updatedProfile).then(userId => {
-                  if (userId) supabaseUserIdRef.current = userId;
-                });
+                if (supabaseUserIdRef.current) {
+                  supabase.from('profiles').update({ name: updatedProfile.name, email: updatedProfile.email }).eq('id', supabaseUserIdRef.current);
+                }
               }} className="gradient-amber" style={{flex:1,padding:'12px 0',borderRadius:12,border:'none',fontSize:14,fontWeight:700,color:'#000',cursor:'pointer'}}>Save</button>
             </div>
           </div>
