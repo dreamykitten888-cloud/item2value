@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import type { User, Session } from '@supabase/supabase-js'
 import type { Profile } from '@/types'
+import type { Database } from '@/types/database'
 
 interface AuthState {
   user: User | null
@@ -52,12 +53,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     if (error) throw error
     if (data) {
+      const profileData = data as Database['public']['Tables']['profiles']['Row']
       set({
-        profile: { name: data.name, email: data.email, createdAt: data.created_at },
-        profileId: data.id,
+        profile: { name: profileData.name, email: profileData.email, createdAt: profileData.created_at },
+        profileId: profileData.id,
       })
       // Update last login
-      await supabase.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', data.id)
+      const update: Database['public']['Tables']['profiles']['Update'] = { last_login_at: new Date().toISOString() }
+      // @ts-ignore - Supabase type inference issue
+      await supabase.from('profiles').update(update).eq('id', profileData.id)
     }
   },
 

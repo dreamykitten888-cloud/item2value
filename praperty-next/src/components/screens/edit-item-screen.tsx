@@ -1,32 +1,28 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import { Camera, X, ArrowLeft } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
-import { fmt, uuid, CATEGORIES, CONDITIONS } from '@/lib/utils'
-import type { Screen } from '@/types'
+import { CATEGORIES, CONDITIONS } from '@/lib/utils'
+import type { Screen, Item } from '@/types'
 
 interface Props {
   onNavigate: (screen: Screen) => void
-  scanData?: any
+  item: Item
 }
 
 const EMOJI_OPTIONS = ['📦', '👜', '👟', '🪑', '📷', '⌚', '🍲', '📱', '🎒', '🎮', '💻', '🖼️', '🎸', '💎', '🧥']
 
-export default function AddItemScreen({ onNavigate, scanData }: Props) {
-  const { addItem } = useItemsStore()
-  const [emoji, setEmoji] = useState(scanData?.emoji || '📦')
-  const [photos, setPhotos] = useState<string[]>(scanData?.photos || [])
-  const [category, setCategory] = useState(scanData?.category || 'Other')
-  const [condition, setCondition] = useState(scanData?.condition || 'New')
+export default function EditItemScreen({ onNavigate, item }: Props) {
+  const { updateItem } = useItemsStore()
+  const [emoji, setEmoji] = useState(item.emoji)
+  const [photos, setPhotos] = useState<string[]>(item.photos || [])
+  const [category, setCategory] = useState(item.category)
+  const [condition, setCondition] = useState(item.condition)
 
   const nameRef = useRef<HTMLInputElement>(null)
   const brandRef = useRef<HTMLInputElement>(null)
   const modelRef = useRef<HTMLInputElement>(null)
-  const costRef = useRef<HTMLInputElement>(null)
-  const askingRef = useRef<HTMLInputElement>(null)
-  const marketRef = useRef<HTMLInputElement>(null)
-  const datePurchasedRef = useRef<HTMLInputElement>(null)
   const notesRef = useRef<HTMLTextAreaElement>(null)
 
   const handleAddPhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,55 +55,33 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
 
   const handleSave = () => {
     const name = nameRef.current?.value?.trim() || ''
-    const cost = parseFloat(costRef.current?.value || '0') || 0
-
-    if (!name || !cost) {
-      alert('Please enter an item name and what you paid.')
+    if (!name) {
+      alert('Item name is required.')
       return
     }
 
-    const asking = parseFloat(askingRef.current?.value || '0') || 0
-    const market = parseFloat(String(marketRef.current?.value || asking || cost || '0')) || 0
-
-    const newItem = {
-      id: uuid(),
+    updateItem(item.id, {
       name,
       brand: brandRef.current?.value?.trim() || '',
       model: modelRef.current?.value?.trim() || '',
       category,
       condition,
-      cost,
-      asking,
-      value: market,
-      earnings: null,
       emoji,
       notes: notesRef.current?.value?.trim() || '',
-      datePurchased: datePurchasedRef.current?.value || null,
-      dateSold: null,
-      soldPlatform: null,
       photos,
-      comps: [],
-      priceHistory: [
-        {
-          date: new Date().toISOString().slice(0, 10),
-          value: market,
-        },
-      ],
-      createdAt: new Date().toISOString(),
-    }
+    })
 
-    addItem(newItem)
-    onNavigate('inventory')
+    onNavigate('detail')
   }
 
   return (
     <div className="h-full overflow-y-auto scroll-hide pb-24">
       {/* Header */}
       <div className="sticky top-0 z-20 px-6 py-5 flex items-center justify-between bg-gradient-to-b from-dark to-transparent border-b border-white/5">
-        <button onClick={() => onNavigate('home')} className="text-white hover:text-amber-brand">
+        <button onClick={() => onNavigate('detail')} className="text-white hover:text-amber-brand">
           <ArrowLeft size={24} />
         </button>
-        <h1 className="text-lg font-bold text-white">Add Item</h1>
+        <h1 className="text-lg font-bold text-white">Edit Item</h1>
         <div className="w-6" />
       </div>
 
@@ -192,7 +166,7 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
             ref={nameRef}
             type="text"
             placeholder="e.g. Louis Vuitton Neverfull MM"
-            defaultValue={scanData?.name || ''}
+            defaultValue={item.name}
             className="w-full px-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors"
           />
         </div>
@@ -205,7 +179,7 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
               ref={brandRef}
               type="text"
               placeholder="e.g. Nike"
-              defaultValue={scanData?.brand || ''}
+              defaultValue={item.brand}
               className="w-full px-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors"
             />
           </div>
@@ -215,7 +189,7 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
               ref={modelRef}
               type="text"
               placeholder="e.g. Dunk Low"
-              defaultValue={scanData?.model || ''}
+              defaultValue={item.model}
               className="w-full px-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors"
             />
           </div>
@@ -255,68 +229,6 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-white/8 pt-4">
-          <h3 className="text-sm font-bold text-white">Pricing</h3>
-        </div>
-
-        {/* What I Paid */}
-        <div>
-          <label className="block text-sm font-semibold text-white mb-2">
-            What I Paid <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-semibold text-sm">$</span>
-            <input
-              ref={costRef}
-              type="number"
-              placeholder="0.00"
-              defaultValue={scanData?.cost || ''}
-              className="w-full pl-7 pr-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors"
-            />
-          </div>
-        </div>
-
-        {/* Date Purchased */}
-        <div>
-          <label className="block text-sm font-semibold text-white mb-2">Date Purchased</label>
-          <input
-            ref={datePurchasedRef}
-            type="date"
-            className="w-full px-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white focus:border-amber-brand/50 focus:outline-none transition-colors"
-          />
-        </div>
-
-        {/* My Asking Price */}
-        <div>
-          <label className="block text-sm font-semibold text-white mb-2">My Asking Price</label>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-semibold text-sm">$</span>
-            <input
-              ref={askingRef}
-              type="number"
-              placeholder="Optional"
-              defaultValue={scanData?.asking || ''}
-              className="w-full pl-7 pr-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors"
-            />
-          </div>
-        </div>
-
-        {/* Estimated Market Value */}
-        <div>
-          <label className="block text-sm font-semibold text-white mb-2">Estimated Market Value</label>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-semibold text-sm">$</span>
-            <input
-              ref={marketRef}
-              type="number"
-              placeholder="Optional"
-              defaultValue={scanData?.value || ''}
-              className="w-full pl-7 pr-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors"
-            />
-          </div>
-        </div>
-
         {/* Notes */}
         <div>
           <label className="block text-sm font-semibold text-white mb-2">Notes</label>
@@ -324,6 +236,7 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
             ref={notesRef}
             placeholder="Any extra details, serial numbers, where you bought it..."
             rows={3}
+            defaultValue={item.notes}
             className="w-full px-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors resize-none"
           />
         </div>
@@ -331,12 +244,12 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
         {/* Buttons */}
         <button
           onClick={handleSave}
-          className="w-full gradient-amber rounded-xl py-4 font-semibold text-black text-[15px] flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
+          className="w-full gradient-amber rounded-xl py-4 font-semibold text-black text-[15px] hover:shadow-lg transition-shadow"
         >
-          <span>💾</span> Save Item
+          Save Changes
         </button>
         <button
-          onClick={() => onNavigate('home')}
+          onClick={() => onNavigate('detail')}
           className="w-full bg-white/6 border border-white/10 rounded-xl py-3.5 font-semibold text-white text-sm hover:bg-white/10 transition-colors"
         >
           Cancel
