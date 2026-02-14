@@ -44,6 +44,7 @@ export default function AppShell() {
 
   const handleResearch = (query: string) => {
     setResearchQuery(query)
+    setScreen('research')
   }
 
   const handleScanData = (data: any) => {
@@ -66,7 +67,7 @@ export default function AppShell() {
         return <InventoryScreen onNavigate={setScreen} onViewItem={navigateToDetail} />
       case 'detail':
         return selectedItem ? (
-          <DetailScreen itemId={selectedItemId} onBack={() => setScreen('inventory')} onNavigate={setScreen} />
+          <DetailScreen itemId={selectedItemId} onBack={() => setScreen('inventory')} onNavigate={setScreen} onResearch={handleResearch} />
         ) : null
       case 'add-item':
         return <AddItemScreen onNavigate={setScreen} scanData={scanData} />

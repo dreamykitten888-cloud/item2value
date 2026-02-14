@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
-import type { Item, WatchlistItem } from '@/types'
+import type { Item, WatchlistItem, EbayListing, Comp, ResearchData } from '@/types'
 import type { Database } from '@/types/database'
 
 // Helpers to parse JSON fields from DB
@@ -56,6 +56,14 @@ interface ItemsState {
   watchlist: WatchlistItem[]
   loading: boolean
 
+  // eBay comps state
+  ebayComps: EbayListing[]
+  ebayLoading: boolean
+  ebayError: string | null
+
+  // Community comps state
+  communityComps: Comp[]
+
   // Actions
   loadAll: (profileId: string) => Promise<void>
   syncItem: (item: Item, profileId: string) => Promise<void>
@@ -68,12 +76,26 @@ interface ItemsState {
   addItem: (item: Item) => void
   updateItem: (id: string, updates: Partial<Item>) => void
   removeItem: (id: string) => void
+
+  // eBay + community comps
+  fetchEbayComps: (item: Item) => Promise<void>
+  fetchCommunityComps: (itemName: string, itemBrand: string) => Promise<void>
+  searchCommunityItems: (query: string, category?: string) => Promise<ResearchData>
+  addCompToItem: (itemId: string, comp: Comp) => void
+  deleteCompFromItem: (itemId: string, compId: number) => void
+  recalcMarketFromComps: (itemId: string) => void
+  clearEbayComps: () => void
+  clearCommunityComps: () => void
 }
 
 export const useItemsStore = create<ItemsState>((set, get) => ({
   items: [],
   watchlist: [],
   loading: false,
+  ebayComps: [],
+  ebayLoading: false,
+  ebayError: null,
+  communityComps: [],
 
   loadAll: async (profileId) => {
     set({ loading: true })
@@ -201,4 +223,163 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
   updateItem: (id, updates) =>
     set({ items: get().items.map(i => (i.id === id ? { ...i, ...updates } : i)) }),
   removeItem: (id) => set({ items: get().items.filter(i => i.id !== id) }),
+
+  // eBay Live Prices via Supabase edge function
+  fetchEbayComps: async (item) => {
+    if (!item) return
+    set({ ebayLoading: true, ebayError: null })
+    try {
+      const seen = new Set<string>()
+      const query = [item.name, item.brand, item.model].filter(Boolean).join(' ')
+        .split(/\s+/).filter(w => {
+          const l = w.toLowerCase()
+          if (seen.has(l)) return false
+          seen.add(l)
+          return true
+        }).join(' ')
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ebay-proxy?q=${encodeURIComponent(query)}&limit=6`
+      )
+      if (!res.ok) throw new Error('eBay search failed')
+      const data = await res.json()
+      set({ ebayComps: data.items || [] })
+    } catch (e) {
+      console.error('eBay search error:', e)
+      set({ ebayError: 'Could not load eBay prices. Try again.', ebayComps: [] })
+    }
+    set({ ebayLoading: false })
+  },
+
+  // Community comps from other users
+  fetchCommunityComps: async (itemName, itemBrand) => {
+    try {
+      const terms = [itemName, itemBrand].filter(Boolean)
+      if (terms.length === 0) { set({ communityComps: [] }); return }
+      let q = supabase.from('items').select('name, brand, comps, value, earnings')
+      q = q.or(terms.map(t => `name.ilike.%${t}%`).join(','))
+      q = q.limit(50)
+      // @ts-ignore
+      const { data, error } = await q
+      if (error) throw error
+      const allComps: Comp[] = []
+      ;(data || []).forEach((it: Record<string, unknown>) => {
+        const comps = parseJson(it.comps) as Comp[]
+        comps.forEach(c => {
+          if (c.price > 0) allComps.push({ ...c, source: c.source || 'Community' })
+        })
+      })
+      // Dedupe
+      const seen = new Set<string>()
+      const unique = allComps.filter(c => {
+        const key = (c.title + c.price).toLowerCase()
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      set({ communityComps: unique })
+    } catch (e) {
+      console.error('Community comps error:', e)
+      set({ communityComps: [] })
+    }
+  },
+
+  // Search community items for research screen
+  searchCommunityItems: async (query, category = 'All') => {
+    try {
+      let q = supabase.from('items').select('name, brand, model, category, condition, cost, asking, value, earnings, emoji, comps, date_sold, created_at')
+      if (query && query.trim()) {
+        q = q.or(`name.ilike.%${query}%,brand.ilike.%${query}%,model.ilike.%${query}%`)
+      }
+      if (category && category !== 'All') q = q.eq('category', category)
+      q = q.order('created_at', { ascending: false }).limit(100)
+      // @ts-ignore
+      const { data, error } = await q
+      if (error) throw error
+      interface CommunityRow {
+        name: string; brand: string; model: string; category: string; condition: string
+        cost: number; asking: number; value: number; earnings: number | null
+        emoji: string; comps: Comp[]; date_sold: string | null; created_at: string
+      }
+      const results: CommunityRow[] = (data || []).map((it: Record<string, unknown>) => ({
+        name: it.name as string,
+        brand: it.brand as string,
+        model: it.model as string,
+        category: it.category as string,
+        condition: it.condition as string,
+        cost: Number(it.cost) || 0,
+        asking: Number(it.asking) || 0,
+        value: Number(it.value) || 0,
+        earnings: it.earnings ? Number(it.earnings) : null,
+        emoji: it.emoji as string,
+        comps: parseJson(it.comps) as Comp[],
+        date_sold: it.date_sold as string | null,
+        created_at: it.created_at as string,
+      }))
+
+      const allPrices = results.map(r => r.value).filter(v => v > 0)
+      const allCosts = results.map(r => r.cost).filter(v => v > 0)
+      const allEarnings = results.filter(r => r.earnings && r.earnings > 0)
+      const allComps = results.flatMap(r => (r.comps || []).filter(c => c.price > 0))
+
+      const categorySet = new Set<string>()
+      results.forEach(r => { if (r.category) categorySet.add(r.category) })
+
+      return {
+        listings: results.length,
+        avgValue: allPrices.length > 0 ? Math.round(allPrices.reduce((s,v) => s+v,0) / allPrices.length) : 0,
+        lowValue: allPrices.length > 0 ? Math.min(...allPrices) : 0,
+        highValue: allPrices.length > 0 ? Math.max(...allPrices) : 0,
+        avgCost: allCosts.length > 0 ? Math.round(allCosts.reduce((s,v) => s+v,0) / allCosts.length) : 0,
+        soldCount: allEarnings.length,
+        avgSold: allEarnings.length > 0 ? Math.round(allEarnings.reduce((s,e) => s + Number(e.earnings), 0) / allEarnings.length) : 0,
+        totalComps: allComps.length,
+        avgCompPrice: allComps.length > 0 ? Math.round(allComps.reduce((s, c) => s + c.price, 0) / allComps.length) : 0,
+        recentComps: allComps.slice(0, 10),
+        categories: Array.from(categorySet),
+      } as ResearchData
+    } catch (e) {
+      console.error('Community search error:', e)
+      return { listings: 0, avgValue: 0, lowValue: 0, highValue: 0, avgCost: 0, soldCount: 0, avgSold: 0, totalComps: 0, avgCompPrice: 0, recentComps: [], categories: [] }
+    }
+  },
+
+  // Comp CRUD
+  addCompToItem: (itemId, comp) => {
+    set({ items: get().items.map(it =>
+      it.id === itemId ? { ...it, comps: [...(it.comps || []), comp] } : it
+    )})
+    // Auto-recalc market value
+    setTimeout(() => get().recalcMarketFromComps(itemId), 50)
+  },
+
+  deleteCompFromItem: (itemId, compId) => {
+    set({ items: get().items.map(it =>
+      it.id === itemId ? { ...it, comps: (it.comps || []).filter(c => c.id !== compId) } : it
+    )})
+    setTimeout(() => get().recalcMarketFromComps(itemId), 50)
+  },
+
+  recalcMarketFromComps: (itemId) => {
+    set({ items: get().items.map(it => {
+      if (it.id !== itemId) return it
+      const comps = it.comps || []
+      const prices = comps.map(c => c.price).filter(p => p > 0)
+      if (prices.length === 0) return it
+      const avg = Math.round(prices.reduce((s,p) => s+p, 0) / prices.length)
+      const today = new Date().toISOString().slice(0, 10)
+      const history = it.priceHistory || []
+      const existing = history.findIndex(h => h.date === today)
+      let newHistory
+      if (existing >= 0) {
+        newHistory = [...history]
+        newHistory[existing] = { ...newHistory[existing], value: avg }
+      } else {
+        newHistory = [...history, { date: today, value: avg }]
+      }
+      return { ...it, value: avg, priceHistory: newHistory }
+    })})
+  },
+
+  clearEbayComps: () => set({ ebayComps: [], ebayError: null }),
+  clearCommunityComps: () => set({ communityComps: [] }),
 }))

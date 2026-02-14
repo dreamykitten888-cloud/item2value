@@ -29,11 +29,38 @@ export interface Item {
 }
 
 export interface Comp {
+  id?: number
   title: string
   price: number
   url?: string
   source?: string
   date?: string
+  condition?: string
+}
+
+export interface EbayListing {
+  id?: string
+  title: string
+  price: { value: number; currency?: string }
+  image?: string
+  itemUrl?: string
+  condition?: string
+  shippingCost?: number
+  seller?: { feedbackPercent?: number }
+}
+
+export interface ResearchData {
+  listings: number
+  avgValue: number
+  lowValue: number
+  highValue: number
+  avgCost: number
+  soldCount: number
+  avgSold: number
+  totalComps: number
+  avgCompPrice: number
+  recentComps: Comp[]
+  categories: string[]
 }
 
 export interface PriceSnapshot {
