@@ -1,16 +1,88 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Package, DollarSign, BarChart3, Bell, Camera, Plus, Search } from 'lucide-react'
+import { Package, DollarSign, BarChart3, Bell, Camera, Plus, Search, TrendingUp, TrendingDown } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, getGreeting } from '@/lib/utils'
 import { generateAlerts } from '@/lib/alerts-engine'
-import type { Screen } from '@/types'
+import type { Screen, Item } from '@/types'
 
 interface Props {
   onNavigate: (screen: Screen) => void
   onViewItem: (id: string) => void
+}
+
+// Simulated product database for "Similar Items Sold" suggestions
+const SIMILAR_PRODUCTS: { name: string; emoji: string; cat: string; brand: string }[] = [
+  { name: 'Air Jordan 1 Retro', emoji: '👟', cat: 'Fashion', brand: 'Nike' },
+  { name: 'MacBook Pro 14"', emoji: '💻', cat: 'Electronics', brand: 'Apple' },
+  { name: 'Rolex Submariner', emoji: '⌚', cat: 'Watches', brand: 'Rolex' },
+  { name: 'Pokemon Base Set Charizard', emoji: '🃏', cat: 'Trading Cards', brand: 'Pokemon' },
+  { name: 'Supreme Box Logo Hoodie', emoji: '👕', cat: 'Fashion', brand: 'Supreme' },
+  { name: 'Dyson V15 Detect', emoji: '🔌', cat: 'Electronics', brand: 'Dyson' },
+  { name: 'Birkin 25 Togo', emoji: '👜', cat: 'Fashion', brand: 'Hermes' },
+  { name: 'PlayStation 5 Pro', emoji: '🎮', cat: 'Electronics', brand: 'Sony' },
+  { name: 'LEGO Millennium Falcon', emoji: '🧱', cat: 'LEGO', brand: 'LEGO' },
+  { name: 'Vintage Leica M6', emoji: '📷', cat: 'Electronics', brand: 'Leica' },
+  { name: 'Omega Speedmaster', emoji: '⌚', cat: 'Watches', brand: 'Omega' },
+  { name: 'Gibson Les Paul Standard', emoji: '🎸', cat: 'Musical Instruments', brand: 'Gibson' },
+  { name: 'Yeezy 350 V2', emoji: '👟', cat: 'Fashion', brand: 'Adidas' },
+  { name: 'iPad Pro M4', emoji: '📱', cat: 'Electronics', brand: 'Apple' },
+  { name: 'Tiffany Diamond Pendant', emoji: '💎', cat: 'Jewelry', brand: 'Tiffany' },
+]
+
+const PLATFORMS = ['eBay', 'StockX', 'Mercari', 'Poshmark', 'GOAT', 'Grailed', 'Facebook MP', 'Depop']
+
+function getMarketMovers(items: Item[]) {
+  return items
+    .filter(i => !i.dateSold && i.priceHistory && i.priceHistory.length >= 2)
+    .map(item => {
+      const history = item.priceHistory
+      const current = history[history.length - 1].value
+      const previous = history[history.length - 2].value
+      const change = current - previous
+      const changePct = previous > 0 ? (change / previous) * 100 : 0
+      if (Math.abs(changePct) < 1) return null
+      return { ...item, change, changePct }
+    })
+    .filter(Boolean)
+    .sort((a, b) => Math.abs(b!.changePct) - Math.abs(a!.changePct))
+    .slice(0, 5) as (Item & { change: number; changePct: number })[]
+}
+
+function getSimilarSold(items: Item[]) {
+  const activeItems = items.filter(i => !i.dateSold)
+  if (activeItems.length === 0) return []
+
+  const suggestions: {
+    name: string; emoji: string; cat: string; brand: string
+    salePrice: number; daysAgo: number; platform: string
+    relatedTo: string; relatedEmoji: string
+  }[] = []
+  const seenNames = new Set<string>()
+
+  activeItems.forEach(item => {
+    const similar = SIMILAR_PRODUCTS.filter(
+      p => p.name !== item.name && !seenNames.has(p.name) &&
+        (p.cat === item.category || (item.brand && p.brand.toLowerCase() === item.brand.toLowerCase()))
+    ).slice(0, 2)
+
+    similar.forEach(s => {
+      if (suggestions.length >= 5 || seenNames.has(s.name)) return
+      seenNames.add(s.name)
+      const basePrice = item.value > 0 ? item.value : (item.cost || 200)
+      const variance = 0.7 + (Math.abs(s.name.charCodeAt(0) % 60) / 100)
+      const salePrice = Math.round(basePrice * variance)
+      const daysAgo = 1 + (s.name.charCodeAt(1) % 12)
+      const platform = PLATFORMS[s.name.charCodeAt(0) % PLATFORMS.length]
+      suggestions.push({
+        name: s.name, emoji: s.emoji, cat: s.cat, brand: s.brand,
+        salePrice, daysAgo, platform, relatedTo: item.name, relatedEmoji: item.emoji,
+      })
+    })
+  })
+  return suggestions
 }
 
 export default function HomeScreen({ onNavigate, onViewItem }: Props) {
@@ -25,40 +97,18 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
   const totalValue = activeItems.reduce((sum, i) => sum + (i.value || 0), 0)
   const totalEarnings = soldItems.reduce((sum, i) => sum + (i.earnings || i.value || 0), 0)
 
-  // Real alert count from the engine
   const alerts = useMemo(() => generateAlerts(items), [items])
   const alertCount = alerts.length
+  const movers = useMemo(() => getMarketMovers(items), [items])
+  const similarSold = useMemo(() => getSimilarSold(items), [items])
 
   const stats = [
-    {
-      label: 'Total Items',
-      value: String(items.length),
-      icon: Package,
-      gradient: 'bg-gradient-blue',
-    },
-    {
-      label: 'Total Value',
-      value: fmt(totalValue),
-      icon: DollarSign,
-      gradient: 'bg-gradient-amber',
-    },
-    {
-      label: 'Total Earnings',
-      value: totalEarnings > 0 ? fmt(totalEarnings) : '--',
-      icon: BarChart3,
-      gradient: 'bg-gradient-purple',
-      onClick: () => onNavigate('sold-items'),
-    },
-    {
-      label: 'Alerts',
-      value: alertCount > 0 ? String(alertCount) : '--',
-      icon: Bell,
-      gradient: 'from-amber-500 to-amber-600 bg-gradient-to-br',
-      onClick: () => onNavigate('alerts'),
-    },
+    { label: 'Total Items', value: String(items.length), icon: Package, gradient: 'bg-gradient-blue' },
+    { label: 'Total Value', value: fmt(totalValue), icon: DollarSign, gradient: 'bg-gradient-amber' },
+    { label: 'Total Earnings', value: totalEarnings > 0 ? fmt(totalEarnings) : '--', icon: BarChart3, gradient: 'bg-gradient-purple', onClick: () => onNavigate('sold-items') },
+    { label: 'Alerts', value: alertCount > 0 ? String(alertCount) : '--', icon: Bell, gradient: 'from-amber-500 to-amber-600 bg-gradient-to-br', onClick: () => onNavigate('alerts') },
   ]
 
-  // Recent items (last 5)
   const recentItems = items.slice(0, 5)
 
   return (
@@ -118,6 +168,79 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
           Add Manually
         </button>
       </div>
+
+      {/* Market Movers */}
+      {movers.length > 0 && (
+        <div className="px-6 pb-4">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-base font-bold text-white">Market Movers</h2>
+            <button onClick={() => onNavigate('alerts')} className="text-amber-brand text-xs font-semibold">
+              All Alerts
+            </button>
+          </div>
+          <div className="flex gap-2.5 overflow-x-auto scroll-hide pb-1">
+            {movers.map((m, i) => {
+              const isUp = m.change >= 0
+              return (
+                <div
+                  key={m.id}
+                  onClick={() => onViewItem(m.id)}
+                  className="glass glass-hover rounded-2xl p-3.5 min-w-[150px] flex-shrink-0 cursor-pointer animate-fade-up"
+                  style={{
+                    animationDelay: `${i * 0.06}s`,
+                    borderTop: `3px solid ${isUp ? '#4ade80' : '#f87171'}`,
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{m.emoji}</span>
+                    <p className="text-xs font-semibold text-white truncate max-w-[100px]">{m.name}</p>
+                  </div>
+                  <p className={`text-base font-extrabold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                    {isUp ? '+' : ''}{m.changePct.toFixed(1)}%
+                  </p>
+                  <p className="text-dim text-[10px] mt-0.5">
+                    {isUp ? '+' : ''}${Math.abs(Math.round(m.change)).toLocaleString()} since last update
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Similar Items Sold */}
+      {similarSold.length > 0 && (
+        <div className="px-6 pb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-base font-bold text-white">Similar Items Sold</h2>
+            <span className="text-dim text-[10px] bg-white/5 px-2 py-0.5 rounded-full">Based on your inventory</span>
+          </div>
+          <div className="flex gap-2.5 overflow-x-auto scroll-hide pb-1">
+            {similarSold.map((s, i) => (
+              <div
+                key={i}
+                onClick={() => onNavigate('discover')}
+                className="glass glass-hover rounded-2xl p-3.5 min-w-[180px] max-w-[200px] flex-shrink-0 cursor-pointer animate-fade-up"
+                style={{
+                  animationDelay: `${i * 0.06}s`,
+                  borderTop: '3px solid #a855f7',
+                }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{s.emoji}</span>
+                  <p className="text-xs font-semibold text-white truncate max-w-[130px]">{s.name}</p>
+                </div>
+                <p className="text-lg font-extrabold text-purple-400">{fmt(s.salePrice)}</p>
+                <p className="text-dim text-[10px] mt-1">Sold {s.daysAgo}d ago on {s.platform}</p>
+                <div className="mt-2 flex items-center gap-1.5 bg-white/4 rounded-md px-2 py-1">
+                  <span className="text-[11px]">{s.relatedEmoji}</span>
+                  <p className="text-dim text-[10px] truncate">Similar to {s.relatedTo}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Discover CTA */}
       <div className="px-6 pb-3">
