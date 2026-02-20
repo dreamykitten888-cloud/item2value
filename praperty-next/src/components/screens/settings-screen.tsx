@@ -1,6 +1,6 @@
 'use client'
 
-import { LogOut, User, Mail, Calendar } from 'lucide-react'
+import { LogOut, User, Mail, Calendar, BookOpen } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt } from '@/lib/utils'
@@ -77,6 +77,18 @@ export default function SettingsScreen({ onNavigate }: Props) {
             </div>
           </div>
         </div>
+
+        {/* Replay tutorial */}
+        <button
+          onClick={() => {
+            try { localStorage.removeItem('praperty_setup_done') } catch {}
+            window.location.reload()
+          }}
+          className="w-full glass glass-hover rounded-xl p-4 flex items-center justify-center gap-2 text-amber-brand font-semibold transition-all mb-3"
+        >
+          <BookOpen size={18} />
+          Replay Tutorial
+        </button>
 
         {/* Sign out */}
         <button

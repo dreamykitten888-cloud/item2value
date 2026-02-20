@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Home, Package, Search, Settings, Star, Camera } from 'lucide-react'
 import type { Screen, WatchlistItem } from '@/types'
+import SetupScreen from '@/components/screens/setup-screen'
 import HomeScreen from '@/components/screens/home-screen'
 import InventoryScreen from '@/components/screens/inventory-screen'
 import DetailScreen from '@/components/screens/detail-screen'
@@ -28,12 +29,25 @@ const TABS = [
 
 export default function AppShell() {
   const { items } = useItemsStore()
+  const [showSetup, setShowSetup] = useState(false)
   const [screen, setScreen] = useState<Screen>('home')
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [researchQuery, setResearchQuery] = useState('')
   const [scanData, setScanData] = useState<any>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
-  const _alertsPlaceholder = null // alerts computed inside AlertsScreen from items
+
+  // Show tutorial for first-time users
+  useEffect(() => {
+    try {
+      const done = localStorage.getItem('praperty_setup_done')
+      if (!done) setShowSetup(true)
+    } catch { /* SSR or storage unavailable */ }
+  }, [])
+
+  const completeSetup = () => {
+    try { localStorage.setItem('praperty_setup_done', '1') } catch {}
+    setShowSetup(false)
+  }
 
   const selectedItem = selectedItemId ? items.find(i => i.id === selectedItemId) : null
 
@@ -60,6 +74,11 @@ export default function AppShell() {
   }
 
   const renderScreen = () => {
+    // Show tutorial/onboarding for first-time users
+    if (showSetup) {
+      return <SetupScreen onNavigate={setScreen} onComplete={completeSetup} />
+    }
+
     switch (screen) {
       case 'home':
         return <HomeScreen onNavigate={setScreen} onViewItem={navigateToDetail} />
@@ -113,8 +132,8 @@ export default function AppShell() {
     return 'home'
   })()
 
-  // Check if we should show tabs (hide for scan, add-item, edit-item)
-  const showTabs = !['scan', 'add-item', 'edit-item'].includes(screen)
+  // Check if we should show tabs (hide for scan, add-item, edit-item, and setup)
+  const showTabs = !showSetup && !['scan', 'add-item', 'edit-item'].includes(screen)
 
   return (
     <div className="h-full flex flex-col">
