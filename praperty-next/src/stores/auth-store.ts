@@ -23,6 +23,16 @@ interface AuthState {
   loadProfile: (authUserId: string) => Promise<void>
 }
 
+// Helper: wrap any promise with a timeout
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)
+    promise
+      .then(val => { clearTimeout(timer); resolve(val) })
+      .catch(err => { clearTimeout(timer); reject(err) })
+  })
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
@@ -33,18 +43,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      // Timeout after 5s so we don't spin forever on slow connections
-      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
-      const sessionPromise = supabase.auth.getSession()
-      const result = await Promise.race([sessionPromise, timeout])
+      const { data: { session } } = await supabase.auth.getSession()
 
-      if (result && 'data' in result && result.data.session?.user) {
-        set({ user: result.data.session.user, session: result.data.session })
-        try {
-          await get().loadProfile(result.data.session.user.id)
-        } catch (profileErr) {
-          console.error('Profile load error:', profileErr)
-        }
+      if (session?.user) {
+        set({ user: session.user, session })
+        // Set fallback profile immediately so we don't get stuck
+        set({
+          profile: { name: session.user.email?.split('@')[0] || 'User', email: session.user.email || '', createdAt: '' },
+        })
+        // Then try to load the real profile in the background
+        get().loadProfile(session.user.id).catch((err) => {
+          console.error('Profile load error:', err)
+        })
       }
     } catch (e) {
       console.error('Auth init error:', e)
@@ -66,47 +76,49 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         profile: { name: profileData.name, email: profileData.email, createdAt: profileData.created_at },
         profileId: profileData.id,
       })
-      // Update last login
+      // Update last login (fire and forget, don't block)
       const update: Database['public']['Tables']['profiles']['Update'] = { last_login_at: new Date().toISOString() }
       // @ts-ignore - Supabase type inference issue
-      await supabase.from('profiles').update(update).eq('id', profileData.id)
+      supabase.from('profiles').update(update).eq('id', profileData.id).then(() => {})
     }
   },
 
   signUp: async (email, password, name) => {
     set({ error: null })
-    const { data: authData, error: authErr } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { name } },
-    })
+    const { data: authData, error: authErr } = await withTimeout(
+      supabase.auth.signUp({ email, password, options: { data: { name } } }),
+      15000,
+      'Sign up'
+    )
     if (authErr) throw authErr
 
     const hasSession = !!authData.session
     if (hasSession && authData.user) {
-      // Email confirmation disabled: user is authenticated
       await new Promise(r => setTimeout(r, 500)) // Let DB trigger create profile
       set({ user: authData.user, session: authData.session })
-      await get().loadProfile(authData.user.id)
+      await withTimeout(get().loadProfile(authData.user.id), 8000, 'Profile load')
     }
     return { hasSession }
   },
 
   signIn: async (email, password) => {
     set({ error: null })
-    const timeoutMs = 10000
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      clearTimeout(timer)
-      if (error) throw error
-      set({ user: data.user, session: data.session })
-      await get().loadProfile(data.user.id)
-    } catch (e: any) {
-      clearTimeout(timer)
-      if (e?.name === 'AbortError') throw new Error('Sign in timed out. Check your internet connection.')
-      throw e
+    // No artificial timeout, just let Supabase do its thing
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+    set({ user: data.user, session: data.session })
+    // Load profile but don't block sign-in on it
+    get().loadProfile(data.user.id).catch((profileErr) => {
+      console.error('Profile load failed:', profileErr)
+      set({
+        profile: { name: data.user.email?.split('@')[0] || 'User', email: data.user.email || '', createdAt: '' },
+      })
+    })
+    // Set fallback profile immediately so user isn't stuck
+    if (!get().profile) {
+      set({
+        profile: { name: data.user.email?.split('@')[0] || 'User', email: data.user.email || '', createdAt: '' },
+      })
     }
   },
 
@@ -118,18 +130,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   sendMagicLink: async (email) => {
     set({ error: null })
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    })
+    const { error } = await withTimeout(
+      supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } }),
+      15000,
+      'Magic link'
+    )
     if (error) throw error
   },
 
   resetPassword: async (email) => {
     set({ error: null })
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
-    })
+    const { error } = await withTimeout(
+      supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin }),
+      15000,
+      'Password reset'
+    )
     if (error) throw error
   },
 
