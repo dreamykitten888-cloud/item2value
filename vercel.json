@@ -1,6 +1,0 @@
-{
-  "buildCommand": "cd praperty-next && npm install && npm run build",
-  "outputDirectory": "praperty-next/.next",
-  "installCommand": "cd praperty-next && npm install",
-  "framework": "nextjs"
-}
