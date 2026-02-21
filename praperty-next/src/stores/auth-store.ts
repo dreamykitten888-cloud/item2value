@@ -48,11 +48,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     console.log('[auth] v2.2: initialize, window=', typeof window !== 'undefined')
 
-    // ONLY use onAuthStateChange. Do NOT call getSession() separately.
-    // Supabase v2 uses navigator.locks internally; calling both causes
-    // "AbortError: signal is aborted without reason".
+    // Register auth state change listener
     supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[auth] event:', event, 'user:', session?.user?.email || 'none')
+      console.log('[auth] v2.3 event:', event, 'user:', session?.user?.email || 'none')
 
       if (event === 'INITIAL_SESSION') {
         if (session?.user) {
@@ -86,6 +84,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ session })
       }
     })
+
+    // Backup: if onAuthStateChange hasn't resolved in 2s, try getSession directly
+    setTimeout(async () => {
+      if (!get().loading) return // Already resolved
+      console.warn('[auth] v2.3 backup: onAuthStateChange slow, trying getSession')
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (get().loading) { // Still not resolved
+          if (session?.user) {
+            console.log('[auth] backup: found session for', session.user.email)
+            set({ user: session.user, session, profile: fallbackProfile(session.user), loading: false })
+            get().loadProfile(session.user.id).catch(() => {})
+          } else {
+            console.log('[auth] backup: no session')
+            set({ loading: false })
+          }
+        }
+      } catch (e) {
+        console.error('[auth] backup getSession failed:', e)
+        if (get().loading) set({ loading: false })
+      }
+    }, 2000)
   },
 
   loadProfile: async (authUserId: string) => {
