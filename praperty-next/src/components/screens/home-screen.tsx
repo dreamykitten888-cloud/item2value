@@ -34,8 +34,28 @@ const SIMILAR_PRODUCTS: { name: string; emoji: string; cat: string; brand: strin
 
 const PLATFORMS = ['eBay', 'StockX', 'Mercari', 'Poshmark', 'GOAT', 'Grailed', 'Facebook MP', 'Depop']
 
+// Demo data shown when user has no items yet
+const DEMO_MOVERS = [
+  { id: 'demo-1', name: 'Air Jordan 1 Retro', emoji: '👟', value: 340, cost: 170, category: 'Fashion', brand: 'Nike', change: 45, changePct: 15.3, priceHistory: [], dateSold: undefined, dateAcquired: '', notes: '', condition: '', images: [], earnings: 0 },
+  { id: 'demo-2', name: 'Pokemon Charizard', emoji: '🃏', value: 890, cost: 200, category: 'Trading Cards', brand: 'Pokemon', change: -62, changePct: -6.5, priceHistory: [], dateSold: undefined, dateAcquired: '', notes: '', condition: '', images: [], earnings: 0 },
+  { id: 'demo-3', name: 'Rolex Submariner', emoji: '⌚', value: 12500, cost: 9800, category: 'Watches', brand: 'Rolex', change: 875, changePct: 7.5, priceHistory: [], dateSold: undefined, dateAcquired: '', notes: '', condition: '', images: [], earnings: 0 },
+  { id: 'demo-4', name: 'MacBook Pro 14"', emoji: '💻', value: 1650, cost: 1999, category: 'Electronics', brand: 'Apple', change: -120, changePct: -6.8, priceHistory: [], dateSold: undefined, dateAcquired: '', notes: '', condition: '', images: [], earnings: 0 },
+  { id: 'demo-5', name: 'Supreme Box Logo', emoji: '👕', value: 780, cost: 168, category: 'Fashion', brand: 'Supreme', change: 52, changePct: 7.1, priceHistory: [], dateSold: undefined, dateAcquired: '', notes: '', condition: '', images: [], earnings: 0 },
+]
+
+const DEMO_SIMILAR_SOLD = [
+  { name: 'Air Jordan 4 Retro', emoji: '👟', cat: 'Fashion', brand: 'Nike', salePrice: 385, daysAgo: 2, platform: 'StockX', relatedTo: 'Your sneakers', relatedEmoji: '👟' },
+  { name: 'Omega Speedmaster', emoji: '⌚', cat: 'Watches', brand: 'Omega', salePrice: 6200, daysAgo: 1, platform: 'eBay', relatedTo: 'Your watches', relatedEmoji: '⌚' },
+  { name: 'iPad Pro M4', emoji: '📱', cat: 'Electronics', brand: 'Apple', salePrice: 950, daysAgo: 3, platform: 'Mercari', relatedTo: 'Your electronics', relatedEmoji: '💻' },
+  { name: 'LEGO Millennium Falcon', emoji: '🧱', cat: 'LEGO', brand: 'LEGO', salePrice: 720, daysAgo: 5, platform: 'eBay', relatedTo: 'Your collectibles', relatedEmoji: '🧱' },
+  { name: 'Birkin 25 Togo', emoji: '👜', cat: 'Fashion', brand: 'Hermes', salePrice: 14200, daysAgo: 1, platform: 'Poshmark', relatedTo: 'Your fashion', relatedEmoji: '👜' },
+]
+
 function getMarketMovers(items: Item[]) {
   const activeItems = items.filter(i => !i.dateSold)
+
+  // Demo mode: show sample data when no items
+  if (activeItems.length === 0) return DEMO_MOVERS as unknown as (Item & { change: number; changePct: number })[]
 
   // First try: items with 2+ price history entries (real movers)
   const realMovers = activeItems
@@ -72,7 +92,9 @@ function getMarketMovers(items: Item[]) {
 
 function getSimilarSold(items: Item[]) {
   const activeItems = items.filter(i => !i.dateSold)
-  if (activeItems.length === 0) return []
+
+  // Demo mode: show sample data when no items
+  if (activeItems.length === 0) return DEMO_SIMILAR_SOLD
 
   type Suggestion = {
     name: string; emoji: string; cat: string; brand: string
@@ -220,7 +242,10 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
       {movers.length > 0 && (
         <div className="px-6 pb-4">
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-base font-bold text-white">Market Movers</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-white">Market Movers</h2>
+              {items.length === 0 && <span className="text-[10px] text-amber-brand/60 bg-amber-500/10 px-2 py-0.5 rounded-full">Demo</span>}
+            </div>
             <button onClick={() => onNavigate('alerts')} className="text-amber-brand text-xs font-semibold">
               All Alerts
             </button>
@@ -228,10 +253,11 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
           <div className="flex gap-2.5 overflow-x-auto scroll-hide pb-1">
             {movers.map((m, i) => {
               const isUp = m.change >= 0
+              const isDemo = m.id.startsWith('demo-')
               return (
                 <div
                   key={m.id}
-                  onClick={() => onViewItem(m.id)}
+                  onClick={() => isDemo ? onNavigate('add-item') : onViewItem(m.id)}
                   className="glass glass-hover rounded-2xl p-3.5 min-w-[150px] flex-shrink-0 cursor-pointer animate-fade-up"
                   style={{
                     animationDelay: `${i * 0.06}s`,
@@ -260,7 +286,10 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
         <div className="px-6 pb-4">
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-base font-bold text-white">Similar Items Sold</h2>
-            <span className="text-dim text-[10px] bg-white/5 px-2 py-0.5 rounded-full">Based on your inventory</span>
+            <span className="text-dim text-[10px] bg-white/5 px-2 py-0.5 rounded-full">
+              {items.length === 0 ? 'Trending now' : 'Based on your inventory'}
+            </span>
+            {items.length === 0 && <span className="text-[10px] text-purple-400/60 bg-purple-500/10 px-2 py-0.5 rounded-full">Demo</span>}
           </div>
           <div className="flex gap-2.5 overflow-x-auto scroll-hide pb-1">
             {similarSold.map((s, i) => (
