@@ -53,9 +53,13 @@ const DEMO_SIMILAR_SOLD = [
 
 function getMarketMovers(items: Item[]) {
   const activeItems = items.filter(i => !i.dateSold)
+  console.log('[movers] activeItems:', activeItems.length, 'first:', activeItems[0]?.name, 'value:', activeItems[0]?.value, 'cost:', activeItems[0]?.cost)
 
   // Demo mode: show sample data when no items
-  if (activeItems.length === 0) return DEMO_MOVERS as unknown as (Item & { change: number; changePct: number })[]
+  if (activeItems.length === 0) {
+    console.log('[movers] returning DEMO data')
+    return DEMO_MOVERS as unknown as (Item & { change: number; changePct: number })[]
+  }
 
   // First try: items with 2+ price history entries (real movers)
   const realMovers = activeItems
@@ -73,9 +77,14 @@ function getMarketMovers(items: Item[]) {
     .sort((a, b) => Math.abs(b!.changePct) - Math.abs(a!.changePct))
     .slice(0, 5) as (Item & { change: number; changePct: number })[]
 
-  if (realMovers.length > 0) return realMovers
+  if (realMovers.length > 0) {
+    console.log('[movers] returning realMovers:', realMovers.length)
+    return realMovers
+  }
 
   // Fallback: show top valued items as "portfolio highlights" with simulated daily change
+  const withValue = activeItems.filter(i => (i.value || i.cost) > 0)
+  console.log('[movers] fallback: items with value:', withValue.length)
   return activeItems
     .filter(i => (i.value || i.cost) > 0)
     .sort((a, b) => (b.value || b.cost) - (a.value || a.cost))
@@ -168,8 +177,16 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
 
   const alerts = useMemo(() => generateAlerts(items), [items])
   const alertCount = alerts.length
-  const movers = useMemo(() => getMarketMovers(items), [items])
-  const similarSold = useMemo(() => getSimilarSold(items), [items])
+  const movers = useMemo(() => {
+    const result = getMarketMovers(items)
+    console.log('[home] getMarketMovers:', { totalItems: items.length, activeItems: items.filter(i => !i.dateSold).length, moversCount: result.length, firstMover: result[0]?.name })
+    return result
+  }, [items])
+  const similarSold = useMemo(() => {
+    const result = getSimilarSold(items)
+    console.log('[home] getSimilarSold:', { totalItems: items.length, similarCount: result.length, firstSimilar: result[0]?.name })
+    return result
+  }, [items])
 
   const stats = [
     { label: 'Total Items', value: String(items.length), icon: Package, gradient: 'bg-gradient-blue' },
