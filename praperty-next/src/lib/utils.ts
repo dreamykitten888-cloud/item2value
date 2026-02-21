@@ -13,12 +13,9 @@ export const getGreeting = (): string => {
   return 'Good Evening'
 }
 
-// Generate UUID
+// Generate numeric ID (bigint-compatible for Supabase items table)
 export const uuid = (): string =>
-  crypto.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = (Math.random() * 16) | 0
-    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
-  })
+  String(Date.now()) + String(Math.floor(Math.random() * 10000)).padStart(4, '0')
 
 // Category emoji map
 export const CATEGORY_EMOJIS: Record<string, string> = {

@@ -98,17 +98,20 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
   communityComps: [],
 
   loadAll: async (profileId) => {
+    console.log('[items] loadAll: starting with profileId:', profileId)
     set({ loading: true })
     try {
       const [itemsRes, watchlistRes] = await Promise.all([
         supabase.from('items').select('*').eq('user_id', profileId).order('created_at', { ascending: false }),
         supabase.from('watchlist').select('*').eq('user_id', profileId).order('created_at', { ascending: false }),
       ])
+      console.log('[items] loadAll: items result:', itemsRes.data?.length || 0, 'items, error:', itemsRes.error?.message || 'none')
+      console.log('[items] loadAll: watchlist result:', watchlistRes.data?.length || 0, 'items, error:', watchlistRes.error?.message || 'none')
       const items = (itemsRes.data || []).map(mapRowToItem)
       const watchlist = (watchlistRes.data || []).map(mapRowToWatchlist)
       set({ items, watchlist })
     } catch (e) {
-      console.error('Load data error:', e)
+      console.error('[items] loadAll error:', e)
     }
     set({ loading: false })
   },

@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { Camera, X, ArrowLeft } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
+import { useAuthStore } from '@/stores/auth-store'
 import { fmt, uuid, CATEGORIES, CONDITIONS } from '@/lib/utils'
 import type { Screen } from '@/types'
 
@@ -14,7 +15,8 @@ interface Props {
 const EMOJI_OPTIONS = ['📦', '👜', '👟', '🪑', '📷', '⌚', '🍲', '📱', '🎒', '🎮', '💻', '🖼️', '🎸', '💎', '🧥']
 
 export default function AddItemScreen({ onNavigate, scanData }: Props) {
-  const { addItem } = useItemsStore()
+  const { addItem, syncItem } = useItemsStore()
+  const profileId = useAuthStore(s => s.profileId)
   const [emoji, setEmoji] = useState(scanData?.emoji || '📦')
   const [photos, setPhotos] = useState<string[]>(scanData?.photos || [])
   const [category, setCategory] = useState(scanData?.category || 'Other')
@@ -97,6 +99,10 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
     }
 
     addItem(newItem)
+    // Persist to Supabase so item survives page reload / re-login
+    if (profileId) {
+      syncItem(newItem, profileId).catch(e => console.error('Failed to save item:', e))
+    }
     onNavigate('inventory')
   }
 

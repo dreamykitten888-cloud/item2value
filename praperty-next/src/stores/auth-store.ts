@@ -108,23 +108,47 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loadProfile: async (authUserId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, name, email, created_at, last_login_at')
-      .eq('auth_user_id', authUserId)
-      .single()
+    console.log('[auth] loadProfile: fetching for auth_user_id:', authUserId)
+    try {
+      const { data, error } = await withTimeout(
+        Promise.resolve(
+          supabase
+            .from('profiles')
+            .select('id, name, email, created_at, last_login_at')
+            .eq('auth_user_id', authUserId)
+            .single()
+        ),
+        5000,
+        'Load profile'
+      ) as { data: Record<string, unknown> | null; error: { message: string } | null }
 
-    if (error) throw error
-    if (data) {
-      const profileData = data as Database['public']['Tables']['profiles']['Row']
-      set({
-        profile: { name: profileData.name, email: profileData.email, createdAt: profileData.created_at },
-        profileId: profileData.id,
-      })
-      // Update last login (fire and forget)
-      const update: Database['public']['Tables']['profiles']['Update'] = { last_login_at: new Date().toISOString() }
-      // @ts-ignore - Supabase type inference issue
-      supabase.from('profiles').update(update).eq('id', profileData.id).then(() => {})
+      if (error) {
+        console.error('[auth] loadProfile error:', error.message)
+        // Fallback: use auth_user_id as profileId so items can still load
+        console.log('[auth] loadProfile: using auth_user_id as fallback profileId')
+        set({ profileId: authUserId })
+        return
+      }
+      if (data) {
+        const profileData = data as Database['public']['Tables']['profiles']['Row']
+        console.log('[auth] loadProfile: success, profileId:', profileData.id)
+        set({
+          profile: { name: profileData.name, email: profileData.email, createdAt: profileData.created_at },
+          profileId: profileData.id,
+        })
+        // Update last login (fire and forget)
+        const update: Database['public']['Tables']['profiles']['Update'] = { last_login_at: new Date().toISOString() }
+        // @ts-ignore - Supabase type inference issue
+        supabase.from('profiles').update(update).eq('id', profileData.id).then(() => {})
+      } else {
+        // No profile found, use auth_user_id as fallback
+        console.log('[auth] loadProfile: no data, using auth_user_id as fallback profileId')
+        set({ profileId: authUserId })
+      }
+    } catch (e) {
+      console.error('[auth] loadProfile failed:', e)
+      // Fallback: use auth_user_id as profileId so items can still load
+      set({ profileId: authUserId })
     }
   },
 
