@@ -56,39 +56,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (get().initialized) return
     set({ initialized: true })
 
-    try {
-      const { data: { session } } = await withTimeout(
-        supabase.auth.getSession(),
-        5000,
-        'Session check'
-      )
-      if (session?.user) {
-        set({
-          user: session.user,
-          session,
-          profile: fallbackProfile(session.user),
-          loading: false,
-        })
-        // Load real profile in background (non-blocking)
-        get().loadProfile(session.user.id).catch(() => {})
-      } else {
-        set({ loading: false })
-      }
-    } catch (e) {
-      console.error('Auth init error:', e)
-      set({ loading: false })
-    }
+    console.log('[auth] initialize: starting, window?', typeof window !== 'undefined')
 
-    // Set up auth state change listener ONCE, inside the store
-    supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[auth] onAuthStateChange:', event, session?.user?.email || 'no user')
+    // Set up auth state change listener FIRST.
+    // INITIAL_SESSION fires synchronously when the listener is registered,
+    // which is more reliable than getSession() for restoring persisted sessions.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[auth] onAuthStateChange:', event, 'user:', session?.user?.email || 'none', 'loading:', get().loading)
 
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-        // Only update if we don't already have this user set
-        // (avoids double-fire during signIn)
+      if (event === 'INITIAL_SESSION') {
+        if (session?.user) {
+          console.log('[auth] INITIAL_SESSION: restoring user', session.user.email)
+          set({
+            user: session.user,
+            session,
+            profile: fallbackProfile(session.user),
+            loading: false,
+          })
+          get().loadProfile(session.user.id).catch(() => {})
+        } else {
+          console.log('[auth] INITIAL_SESSION: no session, showing auth screen')
+          set({ loading: false })
+        }
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        // Only update if this is a NEW sign-in (not duplicate from signIn method)
         const current = get().user
-        if (current?.id === session.user.id) return
-
+        if (current?.id === session.user.id) {
+          console.log('[auth] SIGNED_IN: same user, skipping duplicate')
+          return
+        }
+        console.log('[auth] SIGNED_IN: new user', session.user.email)
         set({
           user: session.user,
           session,
@@ -97,14 +94,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         })
         get().loadProfile(session.user.id).catch(() => {})
       } else if (event === 'SIGNED_OUT') {
+        console.log('[auth] SIGNED_OUT: clearing state')
         set({ user: null, session: null, profile: null, profileId: null, loading: false })
       } else if (event === 'TOKEN_REFRESHED' && session) {
+        console.log('[auth] TOKEN_REFRESHED')
         set({ session })
-      } else if (event === 'INITIAL_SESSION' && !session) {
-        // No session found on init, make sure loading is off
-        set({ loading: false })
       }
     })
+
+    // Fallback: if onAuthStateChange hasn't resolved loading after 4s,
+    // try getSession() directly as a safety net
+    setTimeout(async () => {
+      if (get().loading) {
+        console.warn('[auth] Fallback: onAuthStateChange did not fire in 4s, trying getSession()')
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          console.log('[auth] Fallback getSession:', session?.user?.email || 'no session')
+          if (session?.user && !get().user) {
+            set({
+              user: session.user,
+              session,
+              profile: fallbackProfile(session.user),
+              loading: false,
+            })
+            get().loadProfile(session.user.id).catch(() => {})
+          } else if (!get().user) {
+            set({ loading: false })
+          }
+        } catch (e) {
+          console.error('[auth] Fallback getSession failed:', e)
+          set({ loading: false })
+        }
+      }
+    }, 4000)
   },
 
   loadProfile: async (authUserId: string) => {
