@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import type { AuthMode } from '@/types'
 
@@ -21,6 +21,17 @@ export default function AuthScreen() {
   const nameRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
+
+  // Safety: if processing is stuck for 12s, force it off with an error
+  useEffect(() => {
+    if (!processing) return
+    const timer = setTimeout(() => {
+      console.warn('[auth-screen] Processing timeout: forcing off after 12s')
+      setProcessing(false)
+      setError('Sign in took too long. Please try again.')
+    }, 12000)
+    return () => clearTimeout(timer)
+  }, [processing])
 
   const handleSignUp = async () => {
     const name = nameRef.current?.value?.trim()
@@ -269,6 +280,9 @@ export default function AuthScreen() {
           )}
         </div>
       </div>
+
+      {/* Version stamp - confirms latest code is running */}
+      <p className="text-[10px] text-zinc-600 mt-8">v2.1.0-Feb21</p>
     </div>
   )
 }

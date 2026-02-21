@@ -40,6 +40,7 @@ export default function Home() {
         <div className="text-center">
           <div className="w-12 h-12 rounded-full gradient-amber mx-auto mb-4 animate-pulse" />
           <p className="text-dim text-sm">Loading PrÄperty...</p>
+          <p className="text-[10px] text-zinc-700 mt-4">v2.1.0</p>
         </div>
       </div>
     )
