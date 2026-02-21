@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Camera, X, ArrowLeft } from 'lucide-react'
+import { useState, useRef, useCallback } from 'react'
+import { Camera, X, ArrowLeft, Sparkles } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
 import { useAuthStore } from '@/stores/auth-store'
-import { fmt, uuid, CATEGORIES, CONDITIONS } from '@/lib/utils'
+import { fmt, uuid, CATEGORIES, CONDITIONS, CATEGORY_EMOJIS } from '@/lib/utils'
+import { matchProduct, getSuggestions } from '@/lib/product-db'
 import type { Screen } from '@/types'
 
 interface Props {
@@ -22,14 +23,54 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
   const [category, setCategory] = useState(scanData?.category || 'Other')
   const [condition, setCondition] = useState(scanData?.condition || 'New')
 
-  const nameRef = useRef<HTMLInputElement>(null)
-  const brandRef = useRef<HTMLInputElement>(null)
-  const modelRef = useRef<HTMLInputElement>(null)
+  // Controlled fields for auto-fill
+  const [itemName, setItemName] = useState(scanData?.name || '')
+  const [brand, setBrand] = useState(scanData?.brand || '')
+  const [model, setModel] = useState(scanData?.model || '')
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [autoFilled, setAutoFilled] = useState(false)
+
   const costRef = useRef<HTMLInputElement>(null)
   const askingRef = useRef<HTMLInputElement>(null)
   const marketRef = useRef<HTMLInputElement>(null)
   const datePurchasedRef = useRef<HTMLInputElement>(null)
   const notesRef = useRef<HTMLTextAreaElement>(null)
+
+  // Smart auto-fill when user types item name
+  const handleNameChange = useCallback((value: string) => {
+    setItemName(value)
+
+    // Get brand suggestions for dropdown
+    const suggs = getSuggestions(value)
+    setSuggestions(suggs)
+
+    // Try to auto-match and fill
+    const match = matchProduct(value)
+    if (match && match.confidence > 0.15) {
+      setBrand(match.brand)
+      setModel(match.model)
+      setCategory(match.category)
+      setEmoji(match.emoji)
+      setAutoFilled(true)
+
+      // Clear auto-fill indicator after a moment
+      setTimeout(() => setAutoFilled(false), 2000)
+    }
+  }, [])
+
+  // Apply suggestion from dropdown
+  const applySuggestion = (brandName: string) => {
+    // If the current name doesn't contain the brand, prepend it
+    const lower = itemName.toLowerCase()
+    if (!lower.includes(brandName.toLowerCase())) {
+      const newName = `${brandName} ${itemName}`.trim()
+      setItemName(newName)
+      handleNameChange(newName)
+    } else {
+      handleNameChange(itemName)
+    }
+    setSuggestions([])
+  }
 
   const handleAddPhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).slice(0, 5 - photos.length)
@@ -60,7 +101,7 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
   }
 
   const handleSave = () => {
-    const name = nameRef.current?.value?.trim() || ''
+    const name = itemName.trim()
     const cost = parseFloat(costRef.current?.value || '0') || 0
 
     if (!name || !cost) {
@@ -74,8 +115,8 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
     const newItem = {
       id: uuid(),
       name,
-      brand: brandRef.current?.value?.trim() || '',
-      model: modelRef.current?.value?.trim() || '',
+      brand: brand.trim(),
+      model: model.trim(),
       category,
       condition,
       cost,
@@ -99,7 +140,6 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
     }
 
     addItem(newItem)
-    // Persist to Supabase so item survives page reload / re-login
     if (profileId) {
       syncItem(newItem, profileId).catch(e => console.error('Failed to save item:', e))
     }
@@ -189,39 +229,69 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
           </div>
         </div>
 
-        {/* Item Name */}
-        <div>
+        {/* Item Name with Smart Auto-fill */}
+        <div className="relative">
           <label className="block text-sm font-semibold text-white mb-2">
             Item Name <span className="text-red-500">*</span>
           </label>
-          <input
-            ref={nameRef}
-            type="text"
-            placeholder="e.g. Louis Vuitton Neverfull MM"
-            defaultValue={scanData?.name || ''}
-            className="w-full px-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="e.g. Onitsuka Tiger Mexico 66, Rolex Submariner"
+              value={itemName}
+              onChange={e => handleNameChange(e.target.value)}
+              className="w-full px-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors"
+            />
+            {autoFilled && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-emerald-400">
+                <Sparkles size={14} />
+                <span className="text-[10px] font-semibold">Auto-filled</span>
+              </div>
+            )}
+          </div>
+
+          {/* Suggestion dropdown */}
+          {suggestions.length > 0 && itemName.length >= 2 && (
+            <div className="absolute z-30 left-0 right-0 mt-1 bg-zinc-900 border border-white/10 rounded-xl overflow-hidden shadow-xl">
+              {suggestions.map(s => {
+                const info = matchProduct(s)
+                return (
+                  <button
+                    key={s}
+                    onClick={() => applySuggestion(s)}
+                    className="w-full px-3.5 py-2.5 flex items-center gap-2.5 hover:bg-white/8 active:bg-white/12 text-left transition-colors border-b border-white/5 last:border-0"
+                  >
+                    <span className="text-lg">{info?.emoji || '📦'}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{s}</p>
+                      <p className="text-[10px] text-dim">{info?.category || 'Other'}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Brand & Model */}
+        {/* Brand & Model (auto-filled) */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-semibold text-white mb-2">Brand</label>
             <input
-              ref={brandRef}
               type="text"
               placeholder="e.g. Nike"
-              defaultValue={scanData?.brand || ''}
+              value={brand}
+              onChange={e => setBrand(e.target.value)}
               className="w-full px-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors"
             />
           </div>
           <div>
             <label className="block text-sm font-semibold text-white mb-2">Model</label>
             <input
-              ref={modelRef}
               type="text"
               placeholder="e.g. Dunk Low"
-              defaultValue={scanData?.model || ''}
+              value={model}
+              onChange={e => setModel(e.target.value)}
               className="w-full px-3.5 py-3 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors"
             />
           </div>
