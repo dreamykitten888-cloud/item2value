@@ -10,7 +10,13 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
-  const { signUp, signIn, sendMagicLink, resetPassword, error, setError } = useAuthStore()
+  // Use selectors to avoid subscribing to entire store (prevents re-render storms)
+  const signUp = useAuthStore(s => s.signUp)
+  const signIn = useAuthStore(s => s.signIn)
+  const sendMagicLink = useAuthStore(s => s.sendMagicLink)
+  const resetPassword = useAuthStore(s => s.resetPassword)
+  const error = useAuthStore(s => s.error)
+  const setError = useAuthStore(s => s.setError)
 
   const nameRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)

@@ -81,7 +81,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // Set up auth state change listener ONCE, inside the store
     supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      console.log('[auth] onAuthStateChange:', event, session?.user?.email || 'no user')
+
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         // Only update if we don't already have this user set
         // (avoids double-fire during signIn)
         const current = get().user
@@ -98,6 +100,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: null, session: null, profile: null, profileId: null, loading: false })
       } else if (event === 'TOKEN_REFRESHED' && session) {
         set({ session })
+      } else if (event === 'INITIAL_SESSION' && !session) {
+        // No session found on init, make sure loading is off
+        set({ loading: false })
       }
     })
   },
@@ -149,11 +154,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signIn: async (email, password) => {
     set({ error: null })
+    console.log('[auth] signIn: starting...')
     const { data, error } = await withTimeout(
       supabase.auth.signInWithPassword({ email, password }),
       8000,
       'Sign in'
     )
+    console.log('[auth] signIn: got response, error:', error?.message || 'none', 'user:', data?.user?.email || 'null')
     if (error) throw error
 
     // Set EVERYTHING in one atomic call. This is the key fix.
@@ -165,6 +172,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       profile: fallbackProfile(data.user),
       loading: false,
     })
+    console.log('[auth] signIn: state set, user should be visible to page.tsx now')
 
     // Load real profile in background (non-blocking, non-critical)
     get().loadProfile(data.user.id).catch(() => {})
