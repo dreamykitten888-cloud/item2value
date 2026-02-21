@@ -282,7 +282,7 @@ export default function AuthScreen() {
       </div>
 
       {/* Version stamp - confirms latest code is running */}
-      <p className="text-[10px] text-zinc-600 mt-8">v2.3.0</p>
+      <p className="text-[10px] text-zinc-600 mt-8">v2.4.0-feb21</p>
     </div>
   )
 }

@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Force unique build ID so Vercel CDN serves fresh chunks
+  generateBuildId: async () => {
+    return `build-${Date.now()}`
+  },
   // Prevent aggressive caching on mobile (especially iOS home screen PWAs)
   async headers() {
     return [
