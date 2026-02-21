@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" style={{ colorScheme: 'dark' }}>
       <head />
       <body className="antialiased">
         <main className="mx-auto max-w-md h-screen-safe relative overflow-hidden">

@@ -27,8 +27,25 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Sora', system-ui, sans-serif;
 }
 
-input, select {
+html {
+  color-scheme: dark;
+}
+
+input, select, textarea {
   font-family: 'DM Sans', system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+/* Fix iOS autofill white background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 30px #0d0d14 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 select option {

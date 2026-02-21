@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState, useRef } from 'react'
-import { Package, DollarSign, BarChart3, Bell, Camera, Plus, Search, TrendingUp, TrendingDown, Info, Eye, Trash2 } from 'lucide-react'
+import { useMemo } from 'react'
+import { Package, DollarSign, BarChart3, Bell, Camera, Plus, Search, TrendingUp, TrendingDown, Info, Eye } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, getGreeting } from '@/lib/utils'
@@ -165,10 +165,20 @@ function getSimilarSold(items: Item[]) {
 
 export default function HomeScreen({ onNavigate, onViewItem }: Props) {
   const { profile } = useAuthStore()
-  const { items, watchlist, deleteWatchlistItem } = useItemsStore()
-  const [swipingId, setSwipingId] = useState<string | null>(null)
-  const [swipeX, setSwipeX] = useState(0)
-  const touchStartX = useRef(0)
+  const { items, watchlist } = useItemsStore()
+  // Top 5 watchlist items by biggest gain
+  const topWatchlist = useMemo(() => {
+    if (watchlist.length === 0) return []
+    return watchlist
+      .map(w => {
+        const changePct = w.priceHistory.length >= 2 && w.priceHistory[w.priceHistory.length - 2].value > 0
+          ? ((w.lastKnownPrice - w.priceHistory[w.priceHistory.length - 2].value) / w.priceHistory[w.priceHistory.length - 2].value) * 100
+          : 0
+        return { ...w, changePct }
+      })
+      .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
+      .slice(0, 5)
+  }, [watchlist])
 
   const userName = profile?.name || 'there'
   const userInitial = userName.charAt(0).toUpperCase()
@@ -395,7 +405,7 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
         </div>
       )}
 
-      {/* Portfolio / Watchlist */}
+      {/* Portfolio / Watchlist Preview */}
       <div className="px-6 pt-5 pb-4">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
@@ -404,7 +414,7 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
             <span className="text-dim text-[10px] bg-white/5 px-2 py-0.5 rounded-full">Watchlist</span>
           </div>
           <button onClick={() => onNavigate('watchlist')} className="text-emerald-400 text-xs font-semibold">
-            Manage
+            {watchlist.length > 0 ? 'View All' : 'Manage'}
           </button>
         </div>
 
@@ -414,9 +424,9 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
               <Eye size={24} className="text-emerald-400" />
             </div>
             <p className="text-sm font-semibold text-white mb-1">Track any item</p>
-            <p className="text-xs text-dim mb-3">Add items to your portfolio to watch their market value change over time, just like stocks.</p>
+            <p className="text-xs text-dim mb-3">Watch items you don't own yet, like a stock watchlist. See market changes in real time.</p>
             <button
-              onClick={() => onNavigate('discover')}
+              onClick={() => onNavigate('watchlist')}
               className="bg-emerald-500/20 text-emerald-400 text-xs font-semibold px-4 py-2 rounded-lg"
             >
               + Add to Portfolio
@@ -424,68 +434,43 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
           </div>
         ) : (
           <div className="space-y-2">
-            {watchlist.map((w) => {
-              const change = w.lastKnownPrice > 0 && w.priceHistory.length >= 2
-                ? w.lastKnownPrice - w.priceHistory[w.priceHistory.length - 2].value
-                : 0
-              const changePct = w.priceHistory.length >= 2 && w.priceHistory[w.priceHistory.length - 2].value > 0
-                ? (change / w.priceHistory[w.priceHistory.length - 2].value) * 100
-                : 0
-              const isUp = change >= 0
-              const isSwiping = swipingId === w.id
-              const showDelete = swipeX < -60
-
+            {topWatchlist.map((w) => {
+              const isUp = w.changePct >= 0
               return (
-                <div key={w.id} className="relative overflow-hidden rounded-xl">
-                  {/* Delete background */}
-                  <div className="absolute inset-0 bg-red-500/90 flex items-center justify-end pr-5 rounded-xl">
-                    <Trash2 size={20} color="#fff" />
+                <button
+                  key={w.id}
+                  onClick={() => onNavigate('watchlist')}
+                  className="w-full glass glass-hover rounded-xl p-3.5 flex items-center gap-3 text-left transition-all"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-lg flex-shrink-0">
+                    {w.emoji}
                   </div>
-
-                  {/* Swipeable card */}
-                  <div
-                    className="relative glass rounded-xl p-3.5 flex items-center gap-3 transition-transform"
-                    style={{ transform: isSwiping ? `translateX(${swipeX}px)` : 'translateX(0)' }}
-                    onTouchStart={(e) => {
-                      touchStartX.current = e.touches[0].clientX
-                      setSwipingId(w.id)
-                      setSwipeX(0)
-                    }}
-                    onTouchMove={(e) => {
-                      if (swipingId !== w.id) return
-                      const diff = e.touches[0].clientX - touchStartX.current
-                      if (diff < 0) setSwipeX(Math.max(diff, -120))
-                    }}
-                    onTouchEnd={() => {
-                      if (showDelete) {
-                        deleteWatchlistItem(w.id)
-                      }
-                      setSwipingId(null)
-                      setSwipeX(0)
-                    }}
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-lg flex-shrink-0">
-                      {w.emoji}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{w.name}</p>
-                      <p className="text-xs text-dim">{w.brand || w.category}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-white">
-                        {w.lastKnownPrice > 0 ? fmt(w.lastKnownPrice) : w.targetPrice > 0 ? fmt(w.targetPrice) : '--'}
-                      </p>
-                      {change !== 0 && (
-                        <div className={`flex items-center gap-0.5 justify-end ${isUp ? 'text-green-400' : 'text-red-400'}`}>
-                          {isUp ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                          <p className="text-[10px] font-semibold">{isUp ? '+' : ''}{changePct.toFixed(1)}%</p>
-                        </div>
-                      )}
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{w.name}</p>
+                    <p className="text-xs text-dim">{w.brand || w.category}</p>
                   </div>
-                </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-bold text-white">
+                      {w.lastKnownPrice > 0 ? fmt(w.lastKnownPrice) : '--'}
+                    </p>
+                    {w.changePct !== 0 && (
+                      <div className={`flex items-center gap-0.5 justify-end ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                        {isUp ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                        <p className="text-[10px] font-semibold">{isUp ? '+' : ''}{w.changePct.toFixed(1)}%</p>
+                      </div>
+                    )}
+                  </div>
+                </button>
               )
             })}
+            {watchlist.length > 5 && (
+              <button
+                onClick={() => onNavigate('watchlist')}
+                className="w-full text-center py-2 text-emerald-400 text-xs font-semibold"
+              >
+                +{watchlist.length - 5} more in watchlist
+              </button>
+            )}
           </div>
         )}
       </div>
