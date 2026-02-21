@@ -10,6 +10,7 @@ interface AuthState {
   profile: Profile | null
   profileId: string | null
   loading: boolean
+  initialized: boolean
   error: string | null
 
   // Actions
@@ -33,33 +34,72 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   })
 }
 
+function fallbackProfile(user: User): Profile {
+  return {
+    name: user.email?.split('@')[0] || 'User',
+    email: user.email || '',
+    createdAt: '',
+  }
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
   profile: null,
   profileId: null,
   loading: true,
+  initialized: false,
   error: null,
 
   initialize: async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
+    // Prevent double-init
+    if (get().initialized) return
+    set({ initialized: true })
 
+    try {
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        5000,
+        'Session check'
+      )
       if (session?.user) {
-        set({ user: session.user, session })
-        // Set fallback profile immediately so we don't get stuck
         set({
-          profile: { name: session.user.email?.split('@')[0] || 'User', email: session.user.email || '', createdAt: '' },
+          user: session.user,
+          session,
+          profile: fallbackProfile(session.user),
+          loading: false,
         })
-        // Then try to load the real profile in the background
-        get().loadProfile(session.user.id).catch((err) => {
-          console.error('Profile load error:', err)
-        })
+        // Load real profile in background (non-blocking)
+        get().loadProfile(session.user.id).catch(() => {})
+      } else {
+        set({ loading: false })
       }
     } catch (e) {
       console.error('Auth init error:', e)
+      set({ loading: false })
     }
-    set({ loading: false })
+
+    // Set up auth state change listener ONCE, inside the store
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Only update if we don't already have this user set
+        // (avoids double-fire during signIn)
+        const current = get().user
+        if (current?.id === session.user.id) return
+
+        set({
+          user: session.user,
+          session,
+          profile: get().profile || fallbackProfile(session.user),
+          loading: false,
+        })
+        get().loadProfile(session.user.id).catch(() => {})
+      } else if (event === 'SIGNED_OUT') {
+        set({ user: null, session: null, profile: null, profileId: null, loading: false })
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        set({ session })
+      }
+    })
   },
 
   loadProfile: async (authUserId: string) => {
@@ -76,7 +116,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         profile: { name: profileData.name, email: profileData.email, createdAt: profileData.created_at },
         profileId: profileData.id,
       })
-      // Update last login (fire and forget, don't block)
+      // Update last login (fire and forget)
       const update: Database['public']['Tables']['profiles']['Update'] = { last_login_at: new Date().toISOString() }
       // @ts-ignore - Supabase type inference issue
       supabase.from('profiles').update(update).eq('id', profileData.id).then(() => {})
@@ -95,31 +135,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const hasSession = !!authData.session
     if (hasSession && authData.user) {
       await new Promise(r => setTimeout(r, 500)) // Let DB trigger create profile
-      set({ user: authData.user, session: authData.session })
-      await withTimeout(get().loadProfile(authData.user.id), 8000, 'Profile load')
+      set({
+        user: authData.user,
+        session: authData.session,
+        profile: fallbackProfile(authData.user),
+        loading: false,
+      })
+      // Load real profile in background
+      get().loadProfile(authData.user.id).catch(() => {})
     }
     return { hasSession }
   },
 
   signIn: async (email, password) => {
     set({ error: null })
-    // No artificial timeout, just let Supabase do its thing
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await withTimeout(
+      supabase.auth.signInWithPassword({ email, password }),
+      8000,
+      'Sign in'
+    )
     if (error) throw error
-    set({ user: data.user, session: data.session })
-    // Load profile but don't block sign-in on it
-    get().loadProfile(data.user.id).catch((profileErr) => {
-      console.error('Profile load failed:', profileErr)
-      set({
-        profile: { name: data.user.email?.split('@')[0] || 'User', email: data.user.email || '', createdAt: '' },
-      })
+
+    // Set EVERYTHING in one atomic call. This is the key fix.
+    // page.tsx checks `user` to decide what to render, so setting user
+    // here guarantees React re-renders to AppShell immediately.
+    set({
+      user: data.user,
+      session: data.session,
+      profile: fallbackProfile(data.user),
+      loading: false,
     })
-    // Set fallback profile immediately so user isn't stuck
-    if (!get().profile) {
-      set({
-        profile: { name: data.user.email?.split('@')[0] || 'User', email: data.user.email || '', createdAt: '' },
-      })
-    }
+
+    // Load real profile in background (non-blocking, non-critical)
+    get().loadProfile(data.user.id).catch(() => {})
   },
 
   signOut: async () => {

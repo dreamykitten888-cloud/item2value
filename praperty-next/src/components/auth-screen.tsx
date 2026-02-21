@@ -46,10 +46,12 @@ export default function AuthScreen() {
     setProcessing(true); setError(null)
     try {
       await signIn(email, password)
+      // signIn sets user in store, page.tsx re-renders to AppShell
     } catch (e: unknown) {
       setError((e as Error).message || 'Sign in failed. Check your credentials.')
+    } finally {
+      setProcessing(false)
     }
-    setProcessing(false)
   }
 
   const handleMagicLink = async () => {

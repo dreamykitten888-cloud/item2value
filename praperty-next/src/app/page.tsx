@@ -1,62 +1,40 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useItemsStore } from '@/stores/items-store'
-import { supabase } from '@/lib/supabase'
 import AuthScreen from '@/components/auth-screen'
 import AppShell from '@/components/app-shell'
 
 export default function Home() {
-  const { user, loading, profile, profileId, initialize, loadProfile } = useAuthStore()
-  const { loadAll } = useItemsStore()
-  const [initError, setInitError] = useState(false)
+  const user = useAuthStore(s => s.user)
+  const loading = useAuthStore(s => s.loading)
+  const profileId = useAuthStore(s => s.profileId)
 
-  // Initialize auth on mount
+  // Initialize auth ONCE via the store (single source of truth)
   useEffect(() => {
-    initialize().catch((e) => {
-      console.error('Init failed:', e)
-      setInitError(true)
-    })
+    useAuthStore.getState().initialize()
 
-    // Safety net: if still loading after 10s, force stop
-    const safetyTimer = setTimeout(() => {
-      const state = useAuthStore.getState()
-      if (state.loading) {
-        console.warn('Auth init took too long, forcing loading=false')
+    // Safety net: if loading is still true after 6s, force it off
+    const safety = setTimeout(() => {
+      if (useAuthStore.getState().loading) {
+        console.warn('Auth safety timeout: forcing loading=false')
         useAuthStore.setState({ loading: false })
       }
-    }, 10000)
+    }, 6000)
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        try {
-          await loadProfile(session.user.id)
-          const pid = useAuthStore.getState().profileId
-          if (pid) await loadAll(pid)
-        } catch (e) {
-          console.error('Auth change error:', e)
-        }
-      } else if (event === 'SIGNED_OUT') {
-        useAuthStore.setState({ user: null, session: null, profile: null, profileId: null })
-        useItemsStore.setState({ items: [], watchlist: [] })
-      }
-    })
-
-    return () => {
-      clearTimeout(safetyTimer)
-      subscription?.unsubscribe()
-    }
+    return () => clearTimeout(safety)
   }, [])
 
-  // Load items when profileId is set
+  // Load items when profileId becomes available
   useEffect(() => {
-    if (profileId) loadAll(profileId)
+    if (profileId) {
+      useItemsStore.getState().loadAll(profileId).catch(() => {})
+    }
   }, [profileId])
 
-  // Loading spinner
-  if (loading && !initError) {
+  // Still initializing
+  if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
@@ -67,11 +45,11 @@ export default function Home() {
     )
   }
 
-  // Not authenticated: show auth screen
-  if (!user || !profile) {
+  // Not authenticated
+  if (!user) {
     return <AuthScreen />
   }
 
-  // Authenticated: show main app
+  // Authenticated
   return <AppShell />
 }
