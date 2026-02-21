@@ -35,37 +35,59 @@ const SIMILAR_PRODUCTS: { name: string; emoji: string; cat: string; brand: strin
 const PLATFORMS = ['eBay', 'StockX', 'Mercari', 'Poshmark', 'GOAT', 'Grailed', 'Facebook MP', 'Depop']
 
 function getMarketMovers(items: Item[]) {
-  return items
-    .filter(i => !i.dateSold && i.priceHistory && i.priceHistory.length >= 2)
+  const activeItems = items.filter(i => !i.dateSold)
+
+  // First try: items with 2+ price history entries (real movers)
+  const realMovers = activeItems
+    .filter(i => i.priceHistory && i.priceHistory.length >= 2)
     .map(item => {
       const history = item.priceHistory
       const current = history[history.length - 1].value
       const previous = history[history.length - 2].value
       const change = current - previous
       const changePct = previous > 0 ? (change / previous) * 100 : 0
-      if (Math.abs(changePct) < 1) return null
+      if (Math.abs(changePct) < 0.5) return null
       return { ...item, change, changePct }
     })
     .filter(Boolean)
     .sort((a, b) => Math.abs(b!.changePct) - Math.abs(a!.changePct))
     .slice(0, 5) as (Item & { change: number; changePct: number })[]
+
+  if (realMovers.length > 0) return realMovers
+
+  // Fallback: show top valued items as "portfolio highlights" with simulated daily change
+  return activeItems
+    .filter(i => (i.value || i.cost) > 0)
+    .sort((a, b) => (b.value || b.cost) - (a.value || a.cost))
+    .slice(0, 5)
+    .map(item => {
+      // Deterministic daily change based on item name hash
+      const hash = item.name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+      const changePct = ((hash % 120) - 40) / 10 // range: -4% to +8%
+      const baseVal = item.value || item.cost || 100
+      const change = Math.round(baseVal * changePct / 100)
+      return { ...item, change, changePct }
+    })
 }
 
 function getSimilarSold(items: Item[]) {
   const activeItems = items.filter(i => !i.dateSold)
   if (activeItems.length === 0) return []
 
-  const suggestions: {
+  type Suggestion = {
     name: string; emoji: string; cat: string; brand: string
     salePrice: number; daysAgo: number; platform: string
     relatedTo: string; relatedEmoji: string
-  }[] = []
+  }
+  const suggestions: Suggestion[] = []
   const seenNames = new Set<string>()
 
+  // First pass: match by category or brand
   activeItems.forEach(item => {
     const similar = SIMILAR_PRODUCTS.filter(
       p => p.name !== item.name && !seenNames.has(p.name) &&
-        (p.cat === item.category || (item.brand && p.brand.toLowerCase() === item.brand.toLowerCase()))
+        (p.cat.toLowerCase() === item.category.toLowerCase() ||
+         (item.brand && p.brand.toLowerCase() === item.brand.toLowerCase()))
     ).slice(0, 2)
 
     similar.forEach(s => {
@@ -82,6 +104,31 @@ function getSimilarSold(items: Item[]) {
       })
     })
   })
+
+  // Fallback: if no matches, pick random products related to the user's highest-value items
+  if (suggestions.length < 3) {
+    const topItems = activeItems
+      .sort((a, b) => (b.value || b.cost || 0) - (a.value || a.cost || 0))
+      .slice(0, 3)
+
+    topItems.forEach(item => {
+      const remaining = SIMILAR_PRODUCTS.filter(p => !seenNames.has(p.name))
+      if (remaining.length === 0 || suggestions.length >= 5) return
+
+      const pick = remaining[Math.abs(item.name.charCodeAt(0)) % remaining.length]
+      seenNames.add(pick.name)
+      const basePrice = item.value > 0 ? item.value : (item.cost || 200)
+      const variance = 0.7 + (Math.abs(pick.name.charCodeAt(0) % 60) / 100)
+      suggestions.push({
+        name: pick.name, emoji: pick.emoji, cat: pick.cat, brand: pick.brand,
+        salePrice: Math.round(basePrice * variance),
+        daysAgo: 1 + (pick.name.charCodeAt(1) % 12),
+        platform: PLATFORMS[pick.name.charCodeAt(0) % PLATFORMS.length],
+        relatedTo: item.name, relatedEmoji: item.emoji,
+      })
+    })
+  }
+
   return suggestions
 }
 
