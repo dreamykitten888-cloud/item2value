@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Package, DollarSign, BarChart3, Bell, Camera, Plus, Search, TrendingUp, TrendingDown } from 'lucide-react'
+import { Package, DollarSign, BarChart3, Bell, Camera, Plus, Search, TrendingUp, TrendingDown, Info } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, getGreeting } from '@/lib/utils'
@@ -189,10 +189,10 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
   }, [items])
 
   const stats = [
-    { label: 'Total Items', value: String(items.length), icon: Package, gradient: 'bg-gradient-blue' },
-    { label: 'Total Value', value: fmt(totalValue), icon: DollarSign, gradient: 'bg-gradient-amber' },
-    { label: 'Total Earnings', value: totalEarnings > 0 ? fmt(totalEarnings) : '--', icon: BarChart3, gradient: 'bg-gradient-purple', onClick: () => onNavigate('sold-items') },
-    { label: 'Alerts', value: alertCount > 0 ? String(alertCount) : '--', icon: Bell, gradient: 'from-amber-500 to-amber-600 bg-gradient-to-br', onClick: () => onNavigate('alerts') },
+    { label: 'Total Items', value: String(items.length), icon: Package, gradient: 'bg-gradient-blue', info: 'All items in your inventory (active + sold)' },
+    { label: 'Total Value', value: fmt(totalValue), icon: DollarSign, gradient: 'bg-gradient-amber', info: 'Combined market value of all active items' },
+    { label: 'Total Earnings', value: totalEarnings > 0 ? fmt(totalEarnings) : '--', icon: BarChart3, gradient: 'bg-gradient-purple', onClick: () => onNavigate('sold-items'), info: 'Revenue from all sold items' },
+    { label: 'Alerts', value: alertCount > 0 ? String(alertCount) : '--', icon: Bell, gradient: 'from-amber-500 to-amber-600 bg-gradient-to-br', onClick: () => onNavigate('alerts'), info: 'Price alerts, action items, and insights' },
   ]
 
   const recentItems = items.slice(0, 5)
@@ -218,13 +218,23 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
             return (
               <div
                 key={stat.label}
-                className="glass rounded-2xl p-4 animate-fade-up cursor-default"
+                className="glass rounded-2xl p-4 animate-fade-up cursor-default relative group"
                 style={{ animationDelay: `${i * 0.08}s` }}
                 onClick={stat.onClick}
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-dim text-[11px] uppercase tracking-wider">{stat.label}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-dim text-[11px] uppercase tracking-wider">{stat.label}</p>
+                      <div className="relative">
+                        <div className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center cursor-help peer">
+                          <Info size={10} className="text-zinc-500" />
+                        </div>
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-zinc-800 text-white text-[10px] px-2.5 py-1.5 rounded-lg whitespace-nowrap opacity-0 peer-hover:opacity-100 peer-active:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg border border-white/10">
+                          {stat.info}
+                        </div>
+                      </div>
+                    </div>
                     <p className="text-[22px] font-bold text-white mt-1.5">{stat.value}</p>
                   </div>
                   <div className={`w-10 h-10 rounded-[10px] ${stat.gradient} flex items-center justify-center`}>
