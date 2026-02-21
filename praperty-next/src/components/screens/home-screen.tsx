@@ -270,7 +270,7 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
           <div className="flex gap-2.5 overflow-x-auto scroll-hide pb-1">
             {movers.map((m, i) => {
               const isUp = m.change >= 0
-              const isDemo = m.id.startsWith('demo-')
+              const isDemo = String(m.id).startsWith('demo-')
               return (
                 <div
                   key={m.id}
