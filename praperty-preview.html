@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrÄperty - Home Screen Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg-primary: #06060b;
+    --bg-surface: #0d0d14;
+    --text-primary: #ffffff;
+    --text-dim: #475569;
+    --amber: #d4a853;
+    --amber-dark: #b8860b;
+  }
+  body {
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 20px;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: 'Sora', system-ui, sans-serif; }
+
+  .phone-frame {
+    width: 390px;
+    height: 844px;
+    background: var(--bg-primary);
+    border-radius: 40px;
+    overflow: hidden;
+    border: 3px solid #222;
+    position: relative;
+    box-shadow: 0 0 60px rgba(212,168,83,0.08);
+  }
+  .phone-frame::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 28px;
+    background: #000;
+    border-radius: 0 0 16px 16px;
+    z-index: 10;
+  }
+
+  .screen {
+    height: 100%;
+    overflow-y: auto;
+    padding-bottom: 90px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  .glass {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .gradient-amber { background: linear-gradient(135deg, #d4a853, #b8860b); }
+
+  /* Stats grid */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat-card {
+    border-radius: 16px;
+    padding: 16px;
+    animation: slideUp 0.5s ease-out both;
+  }
+  .stat-card .label {
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .stat-card .val {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin-top: 6px;
+    font-family: 'Sora', system-ui, sans-serif;
+  }
+  .stat-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Buttons */
+  .action-row { display: flex; gap: 12px; padding: 0 24px; margin: 20px 0; }
+  .btn-amber {
+    flex: 1;
+    background: linear-gradient(135deg, #d4a853, #b8860b);
+    border: none; border-radius: 12px;
+    padding: 16px; font-size: 15px; font-weight: 600;
+    color: #000; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-glass {
+    flex: 1;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 16px;
+    font-size: 15px; font-weight: 600;
+    color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+
+  /* Horizontal scroll cards */
+  .scroll-row {
+    display: flex; gap: 10px;
+    overflow-x: auto; padding-bottom: 4px;
+    -ms-overflow-style: none; scrollbar-width: none;
+  }
+  .scroll-row::-webkit-scrollbar { display: none; }
+
+  .mover-card {
+    min-width: 150px; flex-shrink: 0;
+    border-radius: 16px; padding: 14px;
+    cursor: pointer;
+    animation: slideUp 0.5s ease-out both;
+  }
+  .similar-card {
+    min-width: 180px; max-width: 200px; flex-shrink: 0;
+    border-radius: 16px; padding: 14px;
+    cursor: pointer;
+    animation: slideUp 0.5s ease-out both;
+  }
+
+  .demo-badge {
+    font-size: 10px; padding: 2px 8px;
+    border-radius: 999px;
+  }
+
+  /* Discover CTA */
+  .discover-cta {
+    border-radius: 12px; padding: 16px;
+    border: 1px solid rgba(168,85,247,0.2);
+    background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(59,130,246,0.08));
+    display: flex; align-items: center; gap: 14px;
+    cursor: pointer;
+  }
+  .discover-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, #a855f7, #3b82f6);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 80px;
+    background: rgba(6,6,11,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 0 8px 8px;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 10px; color: var(--text-dim);
+    cursor: pointer;
+  }
+  .nav-item.active { color: var(--amber); }
+
+  @keyframes slideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="screen">
+    <!-- Header -->
+    <div style="padding: 48px 24px 8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px;">
+        <div>
+          <p style="color:var(--text-dim); font-size:12px; text-transform:uppercase; letter-spacing:0.1em;">Good Evening</p>
+          <h1 style="font-size:28px; font-weight:700; color:#fff; margin-top:4px;">Kitty</h1>
+        </div>
+        <div class="gradient-amber" style="width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; color:#000;">K</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="glass stat-card">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <p class="label">Total Items</p>
+              <p class="val">0</p>
+            </div>
+            <div class="stat-icon" style="background:linear-gradient(135deg,#3b82f6,#2563eb);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="glass stat-card" style="animation-delay:0.08s;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <p class="label">Total Value</p>
+              <p class="val">$0</p>
+            </div>
+            <div class="stat-icon gradient-amber">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="glass stat-card" style="animation-delay:0.16s;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <p class="label">Total Earnings</p>
+              <p class="val">--</p>
+            </div>
+            <div class="stat-icon" style="background:linear-gradient(135deg,#a855f7,#7c3aed);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="glass stat-card" style="animation-delay:0.24s;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <p class="label">Alerts</p>
+              <p class="val">--</p>
+            </div>
+            <div class="stat-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="action-row">
+      <button class="btn-amber">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        Scan Item
+      </button>
+      <button class="btn-glass">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Manually
+      </button>
+    </div>
+
+    <!-- Market Movers -->
+    <div style="padding:0 24px 16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h2 style="font-size:16px; font-weight:700; color:#fff;">Market Movers</h2>
+          <span class="demo-badge" style="color:rgba(212,168,83,0.6); background:rgba(212,168,83,0.1);">Demo</span>
+        </div>
+        <span style="color:var(--amber); font-size:12px; font-weight:600; cursor:pointer;">All Alerts</span>
+      </div>
+      <div class="scroll-row">
+        <!-- Jordan 1 -->
+        <div class="glass mover-card" style="border-top:3px solid #4ade80;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:18px;">👟</span>
+            <p style="font-size:12px; font-weight:600; color:#fff;">Air Jordan 1 Retro</p>
+          </div>
+          <p style="font-size:16px; font-weight:800; color:#4ade80;">+15.3%</p>
+          <p style="font-size:10px; color:var(--text-dim); margin-top:2px;">+$45 since last update</p>
+        </div>
+        <!-- Pokemon -->
+        <div class="glass mover-card" style="border-top:3px solid #f87171; animation-delay:0.06s;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:18px;">🃏</span>
+            <p style="font-size:12px; font-weight:600; color:#fff;">Pokemon Charizard</p>
+          </div>
+          <p style="font-size:16px; font-weight:800; color:#f87171;">-6.5%</p>
+          <p style="font-size:10px; color:var(--text-dim); margin-top:2px;">-$62 since last update</p>
+        </div>
+        <!-- Rolex -->
+        <div class="glass mover-card" style="border-top:3px solid #4ade80; animation-delay:0.12s;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:18px;">⌚</span>
+            <p style="font-size:12px; font-weight:600; color:#fff;">Rolex Submariner</p>
+          </div>
+          <p style="font-size:16px; font-weight:800; color:#4ade80;">+7.5%</p>
+          <p style="font-size:10px; color:var(--text-dim); margin-top:2px;">+$875 since last update</p>
+        </div>
+        <!-- MacBook -->
+        <div class="glass mover-card" style="border-top:3px solid #f87171; animation-delay:0.18s;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:18px;">💻</span>
+            <p style="font-size:12px; font-weight:600; color:#fff;">MacBook Pro 14"</p>
+          </div>
+          <p style="font-size:16px; font-weight:800; color:#f87171;">-6.8%</p>
+          <p style="font-size:10px; color:var(--text-dim); margin-top:2px;">-$120 since last update</p>
+        </div>
+        <!-- Supreme -->
+        <div class="glass mover-card" style="border-top:3px solid #4ade80; animation-delay:0.24s;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:18px;">👕</span>
+            <p style="font-size:12px; font-weight:600; color:#fff;">Supreme Box Logo</p>
+          </div>
+          <p style="font-size:16px; font-weight:800; color:#4ade80;">+7.1%</p>
+          <p style="font-size:10px; color:var(--text-dim); margin-top:2px;">+$52 since last update</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Similar Items Sold -->
+    <div style="padding:0 24px 16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <h2 style="font-size:16px; font-weight:700; color:#fff;">Similar Items Sold</h2>
+        <span style="font-size:10px; color:var(--text-dim); background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:999px;">Trending now</span>
+        <span class="demo-badge" style="color:rgba(168,85,247,0.6); background:rgba(168,85,247,0.1);">Demo</span>
+      </div>
+      <div class="scroll-row">
+        <!-- Jordan 4 -->
+        <div class="glass similar-card" style="border-top:3px solid #a855f7;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:18px;">👟</span>
+            <p style="font-size:12px; font-weight:600; color:#fff;">Air Jordan 4 Retro</p>
+          </div>
+          <p style="font-size:18px; font-weight:800; color:#a855f7;">$385</p>
+          <p style="font-size:10px; color:var(--text-dim); margin-top:4px;">Sold 2d ago on StockX</p>
+          <div style="margin-top:8px; display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.04); border-radius:6px; padding:4px 8px;">
+            <span style="font-size:11px;">👟</span>
+            <p style="font-size:10px; color:var(--text-dim);">Similar to Your sneakers</p>
+          </div>
+        </div>
+        <!-- Omega -->
+        <div class="glass similar-card" style="border-top:3px solid #a855f7; animation-delay:0.06s;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:18px;">⌚</span>
+            <p style="font-size:12px; font-weight:600; color:#fff;">Omega Speedmaster</p>
+          </div>
+          <p style="font-size:18px; font-weight:800; color:#a855f7;">$6,200</p>
+          <p style="font-size:10px; color:var(--text-dim); margin-top:4px;">Sold 1d ago on eBay</p>
+          <div style="margin-top:8px; display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.04); border-radius:6px; padding:4px 8px;">
+            <span style="font-size:11px;">⌚</span>
+            <p style="font-size:10px; color:var(--text-dim);">Similar to Your watches</p>
+          </div>
+        </div>
+        <!-- iPad -->
+        <div class="glass similar-card" style="border-top:3px solid #a855f7; animation-delay:0.12s;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:18px;">📱</span>
+            <p style="font-size:12px; font-weight:600; color:#fff;">iPad Pro M4</p>
+          </div>
+          <p style="font-size:18px; font-weight:800; color:#a855f7;">$950</p>
+          <p style="font-size:10px; color:var(--text-dim); margin-top:4px;">Sold 3d ago on Mercari</p>
+          <div style="margin-top:8px; display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.04); border-radius:6px; padding:4px 8px;">
+            <span style="font-size:11px;">💻</span>
+            <p style="font-size:10px; color:var(--text-dim);">Similar to Your electronics</p>
+          </div>
+        </div>
+        <!-- LEGO -->
+        <div class="glass similar-card" style="border-top:3px solid #a855f7; animation-delay:0.18s;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:18px;">🧱</span>
+            <p style="font-size:12px; font-weight:600; color:#fff;">LEGO Millennium Falcon</p>
+          </div>
+          <p style="font-size:18px; font-weight:800; color:#a855f7;">$720</p>
+          <p style="font-size:10px; color:var(--text-dim); margin-top:4px;">Sold 5d ago on eBay</p>
+          <div style="margin-top:8px; display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.04); border-radius:6px; padding:4px 8px;">
+            <span style="font-size:11px;">🧱</span>
+            <p style="font-size:10px; color:var(--text-dim);">Similar to Your collectibles</p>
+          </div>
+        </div>
+        <!-- Birkin -->
+        <div class="glass similar-card" style="border-top:3px solid #a855f7; animation-delay:0.24s;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="font-size:18px;">👜</span>
+            <p style="font-size:12px; font-weight:600; color:#fff;">Birkin 25 Togo</p>
+          </div>
+          <p style="font-size:18px; font-weight:800; color:#a855f7;">$14,200</p>
+          <p style="font-size:10px; color:var(--text-dim); margin-top:4px;">Sold 1d ago on Poshmark</p>
+          <div style="margin-top:8px; display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.04); border-radius:6px; padding:4px 8px;">
+            <span style="font-size:11px;">👜</span>
+            <p style="font-size:10px; color:var(--text-dim);">Similar to Your fashion</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Discover CTA -->
+    <div style="padding:0 24px 12px;">
+      <div class="discover-cta">
+        <div class="discover-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <div>
+          <p style="font-weight:700; color:#fff; font-size:14px;">Discover Market Prices</p>
+          <p style="color:var(--text-dim); font-size:12px; margin-top:2px;">Search what any item is buying and selling for</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:100px;"></div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+      Home
+    </div>
+    <div class="nav-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+      Inventory
+    </div>
+    <div class="nav-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Discover
+    </div>
+    <div class="nav-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Alerts
+    </div>
+    <div class="nav-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
