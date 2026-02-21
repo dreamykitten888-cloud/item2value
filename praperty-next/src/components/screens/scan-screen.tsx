@@ -202,7 +202,7 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
                     setBarcodeScanning(false)
                   }}
                   formats={['qr_code', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf']}
-                  components={{ audio: false, torch: true }}
+                  components={{ torch: true }}
                   styles={{ container: { width: '100%', height: '260px' } }}
                 />
                 {/* Scan line animation overlay */}
