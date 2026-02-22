@@ -33,6 +33,18 @@ export default function AuthScreen() {
     return () => clearTimeout(timer)
   }, [processing])
 
+  // Make Supabase errors more human-friendly
+  const friendlyError = (msg: string): string => {
+    const lower = msg.toLowerCase()
+    if (lower.includes('email not confirmed')) return 'Please check your email and click the confirmation link first, then try signing in.'
+    if (lower.includes('invalid login credentials')) return 'Wrong email or password. Double-check and try again.'
+    if (lower.includes('email rate limit')) return 'Too many attempts. Please wait a few minutes and try again.'
+    if (lower.includes('user already registered')) return 'An account with this email already exists. Try signing in instead.'
+    if (lower.includes('signup is disabled')) return 'Sign up is currently disabled. Please contact support.'
+    if (lower.includes('network') || lower.includes('fetch')) return 'Network error. Check your internet connection and try again.'
+    return msg
+  }
+
   const handleSignUp = async () => {
     const name = nameRef.current?.value?.trim()
     const email = emailRef.current?.value?.trim()
@@ -45,11 +57,11 @@ export default function AuthScreen() {
     try {
       const { hasSession } = await signUp(email, password, name)
       if (!hasSession) {
-        setMessage('Check your email to confirm your account!')
+        setMessage('Almost there! Check your email (including spam) for a confirmation link. Once confirmed, come back and sign in.')
         setMode('signin')
       }
     } catch (e: unknown) {
-      setError((e as Error).message || 'Sign up failed. Try again.')
+      setError(friendlyError((e as Error).message || 'Sign up failed. Try again.'))
     }
     setProcessing(false)
   }
@@ -65,7 +77,7 @@ export default function AuthScreen() {
       await signIn(email, password)
       // signIn sets user in store, page.tsx re-renders to AppShell
     } catch (e: unknown) {
-      setError((e as Error).message || 'Sign in failed. Check your credentials.')
+      setError(friendlyError((e as Error).message || 'Sign in failed. Check your credentials.'))
     } finally {
       setProcessing(false)
     }
@@ -282,7 +294,7 @@ export default function AuthScreen() {
       </div>
 
       {/* Version stamp - confirms latest code is running */}
-      <p className="text-[10px] text-zinc-600 mt-8">v2.4.0-feb21</p>
+      <p className="text-[10px] text-zinc-600 mt-8">v2.5.0-feb21</p>
     </div>
   )
 }

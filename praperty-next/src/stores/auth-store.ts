@@ -5,7 +5,7 @@ import type { Profile } from '@/types'
 import type { Database } from '@/types/database'
 
 // Top-level log: fires on module load, proves this version is running
-console.log('[auth-store] v2.4.0 MODULE LOADED at', new Date().toISOString())
+console.log('[auth-store] v2.5.0 MODULE LOADED at', new Date().toISOString())
 
 interface AuthState {
   user: User | null
@@ -123,6 +123,41 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const data = result.data as { id: string; name: string; email: string; created_at: string; last_login_at: string } | null
       const error = result.error
 
+      if (error && error.code === 'PGRST116') {
+        // No profile row exists yet: auto-create one
+        console.log('[auth] No profile found, auto-creating for', authUserId)
+        const user = get().user
+        const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'
+        const userEmail = user?.email || ''
+
+        const { data: newProfile, error: insertErr } = await supabase
+          .from('profiles')
+          .insert({
+            auth_user_id: authUserId,
+            name: userName,
+            email: userEmail,
+          } as never)
+          .select('id, name, email, created_at')
+          .single()
+
+        if (insertErr) {
+          console.error('[auth] Auto-create profile failed:', insertErr.message)
+          set({ profileId: authUserId })
+          return
+        }
+        if (newProfile) {
+          const np = newProfile as { id: string; name: string; email: string; created_at: string }
+          console.log('[auth] Auto-created profile, id:', np.id)
+          set({
+            profile: { name: np.name, email: np.email, createdAt: np.created_at },
+            profileId: np.id,
+          })
+        } else {
+          set({ profileId: authUserId })
+        }
+        return
+      }
+
       if (error) {
         console.error('[auth] loadProfile error:', error.message)
         set({ profileId: authUserId })
@@ -150,20 +185,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signUp: async (email, password, name) => {
     set({ error: null })
+    console.log('[auth] signUp starting for', email)
     const { data: authData, error: authErr } = await supabase.auth.signUp({
       email, password, options: { data: { name } },
     })
     if (authErr) throw authErr
 
+    // Check if Supabase returned an existing user with no identities (fake signup)
+    // This happens when someone tries to sign up with an email that already exists
+    if (authData.user && authData.user.identities && authData.user.identities.length === 0) {
+      throw new Error('An account with this email already exists. Try signing in instead.')
+    }
+
     const hasSession = !!authData.session
+    console.log('[auth] signUp result: hasSession=', hasSession, 'user=', authData.user?.email)
+
     if (hasSession && authData.user) {
       await new Promise(r => setTimeout(r, 500))
       set({
         user: authData.user,
         session: authData.session,
-        profile: fallbackProfile(authData.user),
+        profile: { name, email, createdAt: '' },
         loading: false,
       })
+      // loadProfile will auto-create the profile row
       get().loadProfile(authData.user.id).catch(() => {})
     }
     return { hasSession }
