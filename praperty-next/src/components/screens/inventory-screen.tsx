@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, Plus, SlidersHorizontal } from 'lucide-react'
+import { Search, Plus, SlidersHorizontal, LayoutList, LayoutGrid } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, CATEGORIES } from '@/lib/utils'
 import type { Screen } from '@/types'
@@ -19,6 +19,7 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [showFilters, setShowFilters] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
 
   const activeItems = items.filter(i => !i.dateSold)
 
@@ -79,12 +80,20 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
               {activeItems.length} item{activeItems.length !== 1 ? 's' : ''} &middot; {fmt(totalValue)} total
             </p>
           </div>
-          <button
-            onClick={() => onNavigate('add-item')}
-            className="w-10 h-10 rounded-full gradient-amber flex items-center justify-center"
-          >
-            <Plus size={20} color="#000" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setViewMode(viewMode === 'list' ? 'grid' : 'list')}
+              className="w-10 h-10 rounded-full glass flex items-center justify-center text-dim hover:text-white transition-colors"
+            >
+              {viewMode === 'list' ? <LayoutGrid size={18} /> : <LayoutList size={18} />}
+            </button>
+            <button
+              onClick={() => onNavigate('add-item')}
+              className="w-10 h-10 rounded-full gradient-amber flex items-center justify-center"
+            >
+              <Plus size={20} color="#000" />
+            </button>
+          </div>
         </div>
 
         {/* Search */}
@@ -158,8 +167,8 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
         )}
       </div>
 
-      {/* Items list */}
-      <div className="px-6 space-y-2">
+      {/* Items */}
+      <div className="px-6">
         {filteredItems.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-4xl mb-3">{searchQuery ? '🔍' : '📦'}</p>
@@ -175,35 +184,74 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
               </button>
             )}
           </div>
-        ) : (
-          filteredItems.map((item, i) => (
-            <button
-              key={item.id}
-              onClick={() => onViewItem(item.id)}
-              className="w-full glass glass-hover rounded-xl p-4 flex items-center gap-3 text-left animate-fade-up transition-all"
-              style={{ animationDelay: `${i * 0.03}s` }}
-            >
-              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-xl flex-shrink-0">
-                {item.emoji}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{item.name}</p>
-                <p className="text-xs text-dim mt-0.5">
-                  {item.brand && `${item.brand} · `}{item.category} · {item.condition}
-                </p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-sm font-bold text-white">{fmt(item.value || item.cost)}</p>
-                {item.cost > 0 && item.value > 0 && (
-                  <p className={`text-[10px] font-semibold ${
-                    item.value >= item.cost ? 'text-green-400' : 'text-red-400'
-                  }`}>
-                    {item.value >= item.cost ? '+' : ''}{Math.round(((item.value - item.cost) / item.cost) * 100)}%
+        ) : viewMode === 'list' ? (
+          <div className="space-y-2">
+            {filteredItems.map((item, i) => (
+              <button
+                key={item.id}
+                onClick={() => onViewItem(item.id)}
+                className="w-full glass glass-hover rounded-xl p-4 flex items-center gap-3 text-left animate-fade-up transition-all"
+                style={{ animationDelay: `${i * 0.03}s` }}
+              >
+                <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-xl flex-shrink-0">
+                  {item.emoji}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{item.name}</p>
+                  <p className="text-xs text-dim mt-0.5">
+                    {item.brand && `${item.brand} · `}{item.category} · {item.condition}
                   </p>
-                )}
-              </div>
-            </button>
-          ))
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-bold text-white">{fmt(item.value || item.cost)}</p>
+                  {item.cost > 0 && item.value > 0 && (
+                    <p className={`text-[10px] font-semibold ${
+                      item.value >= item.cost ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {item.value >= item.cost ? '+' : ''}{Math.round(((item.value - item.cost) / item.cost) * 100)}%
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {filteredItems.map((item, i) => (
+              <button
+                key={item.id}
+                onClick={() => onViewItem(item.id)}
+                className="glass glass-hover rounded-2xl overflow-hidden text-left animate-fade-up transition-all"
+                style={{ animationDelay: `${i * 0.03}s` }}
+              >
+                {/* Photo or emoji fallback */}
+                <div className="w-full aspect-square bg-white/5 flex items-center justify-center overflow-hidden">
+                  {item.photos && item.photos.length > 0 ? (
+                    <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-4xl">{item.emoji}</span>
+                  )}
+                </div>
+                {/* Info */}
+                <div className="p-3">
+                  <p className="text-sm font-semibold text-white truncate">{item.name}</p>
+                  <p className="text-xs text-dim mt-0.5 truncate">
+                    {item.brand && `${item.brand} · `}{item.category}
+                  </p>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <p className="text-sm font-bold text-white">{fmt(item.value || item.cost)}</p>
+                    {item.cost > 0 && item.value > 0 && (
+                      <p className={`text-[10px] font-semibold ${
+                        item.value >= item.cost ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {item.value >= item.cost ? '+' : ''}{Math.round(((item.value - item.cost) / item.cost) * 100)}%
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>

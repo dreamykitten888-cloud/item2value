@@ -208,8 +208,6 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
     { label: 'Alerts', value: alertCount > 0 ? String(alertCount) : '--', icon: Bell, gradient: 'bg-gradient-amber', onClick: () => onNavigate('alerts'), info: 'Price alerts, action items, and insights' },
   ]
 
-  const recentItems = items.slice(0, 5)
-
   return (
     <div className="h-full overflow-y-auto scroll-hide pb-24">
       {/* Header */}
@@ -356,36 +354,6 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
           </div>
         </button>
       </div>
-
-      {/* Recent Items */}
-      {recentItems.length > 0 && (
-        <div className="px-6 pt-3">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-base font-bold text-white">Recent Items</h2>
-            <button onClick={() => onNavigate('inventory')} className="text-amber-brand text-xs font-semibold">
-              View All
-            </button>
-          </div>
-          <div className="space-y-2">
-            {recentItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => onViewItem(item.id)}
-                className="w-full glass glass-hover rounded-xl p-3.5 flex items-center gap-3 text-left transition-all"
-              >
-                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-lg flex-shrink-0">
-                  {item.emoji}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{item.name}</p>
-                  <p className="text-xs text-dim">{item.category}</p>
-                </div>
-                <p className="text-sm font-bold text-white">{fmt(item.value || item.cost)}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Portfolio / Watchlist Preview */}
       <div className="px-6 pt-5 pb-4">
