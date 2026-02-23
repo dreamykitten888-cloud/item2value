@@ -45,27 +45,30 @@ export default function ConvictionGauge({ result }: Props) {
       </div>
 
       {/* Gauge bar */}
-      <div className="relative mb-3">
-        {/* Track */}
-        <div className="h-3 rounded-full overflow-hidden flex">
-          <div className="flex-1 bg-gradient-to-r from-red-500/60 via-red-400/40 to-red-400/20" />
-          <div className="flex-1 bg-gradient-to-r from-amber-500/20 via-amber-400/40 to-amber-500/20" />
-          <div className="flex-1 bg-gradient-to-r from-green-400/20 via-green-400/40 to-green-500/60" />
-        </div>
+      <div className="mb-3">
+        {/* Track + Needle wrapper */}
+        <div className="relative h-3">
+          {/* Track */}
+          <div className="absolute inset-0 rounded-full overflow-hidden flex">
+            <div className="flex-1 bg-gradient-to-r from-red-500/60 via-red-400/40 to-red-400/20" />
+            <div className="flex-1 bg-gradient-to-r from-amber-500/20 via-amber-400/40 to-amber-500/20" />
+            <div className="flex-1 bg-gradient-to-r from-green-400/20 via-green-400/40 to-green-500/60" />
+          </div>
 
-        {/* Needle */}
-        <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-700 ease-out"
-          style={{ left: `${needlePercent}%` }}
-        >
+          {/* Needle */}
           <div
-            className="w-5 h-5 rounded-full border-[3px] shadow-lg"
-            style={{
-              borderColor: getScoreColor(score),
-              background: 'var(--bg-primary)',
-              boxShadow: `0 0 12px ${getScoreColor(score)}40`,
-            }}
-          />
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-700 ease-out"
+            style={{ left: `${needlePercent}%` }}
+          >
+            <div
+              className="w-5 h-5 rounded-full border-[3px] shadow-lg"
+              style={{
+                borderColor: getScoreColor(score),
+                background: 'var(--bg-primary)',
+                boxShadow: `0 0 12px ${getScoreColor(score)}40`,
+              }}
+            />
+          </div>
         </div>
 
         {/* Labels */}
