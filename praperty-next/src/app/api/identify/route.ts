@@ -2,42 +2,36 @@ import { NextRequest, NextResponse } from 'next/server'
 
 /**
  * POST /api/identify
- * Accepts a base64 image, sends it to Google Gemini (free tier),
+ * Accepts a base64 image, sends it to OpenAI GPT-4o-mini vision,
  * and returns structured product identification data.
  *
  * Circle Hand style: snap → AI identifies → auto-fill everything
  */
 
-const PROMPT = `You are a product identification expert for a personal inventory/resale app.
-Users photograph items they own (sneakers, watches, electronics, bags, clothing, collectibles, etc.) and you identify them.
+const SYSTEM_PROMPT = `You are a product identification expert for a personal inventory/resale app called PrÄperty.
+Users photograph items they own (sneakers, watches, electronics, bags, clothing, collectibles, water bottles, plushies, etc.) and you identify them.
 
-Given this photo, return ONLY a JSON object (no markdown, no code blocks, no explanation) with these fields:
+Given a photo, return ONLY a JSON object with these fields:
 {
   "name": "Full product name (e.g. Nike Air Jordan 4 Retro Bred)",
-  "brand": "Brand name (e.g. Nike, Rolex, Apple)",
-  "model": "Model name without brand (e.g. Air Jordan 4 Retro Bred)",
+  "brand": "Brand name (e.g. Nike, Rolex, Apple, Owala, Pokemon)",
+  "model": "Model name without brand (e.g. Air Jordan 4 Retro Bred, FreeSip 24oz)",
   "category": "One of: Sneakers, Watches, Electronics, Clothing, Bags, Jewelry, Trading Cards, Collectibles, Instruments, Gaming, Furniture, Art, Automotive, Sports, Tools, Books, Home, Music, Other",
   "condition": "Your best guess: New, Like New, Good, Fair, or Poor",
-  "emoji": "A single emoji for this item category",
+  "emoji": "A single emoji for this item",
   "estimatedValue": 0,
   "confidence": 0.0,
   "description": "One sentence describing what you see"
 }
 
 RULES:
-- Be specific. "Nike Dunk Low Panda" beats "Nike shoes"
-- "Owala FreeSip 24oz" beats "water bottle"
-- If you can read text, labels, tags, or serial numbers in the photo, USE that info
-- estimatedValue = rough current resale/market value in USD (number, no $ sign). Use 0 if unknown.
+- Be specific. "Owala FreeSip 24oz Lilac" beats "water bottle"
+- "Pokemon Cubone Plush 8 inch" beats "stuffed animal"
+- If you can read text, labels, tags, or serial numbers, USE that info
+- estimatedValue = rough current market/resale value in USD (number, no $). Use 0 if truly unknown.
 - confidence = how sure you are (0.0 to 1.0)
 - If you can't ID the exact product, give your best guess with lower confidence
-- ALWAYS return valid JSON even if you're unsure. Never return empty or error text.`
-
-// Models to try in order (fallback chain)
-const MODELS = [
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-]
+- ALWAYS return valid JSON. Nothing else.`
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,10 +41,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No image provided' }, { status: 400 })
     }
 
-    const apiKey = process.env.GEMINI_API_KEY
-    if (!apiKey) {
+    // Try OpenAI first, fall back to Gemini
+    const openaiKey = process.env.OPENAI_API_KEY
+    const geminiKey = process.env.GEMINI_API_KEY
+
+    if (!openaiKey && !geminiKey) {
       return NextResponse.json(
-        { error: 'AI not configured. Add GEMINI_API_KEY to environment variables.' },
+        { error: 'AI not configured. Add OPENAI_API_KEY or GEMINI_API_KEY to environment variables.' },
         { status: 503 }
       )
     }
@@ -60,97 +57,92 @@ export async function POST(req: NextRequest) {
     const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg'
     const base64 = image.replace(/^data:image\/\w+;base64,/, '')
 
-    let lastError = ''
-
-    // Try each model in the fallback chain
-    for (const model of MODELS) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-
-      console.log(`[identify] Trying model: ${model}`)
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
+    // ─── Try OpenAI (primary) ─────────────────
+    if (openaiKey) {
+      console.log('[identify] Trying OpenAI gpt-4o-mini')
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
               {
-                inlineData: {
-                  mimeType,
-                  data: base64,
-                },
-              },
-              {
-                text: PROMPT,
+                role: 'user',
+                content: [
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:${mimeType};base64,${base64}`,
+                      detail: 'low',
+                    },
+                  },
+                  { type: 'text', text: 'Identify this item. Return only JSON.' },
+                ],
               },
             ],
-          }],
-          generationConfig: {
+            max_tokens: 400,
             temperature: 0.2,
-            maxOutputTokens: 500,
-          },
-        }),
-      })
+          }),
+        })
 
-      if (!response.ok) {
-        const errText = await response.text()
-        console.error(`[identify] ${model} error:`, response.status, errText)
-        lastError = errText
-
-        if (response.status === 429) {
-          return NextResponse.json(
-            { error: 'Rate limited. Wait a moment and try again.' },
-            { status: 429 }
-          )
+        if (response.ok) {
+          const data = await response.json()
+          const raw = data.choices?.[0]?.message?.content?.trim() || ''
+          const parsed = parseJSON(raw)
+          if (parsed) {
+            console.log('[identify] OpenAI success:', parsed.name)
+            return NextResponse.json(formatResult(parsed))
+          }
+        } else {
+          const err = await response.text()
+          console.error('[identify] OpenAI error:', response.status, err)
         }
-
-        // Try next model
-        continue
+      } catch (e) {
+        console.error('[identify] OpenAI fetch error:', e)
       }
-
-      const data = await response.json()
-      console.log(`[identify] ${model} response received`)
-
-      // Gemini response structure: candidates[0].content.parts[0].text
-      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ''
-
-      if (!raw) {
-        console.error(`[identify] ${model} returned empty response`)
-        lastError = 'Empty response from AI'
-        continue
-      }
-
-      let parsed
-      try {
-        // Clean up markdown wrapping if present
-        const jsonStr = raw
-          .replace(/```json\s*/g, '')
-          .replace(/```\s*/g, '')
-          .trim()
-        parsed = JSON.parse(jsonStr)
-      } catch {
-        console.error(`[identify] ${model} JSON parse failed:`, raw.substring(0, 200))
-        lastError = 'Failed to parse AI response'
-        continue
-      }
-
-      // Success!
-      console.log(`[identify] Success with ${model}:`, parsed.name)
-      return NextResponse.json({
-        name: parsed.name || '',
-        brand: parsed.brand || '',
-        model: parsed.model || '',
-        category: parsed.category || 'Other',
-        condition: parsed.condition || 'Good',
-        emoji: parsed.emoji || '📦',
-        estimatedValue: parsed.estimatedValue || 0,
-        confidence: parsed.confidence || 0.5,
-        description: parsed.description || '',
-      })
     }
 
-    // All models failed
-    console.error('[identify] All models failed. Last error:', lastError)
+    // ─── Try Gemini (fallback) ─────────────────
+    if (geminiKey) {
+      console.log('[identify] Trying Gemini 2.0 Flash')
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inlineData: { mimeType, data: base64 } },
+                { text: SYSTEM_PROMPT + '\n\nIdentify this item. Return only JSON.' },
+              ],
+            }],
+            generationConfig: { temperature: 0.2, maxOutputTokens: 400 },
+          }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ''
+          const parsed = parseJSON(raw)
+          if (parsed) {
+            console.log('[identify] Gemini success:', parsed.name)
+            return NextResponse.json(formatResult(parsed))
+          }
+        } else {
+          const err = await response.text()
+          console.error('[identify] Gemini error:', response.status, err)
+        }
+      } catch (e) {
+        console.error('[identify] Gemini fetch error:', e)
+      }
+    }
+
     return NextResponse.json(
       { error: 'AI identification failed. Try again with a clearer photo.' },
       { status: 502 }
@@ -158,5 +150,32 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error('[identify] Error:', e)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  }
+}
+
+// Parse JSON from AI response (handles markdown code blocks)
+function parseJSON(raw: string): Record<string, unknown> | null {
+  if (!raw) return null
+  try {
+    const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
+    return JSON.parse(cleaned)
+  } catch {
+    console.error('[identify] JSON parse failed:', raw.substring(0, 200))
+    return null
+  }
+}
+
+// Normalize the parsed result
+function formatResult(parsed: Record<string, unknown>) {
+  return {
+    name: (parsed.name as string) || '',
+    brand: (parsed.brand as string) || '',
+    model: (parsed.model as string) || '',
+    category: (parsed.category as string) || 'Other',
+    condition: (parsed.condition as string) || 'Good',
+    emoji: (parsed.emoji as string) || '📦',
+    estimatedValue: (parsed.estimatedValue as number) || 0,
+    confidence: (parsed.confidence as number) || 0.5,
+    description: (parsed.description as string) || '',
   }
 }
