@@ -155,35 +155,22 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
 
         {/* ─── HERO: Item Name ─── */}
         <div className="relative">
-          <div className="flex items-center gap-3 mb-2">
-            <button
-              onClick={() => {
-                const emojis = Object.values(CATEGORY_EMOJIS)
-                const idx = emojis.indexOf(emoji)
-                setEmoji(emojis[(idx + 1) % emojis.length])
-              }}
-              className="w-12 h-12 rounded-xl glass flex items-center justify-center text-2xl hover:bg-white/8 transition-all flex-shrink-0"
-              title="Tap to change icon"
-            >
-              {emoji}
-            </button>
-            <div className="flex-1 relative">
-              <input
-                ref={nameRef}
-                type="text"
-                placeholder='What are you adding?'
-                value={itemName}
-                onChange={e => handleNameChange(e.target.value)}
-                className="form-input text-lg font-semibold py-3.5"
-                autoComplete="off"
-              />
-              {autoFilled && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-emerald-400">
-                  <Sparkles size={14} />
-                  <span className="text-[10px] font-semibold">Auto-filled</span>
-                </div>
-              )}
-            </div>
+          <div className="relative mb-2">
+            <input
+              ref={nameRef}
+              type="text"
+              placeholder='What are you adding?'
+              value={itemName}
+              onChange={e => handleNameChange(e.target.value)}
+              className="form-input text-lg font-semibold py-3.5"
+              autoComplete="off"
+            />
+            {autoFilled && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-emerald-400">
+                <Sparkles size={14} />
+                <span className="text-[10px] font-semibold">Auto-filled</span>
+              </div>
+            )}
           </div>
 
           {/* Suggestion dropdown */}
@@ -220,7 +207,7 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
                 placeholder="0"
                 value={cost}
                 onChange={e => setCost(e.target.value)}
-                className="form-input pl-7"
+                className="form-input pl-8"
               />
             </div>
           </div>
@@ -335,14 +322,14 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
                 <label className="block text-xs font-semibold text-dim mb-1.5 uppercase tracking-wider">Asking Price</label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-dim font-semibold text-sm">$</span>
-                  <input type="number" placeholder="Optional" value={asking} onChange={e => setAsking(e.target.value)} className="form-input pl-7" />
+                  <input type="number" placeholder="Optional" value={asking} onChange={e => setAsking(e.target.value)} className="form-input pl-8" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-dim mb-1.5 uppercase tracking-wider">Market Value</label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-dim font-semibold text-sm">$</span>
-                  <input type="number" placeholder="Optional" value={marketValue} onChange={e => setMarketValue(e.target.value)} className="form-input pl-7" />
+                  <input type="number" placeholder="Optional" value={marketValue} onChange={e => setMarketValue(e.target.value)} className="form-input pl-8" />
                 </div>
               </div>
             </div>
