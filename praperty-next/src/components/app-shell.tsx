@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Home, Package, Search, Settings, Star, Camera } from 'lucide-react'
+import { Home, Package, Search, Settings, Star, Camera, Plus } from 'lucide-react'
 import type { Screen, WatchlistItem } from '@/types'
 import SetupScreen from '@/components/screens/setup-screen'
 import HomeScreen from '@/components/screens/home-screen'
@@ -141,6 +141,17 @@ export default function AppShell() {
       <div className="flex-1 overflow-hidden">
         {renderScreen()}
       </div>
+
+      {/* Floating Add Button */}
+      {showTabs && (
+        <button
+          onClick={() => setScreen('add-item')}
+          className="fixed bottom-20 right-5 z-30 w-14 h-14 rounded-full gradient-amber flex items-center justify-center shadow-lg shadow-amber-brand/25 hover:shadow-amber-brand/40 transition-all active:scale-95"
+          aria-label="Add item"
+        >
+          <Plus size={26} strokeWidth={2.5} className="text-black" />
+        </button>
+      )}
 
       {/* Bottom navigation */}
       {showTabs && (

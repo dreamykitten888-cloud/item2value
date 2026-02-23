@@ -76,7 +76,7 @@ export default function PricingScreen({ onNavigate, item }: Props) {
 
           {/* Range bar */}
           <div className="h-2 rounded-full mb-4" style={{
-            background: 'linear-gradient(90deg, #f87171, #d4a853, #4ade80)',
+            background: 'linear-gradient(90deg, #f87171, #EB9C35, #4ade80)',
           }}>
             <div
               className="h-full rounded-full bg-white"
@@ -90,7 +90,7 @@ export default function PricingScreen({ onNavigate, item }: Props) {
           <div className="grid grid-cols-3 gap-2 mb-4">
             {[
               { label: 'Low', price: Math.round(low), color: '#f87171' },
-              { label: 'Average', price: avg, color: '#d4a853' },
+              { label: 'Average', price: avg, color: '#EB9C35' },
               { label: 'High', price: Math.round(high), color: '#4ade80' },
             ].map((r, i) => (
               <div key={i} className="glass rounded-xl p-3 text-center border border-white/8">

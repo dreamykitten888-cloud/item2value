@@ -52,7 +52,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
     if (d.listings === 0) { reasons.push('No community data yet'); score = 50 }
     score = Math.max(0, Math.min(100, score))
     const label = score >= 70 ? 'BUY' : score >= 45 ? 'HOLD' : 'SELL'
-    const color = score >= 70 ? '#22c55e' : score >= 45 ? '#d4a853' : '#ef4444'
+    const color = score >= 70 ? '#22c55e' : score >= 45 ? '#EB9C35' : '#ef4444'
     return { score, label, color, reasons }
   })()
 
@@ -110,7 +110,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
             </div>
             {/* Signal meter */}
             <div className="h-2 rounded-full mb-3 relative" style={{
-              background: 'linear-gradient(90deg, #ef4444, #f59e0b, #d4a853, #22c55e)',
+              background: 'linear-gradient(90deg, #ef4444, #f59e0b, #EB9C35, #22c55e)',
             }}>
               <div className="absolute -top-1 w-4 h-4 rounded-full bg-white" style={{
                 left: `${signal.score}%`, transform: 'translateX(-50%)',
@@ -134,7 +134,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
             </div>
             <div className="grid grid-cols-2 gap-2 mb-3">
               {[
-                { l: 'Market Value', v: data.avgValue, c: '#d4a853' },
+                { l: 'Market Value', v: data.avgValue, c: '#EB9C35' },
                 { l: 'Avg Cost', v: data.avgCost, c: '#3b82f6' },
                 { l: 'Price Range', v: data.lowValue > 0 ? `${fmt(data.lowValue)} - ${fmt(data.highValue)}` : null, c: '#a855f7', raw: true },
                 { l: 'Avg Sold Price', v: data.avgSold, c: '#22c55e' },

@@ -205,7 +205,7 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
     { label: 'Total Items', value: String(items.length), icon: Package, gradient: 'bg-gradient-blue', info: 'All items in your inventory (active + sold)' },
     { label: 'Total Value', value: fmt(totalValue), icon: DollarSign, gradient: 'bg-gradient-amber', info: 'Combined market value of all active items' },
     { label: 'Total Earnings', value: totalEarnings > 0 ? fmt(totalEarnings) : '--', icon: BarChart3, gradient: 'bg-gradient-purple', onClick: () => onNavigate('sold-items'), info: 'Revenue from all sold items' },
-    { label: 'Alerts', value: alertCount > 0 ? String(alertCount) : '--', icon: Bell, gradient: 'from-amber-500 to-amber-600 bg-gradient-to-br', onClick: () => onNavigate('alerts'), info: 'Price alerts, action items, and insights' },
+    { label: 'Alerts', value: alertCount > 0 ? String(alertCount) : '--', icon: Bell, gradient: 'bg-gradient-amber', onClick: () => onNavigate('alerts'), info: 'Price alerts, action items, and insights' },
   ]
 
   const recentItems = items.slice(0, 5)
@@ -284,7 +284,7 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-white">Market Movers</h2>
-              {items.length === 0 && <span className="text-[10px] text-amber-brand/60 bg-amber-500/10 px-2 py-0.5 rounded-full">Demo</span>}
+              {items.length === 0 && <span className="text-[10px] text-amber-brand/60 bg-amber-brand/10 px-2 py-0.5 rounded-full">Demo</span>}
             </div>
             <button onClick={() => onNavigate('alerts')} className="text-amber-brand text-xs font-semibold">
               All Alerts

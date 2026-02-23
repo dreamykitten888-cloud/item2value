@@ -12,7 +12,7 @@ export const ALERT_COLORS: Record<AlertType, string> = {
   'Needs Comps': '#3b82f6',
   'Set Market Value': '#8b5cf6',
   'Add Photo': '#a78bfa',
-  'New Item Added': '#d4a853',
+  'New Item Added': '#EB9C35',
   'High Concentration': '#f59e0b',
   'Stale Item': '#94a3b8',
   'Ready to Sell': '#22d3ee',

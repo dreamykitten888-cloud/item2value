@@ -43,7 +43,7 @@ const PRODUCT_DB: { name: string; emoji: string; cat: string; brand: string; mod
 const DEFAULT_BROWSE_CATS = ['Fashion', 'Electronics', 'Watches', 'Trading Cards']
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Fashion: '#ec4899', Electronics: '#3b82f6', Watches: '#d4a853',
+  Fashion: '#ec4899', Electronics: '#3b82f6', Watches: '#EB9C35',
   'Trading Cards': '#8b5cf6', LEGO: '#f97316', Home: '#10b981',
   'Musical Instruments': '#ef4444', Jewelry: '#ec4899', Collectibles: '#a855f7',
   Sports: '#22c55e', 'Vinyl & Music': '#6366f1', Art: '#f43f5e',

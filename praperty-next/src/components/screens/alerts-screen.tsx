@@ -116,7 +116,7 @@ export default function AlertsScreen({ onNavigate, onViewItem }: Props) {
                   {isExpanded && (
                     <div className="space-y-2">
                       {catAlerts.map((alert, i) => {
-                        const color = ALERT_COLORS[alert.type] || '#d4a853'
+                        const color = ALERT_COLORS[alert.type] || '#EB9C35'
                         return (
                           <div
                             key={alert.id}
