@@ -1,5 +1,5 @@
 # PrAperty Process Document
-**Last updated:** February 23, 2026 | **Version:** v2.6.0-feb23
+**Last updated:** February 23, 2026 (evening) | **Version:** v2.7.0-feb23
 
 ---
 
@@ -47,10 +47,11 @@ praperty-next/
     components/
       app-shell.tsx               # Main app wrapper: nav, FAB, bottom sheet, screen router
       auth-screen.tsx             # Sign in / Sign up / Forgot password
+      conviction-gauge.tsx        # Buy/Hold/Sell gauge component (visual indicator)
       screens/
-        home-screen.tsx           # Dashboard: portfolio value, top gainers, alerts
-        inventory-screen.tsx      # Item grid/list view
-        detail-screen.tsx         # Single item detail with comps, price history
+        home-screen.tsx           # Dashboard: portfolio value, top gainers, alerts (no recent items)
+        inventory-screen.tsx      # Item list/grid view with toggle button
+        detail-screen.tsx         # "Profit-First" item detail: photos, profit hero, conviction gauge, comps
         add-item-screen.tsx       # Add new item form (receives scanData from scan)
         edit-item-screen.tsx      # Edit existing item
         scan-screen.tsx           # AI Photo mode + Barcode mode
@@ -64,6 +65,11 @@ praperty-next/
         watchlist-screen.tsx      # Items you're watching
     lib/
       supabase.ts                 # Supabase client (createClient + localStorage)
+      conviction.ts               # Conviction scoring engine (Buy/Hold/Sell, 0-100)
+      marketplaces.ts             # Category-aware marketplace links + social/trend links
+      alerts-engine.ts            # Smart alert generation from item data
+      product-db.ts               # Local product matching for smart auto-fill
+      utils.ts                    # Formatting helpers (fmt, fmtFull, uuid, categories)
     stores/
       auth-store.ts               # Auth state (Zustand): user, session, profile, initialize
       items-store.ts              # Items + watchlist state: CRUD, eBay comps, community search
@@ -222,6 +228,152 @@ AI responses sometimes come wrapped in markdown code blocks. `parseJSON()` strip
 ```typescript
 const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
 ```
+
+---
+
+## Conviction Scoring Engine (Buy / Hold / Sell)
+
+### What it does
+Calculates a 0-100 conviction score for each item that maps to SELL (0-35), HOLD (36-64), or BUY (65-100). Designed to answer: "Should I keep this item, sell it, or buy more?"
+
+### Architecture
+- File: `src/lib/conviction.ts`
+- Component: `src/components/conviction-gauge.tsx`
+- Called from: `detail-screen.tsx` via `useMemo(() => calculateConviction(item), [item])`
+
+### Scoring Formula (5 signals, 4 active)
+```
+priceVelocity   (35%) — item's price trend over time from priceHistory[]
+marketDelta     (30%) — your value vs. avg comp price from comps[]
+roiPosition     (15%) — how much profit you're sitting on (cost vs. value)
+holdDuration    (10%) — time held vs. category depreciation curve
+socialTrend     (10%) — PLACEHOLDER, 0% weight until Google Trends API wired up
+```
+
+### How signals work
+Each signal returns 0-100: 0 = strong sell, 50 = neutral, 100 = strong buy. Unavailable signals (no data) are excluded and their weight is redistributed proportionally to available signals.
+
+### Category depreciation curves
+Different categories depreciate at different rates (months until 50% value loss):
+- Fast: Electronics (12mo), Gaming (14mo), Toys (24mo)
+- Medium: Sneakers (18mo), Trading Cards (36mo), LEGO (36mo)
+- Slow/Appreciating: Watches (60mo), Art (120mo), Jewelry (60mo)
+
+Hold duration signal uses these curves: depreciating items get sell pressure over time, appreciating items get hold/buy signal over time.
+
+### Confidence indicator
+- Based on what percentage of signal weight has real data
+- Shows "low confidence" when < 50% of signals have data
+- Shows data point count: priceHistory entries + comps + cost data
+
+### Auto-generated headlines
+The engine generates a one-liner based on level + dominant signal:
+- "Strong upward trend. Good time to hold or buy more."
+- "Underwater on this one. Cut losses or wait for recovery."
+- "Add comps and track prices for a recommendation."
+
+### Conviction Gauge Component
+Visual gauge with:
+- Gradient bar (red → amber → green) with animated needle at score position
+- Color-coded signal chips: green ↑ (bullish), red ↓ (bearish), amber → (neutral), grey ··· (no data)
+- Each chip shows emoji + label + direction arrow
+- Tapping chips shows reason tooltip
+
+### Future: Social Trend signal
+Plan is to wire up Google Trends API (free, rate-limited) to detect search volume spikes. When an item starts trending, the social signal activates and shifts the gauge. UI already has the "Coming soon" placeholder chip. When ready, just update `calcSocialTrend()` in conviction.ts and change weight from 0% to 10%.
+
+### Future: Multi-marketplace market delta
+Currently marketDelta only uses local comps[]. Plan is to auto-fetch from multiple sources per category:
+- Electronics: eBay, Swappa, Back Market
+- Fashion/Sneakers: eBay, StockX (link), GOAT (link)
+- Watches: eBay, Chrono24 (link), WatchCharts (link)
+- Trading Cards: eBay, TCGPlayer (link)
+- LEGO: eBay, BrickLink (link)
+The category-to-marketplace mapping already exists in `marketplaces.ts`. When APIs become available, each becomes a data source feeding into marketDelta.
+
+### Design decisions discussed with user
+- ONE gauge, not separate gauges for social vs. financial (reduces cognitive load)
+- Signal breakdown shown as chips underneath (not hidden in a drill-down)
+- Social trend included in formula at 0% weight as placeholder (not a separate gauge)
+- Alerts system will reference conviction changes: "Your Jordan 1s moved from HOLD to BUY"
+
+---
+
+## Detail Screen Redesign (Option C: "Profit-First")
+
+### Design philosophy
+The old detail screen treated every section equally (emoji header, value grid, comps, eBay, community, marketplaces, actions). The new design creates a decision funnel:
+1. **See it** (photo strip)
+2. **Know your position** (profit/loss hero + conviction gauge)
+3. **Take action** (search market / deep research buttons above the fold)
+4. **Go deeper if needed** (comps and details in collapsible sections)
+
+### Layout (top to bottom)
+1. **Sticky header**: back arrow, item name (truncated), edit button
+2. **Photo strip**: horizontal scroll of item photos (or emoji fallback if no photos)
+3. **Profit hero card**: big green/red profit number, percentage, "Paid X → Now Y", visual gain bar, "If sold: +$X net" when asking price is set
+4. **Conviction gauge**: the Buy/Hold/Sell indicator with signal chips
+5. **Action buttons**: "Search Market" (gradient-amber) + "Deep Research" (outlined) side by side
+6. **Market Intel card**: condensed eBay summary (avg, range, vs. your value), comp avg, and category-specific marketplace quick links
+7. **Comps section** (collapsible): existing comps, eBay listings, community comps, add comp form
+8. **Details section** (collapsible): brand, model, category, condition, dates, notes
+9. **Mark as Sold** button (prominent, emerald)
+10. **Delete** (subtle, bottom)
+
+### What changed from old screen
+- Photos now shown (were completely missing before)
+- Profit/loss is the visual hero (was a tiny 3-column grid)
+- Conviction gauge is new
+- Action buttons moved above the fold (were at the very bottom)
+- eBay + Community + Marketplaces condensed into one "Market Intel" card
+- Comps and Details are collapsible (were always expanded)
+- "Mark as Sold" is a prominent CTA (was hidden in edit flow)
+- Delete is subtle at bottom (was an icon in the header)
+
+---
+
+## Inventory Screen: List/Grid Toggle
+
+### What changed
+Added a view mode toggle button next to the + button in the inventory header. Users can switch between:
+- **List view** (default): rows with emoji, name, brand, category, value, gain/loss %
+- **Grid view**: 2-column square cards showing item photo (or emoji fallback), name, brand, value, gain/loss %
+
+### Implementation
+- State: `viewMode: 'list' | 'grid'`
+- Icons: `LayoutList` / `LayoutGrid` from lucide-react
+- Grid uses `grid grid-cols-2 gap-3` with `aspect-square` photo containers
+- Photos use `object-cover` for clean cropping
+
+---
+
+## Home Screen Changes
+
+### Recent Items removed
+The "Recent Items" section was removed from the home screen because it duplicated what's already in the Inventory tab. Home screen now contains:
+- Stats grid (total items, value, earnings, alerts)
+- Market Movers (horizontal scroll)
+- Similar Items Sold (horizontal scroll)
+- Discover CTA button
+- Portfolio/Watchlist preview
+
+---
+
+## Cosmetic Bug Fixes (Feb 23)
+
+### Icon/text overlap on inputs
+**Root cause:** `.form-input` class uses `@apply px-4` in CSS, which has higher specificity than Tailwind utility classes like `pl-8` in the HTML. The `$` signs and search magnifying glass were positioned absolutely but the input text started at the same position.
+
+**Fix:** Added `!` prefix (Tailwind important modifier) to all padding overrides: `pl-8` → `!pl-8`, `pl-10` → `!pl-10`, `pr-12` → `!pr-12`.
+
+**Files fixed:**
+- `add-item-screen.tsx`: 3 money inputs (cost, asking, market value)
+- `inventory-screen.tsx`: search bar (magnifying glass + filter icon)
+- `auth-screen.tsx`: password field (show/hide toggle)
+
+### Date field overflow
+**Root cause:** Native `type="date"` input on mobile renders wider than container.
+**Fix:** Added `min-w-0 max-w-full` to the date input in add-item-screen.tsx.
 
 ---
 
