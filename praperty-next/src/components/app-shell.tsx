@@ -19,13 +19,17 @@ import AlertsScreen from '@/components/screens/alerts-screen'
 import WatchlistScreen from '@/components/screens/watchlist-screen'
 import { useItemsStore } from '@/stores/items-store'
 
-const TABS = [
+const LEFT_TABS = [
   { id: 'home' as const, label: 'Home', icon: Home },
   { id: 'inventory' as const, label: 'Inventory', icon: Package },
+]
+
+const RIGHT_TABS = [
   { id: 'discover' as const, label: 'Discover', icon: Search },
-  { id: 'watchlist' as const, label: 'Watchlist', icon: Star },
   { id: 'settings' as const, label: 'Settings', icon: Settings },
 ]
+
+const ALL_TABS = [...LEFT_TABS, ...RIGHT_TABS]
 
 export default function AppShell() {
   const { items } = useItemsStore()
@@ -142,22 +146,44 @@ export default function AppShell() {
         {renderScreen()}
       </div>
 
-      {/* Floating Add Button */}
+      {/* Bottom navigation with center Add button */}
       {showTabs && (
-        <button
-          onClick={() => setScreen('add-item')}
-          className="fixed bottom-20 right-5 z-30 w-14 h-14 rounded-full gradient-amber flex items-center justify-center shadow-lg shadow-amber-brand/25 hover:shadow-amber-brand/40 transition-all active:scale-95"
-          aria-label="Add item"
-        >
-          <Plus size={26} strokeWidth={2.5} className="text-black" />
-        </button>
-      )}
+        <nav className="flex-shrink-0 glass border-t border-white/5 relative">
+          <div className="flex justify-around items-end py-2 pb-safe">
+            {/* Left tabs: Home, Inventory */}
+            {LEFT_TABS.map(tab => {
+              const Icon = tab.icon
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setScreen(tab.id)}
+                  className={`flex flex-col items-center gap-1 px-4 py-2 transition-colors ${
+                    isActive ? 'text-amber-brand' : 'text-dim hover:text-white'
+                  }`}
+                >
+                  <Icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
+                  <span className={`text-[10px] tracking-wide ${isActive ? 'font-bold' : 'font-medium'}`}>
+                    {tab.label}
+                  </span>
+                </button>
+              )
+            })}
 
-      {/* Bottom navigation */}
-      {showTabs && (
-        <nav className="flex-shrink-0 glass border-t border-white/5">
-          <div className="flex justify-around py-2 pb-safe">
-            {TABS.map(tab => {
+            {/* Center: Add button (raised) */}
+            <div className="flex flex-col items-center -mt-5">
+              <button
+                onClick={() => setScreen('add-item')}
+                className="w-14 h-14 rounded-full gradient-amber flex items-center justify-center shadow-lg shadow-amber-brand/30 active:scale-95 transition-transform"
+                aria-label="Add item"
+              >
+                <Plus size={28} strokeWidth={2.5} className="text-black" />
+              </button>
+              <span className="text-[10px] tracking-wide font-medium text-dim mt-1">Add</span>
+            </div>
+
+            {/* Right tabs: Watchlist, Settings */}
+            {RIGHT_TABS.map(tab => {
               const Icon = tab.icon
               const isActive = activeTab === tab.id
               return (
