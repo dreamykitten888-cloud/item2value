@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Allow larger body for base64 images
+export const config = {
+  api: { bodyParser: { sizeLimit: '4mb' } },
+}
+export const maxDuration = 30 // seconds (Vercel timeout)
+
 /**
  * POST /api/identify
  * Accepts a base64 image, sends it to OpenAI GPT-4o-mini vision,

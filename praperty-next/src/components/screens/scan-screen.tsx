@@ -166,19 +166,42 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
     lookupBarcode(text)
   }, [lookupBarcode])
 
+  // ─── Compress image before sending to API ─────────────────
+  const compressImage = (file: File, maxWidth = 800): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let { width, height } = img
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width
+            width = maxWidth
+          }
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')!
+          ctx.drawImage(img, 0, 0, width, height)
+          // Compress to JPEG at 70% quality (~100-200KB)
+          resolve(canvas.toDataURL('image/jpeg', 0.7))
+        }
+        img.src = e.target?.result as string
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
   // ─── Photo Capture ─────────────────
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = async (ev) => {
-      const dataUrl = ev.target?.result as string
-      setCapturedPhoto(dataUrl)
-      // Immediately send to AI for identification
-      identifyPhoto(dataUrl)
-    }
-    reader.readAsDataURL(file)
+    // Compress before sending (phone photos can be 5-10MB raw)
+    const dataUrl = await compressImage(file)
+    setCapturedPhoto(dataUrl)
+    // Immediately send to AI for identification
+    identifyPhoto(dataUrl)
     e.target.value = ''
   }
 
