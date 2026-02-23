@@ -86,7 +86,7 @@ export default function AppShell() {
 
     switch (screen) {
       case 'home':
-        return <HomeScreen onNavigate={setScreen} onViewItem={navigateToDetail} />
+        return <HomeScreen onNavigate={setScreen} onViewItem={navigateToDetail} onResearch={handleResearch} />
       case 'inventory':
         return <InventoryScreen onNavigate={setScreen} onViewItem={navigateToDetail} />
       case 'detail':
@@ -123,7 +123,7 @@ export default function AppShell() {
       case 'settings':
         return <SettingsScreen onNavigate={setScreen} />
       default:
-        return <HomeScreen onNavigate={setScreen} onViewItem={navigateToDetail} />
+        return <HomeScreen onNavigate={setScreen} onViewItem={navigateToDetail} onResearch={handleResearch} />
     }
   }
 

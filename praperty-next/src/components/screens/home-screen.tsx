@@ -11,6 +11,7 @@ import type { Screen, Item, WatchlistItem } from '@/types'
 interface Props {
   onNavigate: (screen: Screen) => void
   onViewItem: (id: string) => void
+  onResearch: (query: string) => void
 }
 
 // Simulated product database for "Similar Items Sold" suggestions
@@ -163,7 +164,7 @@ function getSimilarSold(items: Item[]) {
   return suggestions
 }
 
-export default function HomeScreen({ onNavigate, onViewItem }: Props) {
+export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props) {
   const { profile } = useAuthStore()
   const { items, watchlist } = useItemsStore()
   // Top 5 watchlist items by biggest gain
@@ -355,16 +356,18 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
         </button>
       </div>
 
-      {/* Portfolio / Watchlist Preview */}
+      {/* Watchlist */}
       <div className="px-6 pt-5 pb-4">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
             <Eye size={16} className="text-emerald-400" />
-            <h2 className="text-base font-bold text-white">Portfolio</h2>
-            <span className="text-dim text-[10px] bg-white/5 px-2 py-0.5 rounded-full">Watchlist</span>
+            <h2 className="text-base font-bold text-white">Watchlist</h2>
+            {watchlist.length > 0 && (
+              <span className="text-dim text-[10px] bg-white/5 px-2 py-0.5 rounded-full">{watchlist.length} watching</span>
+            )}
           </div>
           <button onClick={() => onNavigate('watchlist')} className="text-emerald-400 text-xs font-semibold">
-            {watchlist.length > 0 ? 'View All' : 'Manage'}
+            Manage
           </button>
         </div>
 
@@ -374,22 +377,23 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
               <Eye size={24} className="text-emerald-400" />
             </div>
             <p className="text-sm font-semibold text-white mb-1">Track any item</p>
-            <p className="text-xs text-dim mb-3">Watch items you don't own yet, like a stock watchlist. See market changes in real time.</p>
+            <p className="text-xs text-dim mb-3">Watch items you don't own yet. Get alerts when prices move.</p>
             <button
               onClick={() => onNavigate('watchlist')}
               className="bg-emerald-500/20 text-emerald-400 text-xs font-semibold px-4 py-2 rounded-lg"
             >
-              + Add to Portfolio
+              + Add to Watchlist
             </button>
           </div>
         ) : (
           <div className="space-y-2">
             {topWatchlist.map((w) => {
               const isUp = w.changePct >= 0
+              const changeAmt = w.lastKnownPrice > 0 ? Math.abs(w.lastKnownPrice * w.changePct / 100) : 0
               return (
                 <button
                   key={w.id}
-                  onClick={() => onNavigate('watchlist')}
+                  onClick={() => onResearch(w.name)}
                   className="w-full glass glass-hover rounded-xl p-3.5 flex items-center gap-3 text-left transition-all"
                 >
                   <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-lg flex-shrink-0">
@@ -403,11 +407,15 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
                     <p className="text-sm font-bold text-white">
                       {w.lastKnownPrice > 0 ? fmt(w.lastKnownPrice) : '--'}
                     </p>
-                    {w.changePct !== 0 && (
+                    {w.changePct !== 0 ? (
                       <div className={`flex items-center gap-0.5 justify-end ${isUp ? 'text-green-400' : 'text-red-400'}`}>
                         {isUp ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                        <p className="text-[10px] font-semibold">{isUp ? '+' : ''}{w.changePct.toFixed(1)}%</p>
+                        <p className="text-[10px] font-semibold">
+                          {isUp ? '+' : '-'}{fmt(changeAmt)} ({isUp ? '+' : ''}{w.changePct.toFixed(1)}%)
+                        </p>
                       </div>
+                    ) : (
+                      <p className="text-[10px] text-dim">Tap to research</p>
                     )}
                   </div>
                 </button>
