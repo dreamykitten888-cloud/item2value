@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
             'Authorization': `Bearer ${openaiKey}`,
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'gpt-4o',
             messages: [
               { role: 'system', content: SYSTEM_PROMPT },
               {
@@ -81,15 +81,15 @@ export async function POST(req: NextRequest) {
                     type: 'image_url',
                     image_url: {
                       url: `data:${mimeType};base64,${base64}`,
-                      detail: 'low',
+                      detail: 'auto',
                     },
                   },
-                  { type: 'text', text: 'Identify this item. Return only JSON.' },
+                  { type: 'text', text: 'Look closely at every detail, logo, text, and label in this photo. Identify the exact product. Return only JSON.' },
                 ],
               },
             ],
-            max_tokens: 400,
-            temperature: 0.2,
+            max_tokens: 500,
+            temperature: 0.1,
           }),
         })
 

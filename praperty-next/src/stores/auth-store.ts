@@ -5,7 +5,7 @@ import type { Profile } from '@/types'
 import type { Database } from '@/types/database'
 
 // Top-level log: fires on module load, proves this version is running
-console.log('[auth-store] v2.5.0 MODULE LOADED at', new Date().toISOString())
+console.log('[auth-store] v2.6.0 MODULE LOADED at', new Date().toISOString())
 
 interface AuthState {
   user: User | null

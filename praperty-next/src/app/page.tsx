@@ -15,13 +15,13 @@ export default function Home() {
   useEffect(() => {
     useAuthStore.getState().initialize()
 
-    // Safety net: if loading is still true after 10s, force it off
+    // Safety net: if loading is still true after 5s, force it off
     const safety = setTimeout(() => {
       if (useAuthStore.getState().loading) {
-        console.warn('[page] Safety timeout: forcing loading=false after 10s')
+        console.warn('[page] Safety timeout: forcing loading=false after 5s')
         useAuthStore.setState({ loading: false })
       }
-    }, 10000)
+    }, 5000)
 
     return () => clearTimeout(safety)
   }, [])
@@ -40,7 +40,7 @@ export default function Home() {
         <div className="text-center">
           <div className="w-12 h-12 rounded-full gradient-amber mx-auto mb-4 animate-pulse" />
           <p className="text-dim text-sm">Loading PrÄperty...</p>
-          <p className="text-[10px] text-zinc-700 mt-4">v2.5.0-feb21</p>
+          <p className="text-[10px] text-zinc-700 mt-4">v2.6.0-feb23</p>
         </div>
       </div>
     )

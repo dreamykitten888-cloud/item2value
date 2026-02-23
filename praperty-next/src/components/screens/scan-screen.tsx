@@ -167,7 +167,7 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
   }, [lookupBarcode])
 
   // ─── Compress image before sending to API ─────────────────
-  const compressImage = (file: File, maxWidth = 800): Promise<string> => {
+  const compressImage = (file: File, maxWidth = 1200): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image()
       const reader = new FileReader()
@@ -183,8 +183,8 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
           canvas.height = height
           const ctx = canvas.getContext('2d')!
           ctx.drawImage(img, 0, 0, width, height)
-          // Compress to JPEG at 70% quality (~100-200KB)
-          resolve(canvas.toDataURL('image/jpeg', 0.7))
+          // Compress to JPEG at 85% quality (good detail, ~300-500KB)
+          resolve(canvas.toDataURL('image/jpeg', 0.85))
         }
         img.src = e.target?.result as string
       }
