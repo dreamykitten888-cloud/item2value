@@ -94,7 +94,7 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="form-input pl-10 pr-12"
+            className="form-input !pl-10 !pr-12"
             placeholder="Search items..."
           />
           <button

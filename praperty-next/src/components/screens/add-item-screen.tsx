@@ -207,7 +207,7 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
                 placeholder="0"
                 value={cost}
                 onChange={e => setCost(e.target.value)}
-                className="form-input pl-8"
+                className="form-input !pl-8"
               />
             </div>
           </div>
@@ -322,14 +322,14 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
                 <label className="block text-xs font-semibold text-dim mb-1.5 uppercase tracking-wider">Asking Price</label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-dim font-semibold text-sm">$</span>
-                  <input type="number" placeholder="Optional" value={asking} onChange={e => setAsking(e.target.value)} className="form-input pl-8" />
+                  <input type="number" placeholder="Optional" value={asking} onChange={e => setAsking(e.target.value)} className="form-input !pl-8" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-dim mb-1.5 uppercase tracking-wider">Market Value</label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-dim font-semibold text-sm">$</span>
-                  <input type="number" placeholder="Optional" value={marketValue} onChange={e => setMarketValue(e.target.value)} className="form-input pl-8" />
+                  <input type="number" placeholder="Optional" value={marketValue} onChange={e => setMarketValue(e.target.value)} className="form-input !pl-8" />
                 </div>
               </div>
             </div>
@@ -337,7 +337,7 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
             {/* Date + Notes */}
             <div>
               <label className="block text-xs font-semibold text-dim mb-1.5 uppercase tracking-wider">Date Purchased</label>
-              <input type="date" value={datePurchased} onChange={e => setDatePurchased(e.target.value)} className="form-input" />
+              <input type="date" value={datePurchased} onChange={e => setDatePurchased(e.target.value)} className="form-input min-w-0 max-w-full" />
             </div>
 
             <div>

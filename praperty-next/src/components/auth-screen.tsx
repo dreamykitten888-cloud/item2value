@@ -177,7 +177,7 @@ export default function AuthScreen() {
             <div className="relative">
               <input
                 ref={passwordRef}
-                className="form-input pr-12"
+                className="form-input !pr-12"
                 type={showPassword ? 'text' : 'password'}
                 placeholder={mode === 'signup' ? 'Min 6 characters' : 'Your password'}
                 onKeyDown={handleKeyDown}
