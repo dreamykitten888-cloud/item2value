@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Home, Package, Search, Settings, Star, Camera, Plus, Keyboard, ImagePlus, X } from 'lucide-react'
+import { Home, Package, Search, Settings, Camera, Plus, Keyboard, Sparkles, X } from 'lucide-react'
 import type { Screen, WatchlistItem } from '@/types'
 import SetupScreen from '@/components/screens/setup-screen'
 import HomeScreen from '@/components/screens/home-screen'
@@ -167,18 +167,19 @@ export default function AppShell() {
             <h3 className="text-lg font-bold text-white mb-4 font-heading">Add an item</h3>
 
             <div className="space-y-2">
-              {/* Type it in */}
+              {/* Snap a photo (AI) - hero option */}
               <button
-                onClick={() => { setShowAddSheet(false); setScreen('add-item') }}
+                onClick={() => { setShowAddSheet(false); setScreen('scan') }}
                 className="w-full flex items-center gap-4 p-4 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.98]"
               >
                 <div className="w-12 h-12 rounded-xl gradient-amber flex items-center justify-center flex-shrink-0">
-                  <Keyboard size={22} className="text-black" />
+                  <Sparkles size={22} className="text-black" />
                 </div>
                 <div className="text-left">
-                  <p className="text-[15px] font-semibold text-white">Type it in</p>
-                  <p className="text-xs text-dim">Name your item, auto-fill does the rest</p>
+                  <p className="text-[15px] font-semibold text-white">Snap a photo</p>
+                  <p className="text-xs text-dim">AI identifies your item instantly</p>
                 </div>
+                <span className="ml-auto text-[10px] font-bold text-amber-brand bg-amber-brand/15 px-2 py-1 rounded-md">NEW</span>
               </button>
 
               {/* Scan barcode */}
@@ -195,19 +196,18 @@ export default function AppShell() {
                 </div>
               </button>
 
-              {/* Snap a photo (coming soon) */}
+              {/* Type it in */}
               <button
-                className="w-full flex items-center gap-4 p-4 rounded-2xl glass opacity-50 cursor-not-allowed"
-                disabled
+                onClick={() => { setShowAddSheet(false); setScreen('add-item') }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.98]"
               >
                 <div className="w-12 h-12 rounded-xl bg-white/6 flex items-center justify-center flex-shrink-0 border border-white/10">
-                  <ImagePlus size={22} className="text-dim" />
+                  <Keyboard size={22} className="text-dim" />
                 </div>
                 <div className="text-left">
-                  <p className="text-[15px] font-semibold text-white/60">Snap a photo</p>
-                  <p className="text-xs text-dim">AI identifies your item instantly</p>
+                  <p className="text-[15px] font-semibold text-white">Type it in</p>
+                  <p className="text-xs text-dim">Name your item, auto-fill does the rest</p>
                 </div>
-                <span className="ml-auto text-[10px] font-bold text-amber-brand bg-amber-brand/15 px-2 py-1 rounded-md">SOON</span>
               </button>
             </div>
 

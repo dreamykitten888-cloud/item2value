@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrAperty Palette Explorer v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background: #08080c;
+  color: #fff;
+  min-height: 100vh;
+}
+h1, h2, h3, h4 { font-family: 'Sora', system-ui, sans-serif; }
+
+/* Header */
+.page-header {
+  text-align: center;
+  padding: 40px 20px 10px;
+}
+.page-header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  background: linear-gradient(135deg, #fff, #999);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.page-header p {
+  color: #555;
+  font-size: 13px;
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* Picker bar */
+.picker-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 12px;
+  background: rgba(8,8,12,0.94);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  flex-wrap: wrap;
+}
+.picker-btn {
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: #777;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+.picker-btn:hover { background: rgba(255,255,255,0.06); color: #bbb; }
+.picker-btn.active { color: #fff; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
+.picker-btn .tag {
+  display: inline-block;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+.tag-safe { background: rgba(52,211,153,0.15); color: #34d399; }
+.tag-wild { background: rgba(251,113,133,0.15); color: #fb7185; }
+.tag-fav { background: rgba(235,156,53,0.15); color: #EB9C35; }
+
+/* Mockup container */
+.mockup-container {
+  max-width: 440px;
+  margin: 20px auto;
+  padding: 0 20px 60px;
+}
+.palette-label {
+  text-align: center;
+  margin-bottom: 6px;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+}
+.palette-sub {
+  text-align: center;
+  color: #666;
+  font-size: 13px;
+  margin-bottom: 6px;
+  line-height: 1.6;
+  max-width: 380px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Research callout */
+.research-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 16px 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #888;
+}
+.research-box strong {
+  color: #bbb;
+  font-weight: 600;
+}
+.research-box .stat {
+  color: #34d399;
+  font-weight: 700;
+}
+
+/* Swatches */
+.swatch-row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 16px 0 6px;
+}
+.swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 2px solid rgba(255,255,255,0.08);
+  position: relative;
+}
+.swatch-label {
+  text-align: center;
+  font-size: 9px;
+  color: #444;
+  margin-bottom: 16px;
+  font-family: monospace;
+  letter-spacing: 0.3px;
+}
+
+/* View toggle */
+.view-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.view-btn {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: #555;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.view-btn:hover { color: #999; }
+.view-btn.active { color: #fff; background: rgba(255,255,255,0.07); }
+
+/* Phone frame */
+.phone-frame {
+  border-radius: 36px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.06);
+  background: var(--bg);
+  position: relative;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+
+/* Shared app styles */
+.app-screen {
+  padding: 20px;
+  min-height: 720px;
+  position: relative;
+  overflow: hidden;
+}
+.app-screen::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: var(--glow-opacity, 0.12);
+  pointer-events: none;
+  background: var(--glow);
+}
+
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 4px 16px;
+  font-size: 12px;
+  color: var(--dim);
+  font-weight: 600;
+}
+
+.greeting { font-size: 14px; color: var(--dim); margin-bottom: 2px; }
+.user-name {
+  font-family: var(--heading-font, 'Sora', system-ui, sans-serif);
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+
+/* Portfolio card */
+.portfolio-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.portfolio-card::after {
+  content: '';
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 140px; height: 140px;
+  background: var(--glow);
+  opacity: 0.05;
+  border-radius: 50%;
+  filter: blur(40px);
+  pointer-events: none;
+}
+.port-label {
+  font-size: 11px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.port-value {
+  font-family: var(--heading-font, 'Sora', system-ui, sans-serif);
+  font-size: 34px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.port-change {
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+.port-change.up { color: var(--green); background: var(--green-bg); }
+
+/* Section */
+.section-title {
+  font-family: var(--heading-font, 'Sora', system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  margin: 20px 0 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text);
+}
+.see-all { font-size: 12px; color: var(--accent); font-weight: 600; font-family: 'DM Sans'; }
+
+/* Item rows */
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  margin-bottom: 8px;
+}
+.item-emoji {
+  width: 42px; height: 42px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: var(--emoji-bg);
+  flex-shrink: 0;
+}
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-weight: 600; font-size: 14px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-brand { font-size: 12px; color: var(--dim); }
+.item-price { text-align: right; flex-shrink: 0; }
+.item-val { font-weight: 700; font-size: 14px; color: var(--text); }
+.item-pct { font-size: 11px; font-weight: 600; }
+.item-pct.up { color: var(--green); }
+.item-pct.down { color: var(--red); }
+
+/* Bottom nav */
+.bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 14px 0 8px;
+  margin-top: 20px;
+  border-top: 1px solid var(--card-border);
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--dim);
+  font-weight: 500;
+}
+.nav-item.active { color: var(--accent); }
+.nav-icon { font-size: 16px; }
+.nav-add {
+  width: 46px; height: 46px;
+  border-radius: 14px;
+  background: var(--accent-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--cta-text);
+  margin-top: -22px;
+  box-shadow: 0 6px 24px var(--accent-shadow);
+}
+
+/* Auth screen */
+.auth-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 80px;
+}
+.auth-logo {
+  width: 68px; height: 68px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--heading-font, 'Sora', system-ui, sans-serif);
+  font-size: 30px;
+  font-weight: 800;
+  margin-bottom: 14px;
+  color: var(--cta-text);
+  background: var(--accent-gradient);
+  box-shadow: 0 8px 32px var(--accent-shadow);
+}
+.auth-title {
+  font-family: var(--heading-font, 'Sora', system-ui, sans-serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.auth-sub { color: var(--dim); font-size: 13px; margin-bottom: 32px; }
+.auth-input {
+  width: 100%; max-width: 300px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 14px;
+  font-family: 'DM Sans';
+  outline: none;
+  margin-bottom: 10px;
+}
+.auth-input::placeholder { color: var(--placeholder); }
+.auth-input:focus { border-color: var(--accent); }
+.auth-cta {
+  width: 100%; max-width: 300px;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  font-family: var(--heading-font, 'Sora', system-ui, sans-serif);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  background: var(--accent-gradient);
+  color: var(--cta-text);
+  margin-top: 6px;
+  box-shadow: 0 4px 16px var(--accent-shadow);
+}
+.auth-link { color: var(--accent); font-size: 13px; margin-top: 16px; font-weight: 600; }
+
+/* LED strip */
+.led-strip {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--accent-gradient);
+  opacity: 0.5;
+}
+
+/* ====== PALETTE A: Midnight Luxe (Safe) ====== */
+.palette-midnight {
+  --bg: #0a0c14;
+  --glow: #e8b4b8;
+  --glow-opacity: 0.08;
+  --accent: #e8b4b8;
+  --accent-gradient: linear-gradient(135deg, #e8b4b8, #c48b91);
+  --accent-shadow: rgba(232, 180, 184, 0.2);
+  --card-bg: rgba(232, 180, 184, 0.03);
+  --card-hover: rgba(232, 180, 184, 0.06);
+  --card-border: rgba(232, 180, 184, 0.06);
+  --emoji-bg: rgba(232, 180, 184, 0.06);
+  --dim: #5a6080;
+  --text: #eee8e4;
+  --green: #86d9a8;
+  --green-bg: rgba(134, 217, 168, 0.1);
+  --red: #e87c7c;
+  --cta-text: #1a0c10;
+  --placeholder: rgba(238,232,228,0.2);
+  --heading-font: 'Sora', system-ui, sans-serif;
+}
+
+/* ====== PALETTE B: Plum Copper (Wild) ====== */
+.palette-plum {
+  --bg: #0e080d;
+  --glow: #c084fc;
+  --glow-opacity: 0.1;
+  --accent: #c084fc;
+  --accent-gradient: linear-gradient(135deg, #c084fc, #9333ea);
+  --accent-shadow: rgba(192, 132, 252, 0.25);
+  --card-bg: rgba(192, 132, 252, 0.04);
+  --card-hover: rgba(192, 132, 252, 0.08);
+  --card-border: rgba(192, 132, 252, 0.07);
+  --emoji-bg: rgba(192, 132, 252, 0.07);
+  --dim: #7a6888;
+  --text: #f0e8f4;
+  --green: #86efac;
+  --green-bg: rgba(134, 239, 172, 0.1);
+  --red: #fda4af;
+  --cta-text: #1a0820;
+  --placeholder: rgba(240,232,244,0.2);
+  --heading-font: 'Sora', system-ui, sans-serif;
+}
+
+/* ====== PALETTE C: Warm Noir (Wild) ====== */
+.palette-noir {
+  --bg: #0c0a08;
+  --glow: #f59e0b;
+  --glow-opacity: 0.06;
+  --accent: #f5f0e8;
+  --accent-gradient: linear-gradient(135deg, #f5f0e8, #d4c8b0);
+  --accent-shadow: rgba(245, 240, 232, 0.1);
+  --card-bg: rgba(245, 240, 232, 0.04);
+  --card-hover: rgba(245, 240, 232, 0.07);
+  --card-border: rgba(245, 240, 232, 0.06);
+  --emoji-bg: rgba(245, 240, 232, 0.05);
+  --dim: #7a7060;
+  --text: #f5f0e8;
+  --green: #a3e635;
+  --green-bg: rgba(163, 230, 53, 0.1);
+  --red: #f87171;
+  --cta-text: #1a1408;
+  --placeholder: rgba(245,240,232,0.2);
+  --heading-font: 'Playfair Display', Georgia, serif;
+}
+
+.hidden { display: none; }
+
+@keyframes ledPulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
+.led-strip { animation: ledPulse 3s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>PrAperty Palette Lab v2</h1>
+  <p>3 new directions. Each backed by research. Copper Forest from v1 included for comparison.</p>
+</div>
+
+<div class="picker-bar">
+  <button class="picker-btn active" onclick="show('midnight')" id="btn-midnight">
+    Midnight Rose <span class="tag tag-safe">Safe</span>
+  </button>
+  <button class="picker-btn" onclick="show('plum')" id="btn-plum">
+    Electric Plum <span class="tag tag-wild">Wild</span>
+  </button>
+  <button class="picker-btn" onclick="show('noir')" id="btn-noir">
+    Warm Noir <span class="tag tag-wild">Outlier</span>
+  </button>
+  <button class="picker-btn" onclick="show('copper')" id="btn-copper">
+    Copper Forest <span class="tag tag-fav">v1 Fav</span>
+  </button>
+</div>
+
+<!-- ===== A: Midnight Rose ===== -->
+<div id="panel-midnight" class="mockup-container">
+  <h2 class="palette-label" style="color: #e8b4b8;">Midnight Rose</h2>
+  <p class="palette-sub">Deep navy-black base with muted rose gold accents. Luxury without the finance bro energy. Think Amex Platinum meets a high-end jewelry app.</p>
+
+  <div class="research-box">
+    <strong>Why this works:</strong> Rose gold is one of the <span class="stat">most popular modern luxury colors</span>, working for beauty, fashion, and boutique brands. Midnight blue + warm metallic accents conveys "prestige and power" for finance. The muted rose avoids feeling gendered; it reads "expensive."
+  </div>
+
+  <div class="swatch-row">
+    <div class="swatch" style="background:#0a0c14;"></div>
+    <div class="swatch" style="background:#161a28;"></div>
+    <div class="swatch" style="background:#e8b4b8;"></div>
+    <div class="swatch" style="background:#c48b91;"></div>
+    <div class="swatch" style="background:#d4a853;"></div>
+  </div>
+  <div class="swatch-label">#0a0c14 &nbsp; #161a28 &nbsp; #e8b4b8 &nbsp; #c48b91 &nbsp; #d4a853 (orb)</div>
+
+  <div class="view-toggle">
+    <button class="view-btn active" onclick="toggleView('midnight','home')">Home</button>
+    <button class="view-btn" onclick="toggleView('midnight','auth')">Sign In</button>
+  </div>
+
+  <div class="phone-frame palette-midnight">
+    <div id="midnight-home" class="app-screen">
+      <div class="led-strip"></div>
+      <div class="status-bar"><span>9:41</span><span>PrAperty</span><span>100%</span></div>
+      <div class="greeting">Good morning,</div>
+      <div class="user-name">Kitty</div>
+      <div class="portfolio-card">
+        <div class="port-label">Total Portfolio</div>
+        <div class="port-value">$12,847</div>
+        <span class="port-change up">+$1,234 (10.6%)</span>
+      </div>
+      <div class="section-title">Top Movers <span class="see-all">See all</span></div>
+      <div class="item-row"><div class="item-emoji">👟</div><div class="item-info"><div class="item-name">Jordan 4 Bred</div><div class="item-brand">Nike</div></div><div class="item-price"><div class="item-val">$420</div><div class="item-pct up">+12.3%</div></div></div>
+      <div class="item-row"><div class="item-emoji">⌚</div><div class="item-info"><div class="item-name">Submariner Date</div><div class="item-brand">Rolex</div></div><div class="item-price"><div class="item-val">$8,200</div><div class="item-pct up">+5.1%</div></div></div>
+      <div class="item-row"><div class="item-emoji">👜</div><div class="item-info"><div class="item-name">Neverfull MM</div><div class="item-brand">Louis Vuitton</div></div><div class="item-price"><div class="item-val">$1,890</div><div class="item-pct down">-3.2%</div></div></div>
+      <div class="bottom-nav">
+        <div class="nav-item active"><div class="nav-icon">🏠</div>Home</div>
+        <div class="nav-item"><div class="nav-icon">📋</div>List</div>
+        <div class="nav-add">+</div>
+        <div class="nav-item"><div class="nav-icon">📷</div>Scan</div>
+        <div class="nav-item"><div class="nav-icon">👤</div>Profile</div>
+      </div>
+    </div>
+    <div id="midnight-auth" class="app-screen auth-preview hidden">
+      <div class="led-strip"></div>
+      <div class="auth-logo">P</div>
+      <div class="auth-title">PrAperty</div>
+      <div class="auth-sub">Track what you own</div>
+      <input class="auth-input" placeholder="you@email.com" readonly />
+      <input class="auth-input" type="password" placeholder="Password" readonly />
+      <button class="auth-cta">Sign In</button>
+      <div class="auth-link">No account? Sign up</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== B: Electric Plum ===== -->
+<div id="panel-plum" class="mockup-container hidden">
+  <h2 class="palette-label" style="color: #c084fc;">Electric Plum</h2>
+  <p class="palette-sub">Deep plum-black base with electric violet accents. The "gamer LED" vibe cranked up. Purple is the #1 color for "innovation" in fintech. Feels like Twitch meets a trading app.</p>
+
+  <div class="research-box">
+    <strong>Why this works:</strong> Purple is <span class="stat">the most common "innovation" color in fintech</span> (Nubank, Stripe, Klarna). Research says it "conveys forward-thinking brands and luxury." On dark mode, violet creates that LED glow effect naturally. The risk: it's trendy and could date quickly.
+  </div>
+
+  <div class="swatch-row">
+    <div class="swatch" style="background:#0e080d;"></div>
+    <div class="swatch" style="background:#1a1024;"></div>
+    <div class="swatch" style="background:#c084fc;"></div>
+    <div class="swatch" style="background:#9333ea;"></div>
+    <div class="swatch" style="background:#d4a853;"></div>
+  </div>
+  <div class="swatch-label">#0e080d &nbsp; #1a1024 &nbsp; #c084fc &nbsp; #9333ea &nbsp; #d4a853 (orb)</div>
+
+  <div class="view-toggle">
+    <button class="view-btn active" onclick="toggleView('plum','home')">Home</button>
+    <button class="view-btn" onclick="toggleView('plum','auth')">Sign In</button>
+  </div>
+
+  <div class="phone-frame palette-plum">
+    <div id="plum-home" class="app-screen">
+      <div class="led-strip"></div>
+      <div class="status-bar"><span>9:41</span><span>PrAperty</span><span>100%</span></div>
+      <div class="greeting">Good morning,</div>
+      <div class="user-name">Kitty</div>
+      <div class="portfolio-card">
+        <div class="port-label">Total Portfolio</div>
+        <div class="port-value">$12,847</div>
+        <span class="port-change up">+$1,234 (10.6%)</span>
+      </div>
+      <div class="section-title">Top Movers <span class="see-all">See all</span></div>
+      <div class="item-row"><div class="item-emoji">👟</div><div class="item-info"><div class="item-name">Jordan 4 Bred</div><div class="item-brand">Nike</div></div><div class="item-price"><div class="item-val">$420</div><div class="item-pct up">+12.3%</div></div></div>
+      <div class="item-row"><div class="item-emoji">⌚</div><div class="item-info"><div class="item-name">Submariner Date</div><div class="item-brand">Rolex</div></div><div class="item-price"><div class="item-val">$8,200</div><div class="item-pct up">+5.1%</div></div></div>
+      <div class="item-row"><div class="item-emoji">👜</div><div class="item-info"><div class="item-name">Neverfull MM</div><div class="item-brand">Louis Vuitton</div></div><div class="item-price"><div class="item-val">$1,890</div><div class="item-pct down">-3.2%</div></div></div>
+      <div class="bottom-nav">
+        <div class="nav-item active"><div class="nav-icon">🏠</div>Home</div>
+        <div class="nav-item"><div class="nav-icon">📋</div>List</div>
+        <div class="nav-add">+</div>
+        <div class="nav-item"><div class="nav-icon">📷</div>Scan</div>
+        <div class="nav-item"><div class="nav-icon">👤</div>Profile</div>
+      </div>
+    </div>
+    <div id="plum-auth" class="app-screen auth-preview hidden">
+      <div class="led-strip"></div>
+      <div class="auth-logo">P</div>
+      <div class="auth-title">PrAperty</div>
+      <div class="auth-sub">Track what you own</div>
+      <input class="auth-input" placeholder="you@email.com" readonly />
+      <input class="auth-input" type="password" placeholder="Password" readonly />
+      <button class="auth-cta">Sign In</button>
+      <div class="auth-link">No account? Sign up</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== C: Warm Noir ===== -->
+<div id="panel-noir" class="mockup-container hidden">
+  <h2 class="palette-label" style="color: #f5f0e8;">Warm Noir</h2>
+  <p class="palette-sub">Warm charcoal-black with cream/ivory accents and a serif font for headings. Feels like a luxury magazine editorial. Completely different from every fintech app. The outlier.</p>
+
+  <div class="research-box">
+    <strong>Why this works:</strong> 2026 trend: <span class="stat">"neutrals shifting from cold grays to warm beiges"</span> for sophistication. Cream-on-dark is rare in fintech, making it instantly recognizable. The serif heading font (Playfair Display) signals "editorial luxury" like Vogue or WSJ. Risk: might feel too "mature" for younger users, but it's unforgettable.
+  </div>
+
+  <div class="swatch-row">
+    <div class="swatch" style="background:#0c0a08;"></div>
+    <div class="swatch" style="background:#1a1710;"></div>
+    <div class="swatch" style="background:#f5f0e8;"></div>
+    <div class="swatch" style="background:#d4c8b0;"></div>
+    <div class="swatch" style="background:#d4a853;"></div>
+  </div>
+  <div class="swatch-label">#0c0a08 &nbsp; #1a1710 &nbsp; #f5f0e8 &nbsp; #d4c8b0 &nbsp; #d4a853 (orb)</div>
+
+  <div class="view-toggle">
+    <button class="view-btn active" onclick="toggleView('noir','home')">Home</button>
+    <button class="view-btn" onclick="toggleView('noir','auth')">Sign In</button>
+  </div>
+
+  <div class="phone-frame palette-noir">
+    <div id="noir-home" class="app-screen">
+      <div class="led-strip" style="background: linear-gradient(90deg, #d4c8b0, #f5f0e8, #d4c8b0); opacity: 0.3;"></div>
+      <div class="status-bar"><span>9:41</span><span style="font-family: 'Playfair Display', serif; font-style: italic;">PrAperty</span><span>100%</span></div>
+      <div class="greeting">Good morning,</div>
+      <div class="user-name" style="font-family: 'Playfair Display', Georgia, serif;">Kitty</div>
+      <div class="portfolio-card">
+        <div class="port-label">Total Portfolio</div>
+        <div class="port-value" style="font-family: 'Playfair Display', Georgia, serif;">$12,847</div>
+        <span class="port-change up">+$1,234 (10.6%)</span>
+      </div>
+      <div class="section-title" style="font-family: 'Playfair Display', Georgia, serif;">Top Movers <span class="see-all">See all</span></div>
+      <div class="item-row"><div class="item-emoji">👟</div><div class="item-info"><div class="item-name">Jordan 4 Bred</div><div class="item-brand">Nike</div></div><div class="item-price"><div class="item-val">$420</div><div class="item-pct up">+12.3%</div></div></div>
+      <div class="item-row"><div class="item-emoji">⌚</div><div class="item-info"><div class="item-name">Submariner Date</div><div class="item-brand">Rolex</div></div><div class="item-price"><div class="item-val">$8,200</div><div class="item-pct up">+5.1%</div></div></div>
+      <div class="item-row"><div class="item-emoji">👜</div><div class="item-info"><div class="item-name">Neverfull MM</div><div class="item-brand">Louis Vuitton</div></div><div class="item-price"><div class="item-val">$1,890</div><div class="item-pct down">-3.2%</div></div></div>
+      <div class="bottom-nav">
+        <div class="nav-item active"><div class="nav-icon">🏠</div>Home</div>
+        <div class="nav-item"><div class="nav-icon">📋</div>List</div>
+        <div class="nav-add" style="color: #1a1408;">+</div>
+        <div class="nav-item"><div class="nav-icon">📷</div>Scan</div>
+        <div class="nav-item"><div class="nav-icon">👤</div>Profile</div>
+      </div>
+    </div>
+    <div id="noir-auth" class="app-screen auth-preview hidden">
+      <div class="led-strip" style="background: linear-gradient(90deg, #d4c8b0, #f5f0e8, #d4c8b0); opacity: 0.3;"></div>
+      <div class="auth-logo" style="font-family: 'Playfair Display', serif;">P</div>
+      <div class="auth-title" style="font-family: 'Playfair Display', Georgia, serif;">PrAperty</div>
+      <div class="auth-sub">Track what you own</div>
+      <input class="auth-input" placeholder="you@email.com" readonly />
+      <input class="auth-input" type="password" placeholder="Password" readonly />
+      <button class="auth-cta">Sign In</button>
+      <div class="auth-link">No account? Sign up</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== D: Copper Forest (from v1) ===== -->
+<div id="panel-copper" class="mockup-container hidden">
+  <h2 class="palette-label" style="color: #EB9C35;">Copper Forest</h2>
+  <p class="palette-sub">Your original palette. Dark forest green surfaces with warm copper CTAs. The one you and your partner already liked from round 1.</p>
+
+  <div class="research-box">
+    <strong>Reminder why it works:</strong> Green = <span class="stat">23% higher satisfaction</span> + <span class="stat">20% higher trust scores</span> under 35. Orange CTAs = <span class="stat">24% higher click-through</span>. You get both. The forest-to-copper warmth avoids sterile finance bro AND avoids Robinhood's neon.
+  </div>
+
+  <div class="swatch-row">
+    <div class="swatch" style="background:#0a0b08;"></div>
+    <div class="swatch" style="background:#13341E;"></div>
+    <div class="swatch" style="background:#4E7145;"></div>
+    <div class="swatch" style="background:#EB9C35;"></div>
+    <div class="swatch" style="background:#C4501B;"></div>
+  </div>
+  <div class="swatch-label">#0a0b08 &nbsp; #13341E &nbsp; #4E7145 &nbsp; #EB9C35 &nbsp; #C4501B</div>
+
+  <div class="view-toggle">
+    <button class="view-btn active" onclick="toggleView('copper','home')">Home</button>
+    <button class="view-btn" onclick="toggleView('copper','auth')">Sign In</button>
+  </div>
+
+  <div class="phone-frame" style="--bg:#0a0b08; --glow:#EB9C35; --accent:#EB9C35; --accent-gradient:linear-gradient(135deg,#EB9C35,#C4501B); --accent-shadow:rgba(235,156,53,0.3); --card-bg:rgba(78,113,69,0.06); --card-hover:rgba(78,113,69,0.12); --card-border:rgba(78,113,69,0.12); --emoji-bg:rgba(78,113,69,0.12); --dim:#6b7a5e; --text:#fff; --green:#7bc96f; --green-bg:rgba(123,201,111,0.12); --red:#e85d3a; --cta-text:#1a0800; --placeholder:rgba(255,255,255,0.25); --glow-opacity:0.1;">
+    <div id="copper-home" class="app-screen">
+      <div class="led-strip"></div>
+      <div class="status-bar"><span>9:41</span><span>PrAperty</span><span>100%</span></div>
+      <div class="greeting">Good morning,</div>
+      <div class="user-name">Kitty</div>
+      <div class="portfolio-card">
+        <div class="port-label">Total Portfolio</div>
+        <div class="port-value">$12,847</div>
+        <span class="port-change up">+$1,234 (10.6%)</span>
+      </div>
+      <div class="section-title">Top Movers <span class="see-all">See all</span></div>
+      <div class="item-row"><div class="item-emoji">👟</div><div class="item-info"><div class="item-name">Jordan 4 Bred</div><div class="item-brand">Nike</div></div><div class="item-price"><div class="item-val">$420</div><div class="item-pct up">+12.3%</div></div></div>
+      <div class="item-row"><div class="item-emoji">⌚</div><div class="item-info"><div class="item-name">Submariner Date</div><div class="item-brand">Rolex</div></div><div class="item-price"><div class="item-val">$8,200</div><div class="item-pct up">+5.1%</div></div></div>
+      <div class="item-row"><div class="item-emoji">👜</div><div class="item-info"><div class="item-name">Neverfull MM</div><div class="item-brand">Louis Vuitton</div></div><div class="item-price"><div class="item-val">$1,890</div><div class="item-pct down">-3.2%</div></div></div>
+      <div class="bottom-nav">
+        <div class="nav-item active"><div class="nav-icon">🏠</div>Home</div>
+        <div class="nav-item"><div class="nav-icon">📋</div>List</div>
+        <div class="nav-add">+</div>
+        <div class="nav-item"><div class="nav-icon">📷</div>Scan</div>
+        <div class="nav-item"><div class="nav-icon">👤</div>Profile</div>
+      </div>
+    </div>
+    <div id="copper-auth" class="app-screen auth-preview hidden" style="--placeholder: rgba(255,255,255,0.25);">
+      <div class="led-strip"></div>
+      <div class="auth-logo">P</div>
+      <div class="auth-title">PrAperty</div>
+      <div class="auth-sub">Track what you own</div>
+      <input class="auth-input" placeholder="you@email.com" readonly />
+      <input class="auth-input" type="password" placeholder="Password" readonly />
+      <button class="auth-cta">Sign In</button>
+      <div class="auth-link">No account? Sign up</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(palette) {
+  ['midnight','plum','noir','copper'].forEach(p => {
+    document.getElementById('panel-' + p).classList.toggle('hidden', p !== palette);
+    document.getElementById('btn-' + p).classList.toggle('active', p === palette);
+  });
+}
+
+function toggleView(palette, view) {
+  const home = document.getElementById(palette + '-home');
+  const auth = document.getElementById(palette + '-auth');
+  if (!home || !auth) return;
+  home.classList.toggle('hidden', view !== 'home');
+  auth.classList.toggle('hidden', view !== 'auth');
+  const btns = document.getElementById('panel-' + palette).querySelectorAll('.view-btn');
+  btns.forEach(btn => btn.classList.toggle('active', btn.textContent.trim().toLowerCase() === view));
+}
+</script>
+
+</body>
+</html>
