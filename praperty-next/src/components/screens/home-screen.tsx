@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Package, DollarSign, BarChart3, Bell, Camera, Plus, Search, TrendingUp, TrendingDown, Info, Eye } from 'lucide-react'
+import { Package, DollarSign, BarChart3, Bell, Search, TrendingUp, TrendingDown, Info, Eye } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, getGreeting } from '@/lib/utils'
@@ -258,24 +258,6 @@ export default function HomeScreen({ onNavigate, onViewItem }: Props) {
             )
           })}
         </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="px-6 py-5 flex gap-3">
-        <button
-          onClick={() => onNavigate('scan')}
-          className="flex-1 gradient-amber rounded-xl py-4 text-[15px] font-semibold text-black flex items-center justify-center gap-2"
-        >
-          <Camera size={20} />
-          Scan Item
-        </button>
-        <button
-          onClick={() => onNavigate('add-item')}
-          className="flex-1 glass glass-hover rounded-xl py-4 text-[15px] font-semibold text-white flex items-center justify-center gap-2 border border-white/10"
-        >
-          <Plus size={20} />
-          Add Manually
-        </button>
       </div>
 
       {/* Market Movers */}

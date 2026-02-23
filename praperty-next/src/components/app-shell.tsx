@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Home, Package, Search, Settings, Star, Camera, Plus } from 'lucide-react'
+import { Home, Package, Search, Settings, Star, Camera, Plus, Keyboard, ImagePlus, X } from 'lucide-react'
 import type { Screen, WatchlistItem } from '@/types'
 import SetupScreen from '@/components/screens/setup-screen'
 import HomeScreen from '@/components/screens/home-screen'
@@ -39,6 +39,7 @@ export default function AppShell() {
   const [researchQuery, setResearchQuery] = useState('')
   const [scanData, setScanData] = useState<any>(null)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
+  const [showAddSheet, setShowAddSheet] = useState(false)
 
   // Show tutorial for first-time users
   useEffect(() => {
@@ -146,6 +147,81 @@ export default function AppShell() {
         {renderScreen()}
       </div>
 
+      {/* Add Item Bottom Sheet */}
+      {showAddSheet && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowAddSheet(false)}
+          />
+
+          {/* Sheet */}
+          <div
+            className="relative rounded-t-3xl px-6 pt-5 pb-10 animate-fade-up"
+            style={{ background: 'var(--bg-surface)', borderTop: '1px solid rgba(78, 113, 69, 0.15)' }}
+          >
+            {/* Handle */}
+            <div className="w-10 h-1 rounded-full bg-white/15 mx-auto mb-5" />
+
+            <h3 className="text-lg font-bold text-white mb-4 font-heading">Add an item</h3>
+
+            <div className="space-y-2">
+              {/* Type it in */}
+              <button
+                onClick={() => { setShowAddSheet(false); setScreen('add-item') }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.98]"
+              >
+                <div className="w-12 h-12 rounded-xl gradient-amber flex items-center justify-center flex-shrink-0">
+                  <Keyboard size={22} className="text-black" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[15px] font-semibold text-white">Type it in</p>
+                  <p className="text-xs text-dim">Name your item, auto-fill does the rest</p>
+                </div>
+              </button>
+
+              {/* Scan barcode */}
+              <button
+                onClick={() => { setShowAddSheet(false); setScreen('scan') }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.98]"
+              >
+                <div className="w-12 h-12 rounded-xl bg-forest/80 flex items-center justify-center flex-shrink-0 border border-forest-mid/30">
+                  <Camera size={22} className="text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[15px] font-semibold text-white">Scan barcode</p>
+                  <p className="text-xs text-dim">Scan a barcode to auto-fill product info</p>
+                </div>
+              </button>
+
+              {/* Snap a photo (coming soon) */}
+              <button
+                className="w-full flex items-center gap-4 p-4 rounded-2xl glass opacity-50 cursor-not-allowed"
+                disabled
+              >
+                <div className="w-12 h-12 rounded-xl bg-white/6 flex items-center justify-center flex-shrink-0 border border-white/10">
+                  <ImagePlus size={22} className="text-dim" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[15px] font-semibold text-white/60">Snap a photo</p>
+                  <p className="text-xs text-dim">AI identifies your item instantly</p>
+                </div>
+                <span className="ml-auto text-[10px] font-bold text-amber-brand bg-amber-brand/15 px-2 py-1 rounded-md">SOON</span>
+              </button>
+            </div>
+
+            {/* Cancel */}
+            <button
+              onClick={() => setShowAddSheet(false)}
+              className="w-full mt-4 py-3 text-dim text-sm font-medium text-center hover:text-white transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Bottom navigation with center Add button */}
       {showTabs && (
         <nav className="flex-shrink-0 glass border-t border-white/5 relative">
@@ -173,7 +249,7 @@ export default function AppShell() {
             {/* Center: Add button (raised) */}
             <div className="flex flex-col items-center -mt-5">
               <button
-                onClick={() => setScreen('add-item')}
+                onClick={() => setShowAddSheet(true)}
                 className="w-14 h-14 rounded-full gradient-amber flex items-center justify-center shadow-lg shadow-amber-brand/30 active:scale-95 transition-transform"
                 aria-label="Add item"
               >
