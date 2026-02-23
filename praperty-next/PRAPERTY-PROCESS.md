@@ -88,11 +88,12 @@ praperty-next/
 
 ### .env.local (local dev)
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://tzasuddushojjurbzqfe.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-OPENAI_API_KEY=sk-proj-_rtEmLUuCfT6lgP-...  (server-side only)
-GEMINI_API_KEY=AIzaSyAf0q4inOlB4FFJkv4vLoLsf0FCj1S2WhE  (server-side only)
+NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+OPENAI_API_KEY=<your-openai-key>  (server-side only)
+GEMINI_API_KEY=<your-gemini-key>  (server-side only)
 ```
+> **NEVER commit actual key values to this file. Reference .env.local locally or Vercel dashboard for real values.**
 
 ### Vercel Environment Variables
 Same keys as above. Both OPENAI_API_KEY and GEMINI_API_KEY are set in Vercel project settings.
