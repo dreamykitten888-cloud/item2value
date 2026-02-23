@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Allow larger body for base64 images
-export const config = {
-  api: { bodyParser: { sizeLimit: '4mb' } },
-}
-export const maxDuration = 30 // seconds (Vercel timeout)
+// Vercel: allow longer timeout for AI calls
+export const maxDuration = 30
 
 /**
  * POST /api/identify
