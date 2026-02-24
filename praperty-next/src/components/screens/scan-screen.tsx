@@ -5,9 +5,9 @@ import { ArrowLeft, Camera, Upload, Sparkles, RefreshCw } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import type { Screen } from '@/types'
 
-// Dynamically import the scanner so it only loads client-side
-const Scanner = dynamic(
-  () => import('@yudiel/react-qr-scanner').then(mod => mod.Scanner),
+// Dynamically import barcode scanner (html5-qrcode, client-side only)
+const BarcodeScanner = dynamic(
+  () => import('@/components/barcode-scanner'),
   { ssr: false, loading: () => <div className="w-full h-64 bg-black rounded-2xl animate-pulse" /> }
 )
 
@@ -154,10 +154,9 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
     setLookingUp(false)
   }, [onScanData])
 
-  // Handle successful barcode scan
-  const onScanSuccess = useCallback((result: any) => {
+  // Handle successful barcode scan (html5-qrcode gives us a plain string)
+  const onScanSuccess = useCallback((text: string) => {
     if (hasScannedRef.current) return
-    const text = typeof result === 'string' ? result : result?.[0]?.rawValue || result?.text || ''
     if (!text) return
 
     hasScannedRef.current = true
@@ -289,28 +288,16 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
           /* ─── BARCODE MODE ─── */
           <div className="w-full max-w-80">
             {barcodeScanning && (
-              <div className="w-full rounded-2xl overflow-hidden bg-black mb-4 relative" style={{ minHeight: 260 }}>
-                <Scanner
+              <div className="mb-4">
+                <BarcodeScanner
+                  active={barcodeScanning}
                   onScan={onScanSuccess}
-                  onError={(err: any) => {
-                    console.error('Scanner error:', err)
-                    const errStr = String(err)
-                    if (errStr.includes('NotAllowed') || errStr.includes('Permission')) {
-                      setScanStatus('Camera blocked. Allow camera access in your browser settings.')
-                    } else if (errStr.includes('NotFound')) {
-                      setScanStatus('No camera found on this device.')
-                    } else {
-                      setScanStatus('Camera error. Try refreshing or use photo mode.')
-                    }
+                  onError={(msg: string) => {
+                    console.error('Scanner error:', msg)
+                    setScanStatus(msg)
                     setBarcodeScanning(false)
                   }}
-                  formats={['qr_code', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf']}
-                  components={{ torch: true }}
-                  styles={{ container: { width: '100%', height: '260px' } }}
                 />
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className="w-3/4 h-0.5 bg-amber-brand/60 animate-pulse rounded-full" />
-                </div>
               </div>
             )}
 

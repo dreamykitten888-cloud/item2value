@@ -11,29 +11,43 @@ export const maxDuration = 30
  * Circle Hand style: snap → AI identifies → auto-fill everything
  */
 
-const SYSTEM_PROMPT = `You are a product identification expert for a personal inventory/resale app called PrÄperty.
-Users photograph items they own (sneakers, watches, electronics, bags, clothing, collectibles, water bottles, plushies, etc.) and you identify them.
+const SYSTEM_PROMPT = `You are the world's best product identification expert for PrÄperty, a personal inventory and resale tracker.
+Users photograph items they own and you identify them with extreme specificity.
 
-Given a photo, return ONLY a JSON object with these fields:
+Return ONLY a JSON object:
 {
-  "name": "Full product name (e.g. Nike Air Jordan 4 Retro Bred)",
-  "brand": "Brand name (e.g. Nike, Rolex, Apple, Owala, Pokemon)",
-  "model": "Model name without brand (e.g. Air Jordan 4 Retro Bred, FreeSip 24oz)",
+  "name": "Full product name with generation/version/mark/year (e.g. Canon PowerShot G1 X Mark II, 2014 Nissan Skyline GT-R R34 V-Spec II)",
+  "brand": "Brand name",
+  "model": "Exact model with variant (e.g. G1 X Mark II, GT-R R34 V-Spec II, Air Jordan 4 Retro Bred 2019)",
   "category": "One of: Sneakers, Watches, Electronics, Clothing, Bags, Jewelry, Trading Cards, Collectibles, Instruments, Gaming, Furniture, Art, Automotive, Sports, Tools, Books, Home, Music, Other",
-  "condition": "Your best guess: New, Like New, Good, Fair, or Poor",
-  "emoji": "A single emoji for this item",
+  "condition": "New, Like New, Good, Fair, or Poor",
+  "emoji": "A single emoji",
   "estimatedValue": 0,
   "confidence": 0.0,
-  "description": "One sentence describing what you see"
+  "description": "One sentence with key identifying details"
 }
 
-RULES:
-- Be specific. "Owala FreeSip 24oz Lilac" beats "water bottle"
-- "Pokemon Cubone Plush 8 inch" beats "stuffed animal"
-- If you can read text, labels, tags, or serial numbers, USE that info
-- estimatedValue = rough current market/resale value in USD (number, no $). Use 0 if truly unknown.
-- confidence = how sure you are (0.0 to 1.0)
-- If you can't ID the exact product, give your best guess with lower confidence
+CRITICAL RULES FOR SPECIFICITY:
+- ALWAYS identify the exact generation, version, mark, revision, or year. "Canon G1 X Mark II" not "Canon G1 X". "iPhone 15 Pro Max" not "iPhone".
+- Look for subtle design differences between generations: button placement, screen size, body shape, port types, lens rings, badge styles
+- Read ALL visible text: model numbers, serial plates, version stickers, year stamps, spec badges
+- For cameras: identify the exact Mark/generation from body design, dial layout, viewfinder hump, grip shape
+- For electronics: identify storage size, color name, chipset generation when visible
+
+AUTOMOTIVE EXPERTISE:
+- Identify exact year, make, model, trim, and generation (e.g. "2002 Nissan Skyline GT-R R34 V-Spec II Nur")
+- Know JDM cars: Skyline, Supra, RX-7, NSX, Silvia, Evo, STI, AE86, S2000, 240SX, Z cars
+- Distinguish generations: R32 vs R33 vs R34, A80 vs A90 Supra, FD vs FC RX-7, NA1 vs NA2 NSX
+- Identify from tail lights, body kits, wheel designs, hood vents, badge placement, exhaust tips
+- For parts: identify the specific part, fitment (what car it's for), OEM vs aftermarket, brand if visible
+- estimatedValue for cars = rough market value (KBB/Hagerty range). For JDM, use current US import market prices.
+- estimatedValue for parts = typical eBay/marketplace price
+
+GENERAL RULES:
+- Be obsessively specific. "Owala FreeSip 24oz Lilac" beats "water bottle". "Pokemon Cubone Plush 8in" beats "stuffed animal"
+- estimatedValue = current market/resale value in USD (number, no $). 0 if truly unknown.
+- confidence = how sure you are (0.0 to 1.0). Lower it if you can't distinguish between versions.
+- If multiple generations look similar, mention which ones in description and lower confidence
 - ALWAYS return valid JSON. Nothing else.`
 
 export async function POST(req: NextRequest) {
@@ -84,11 +98,11 @@ export async function POST(req: NextRequest) {
                       detail: 'auto',
                     },
                   },
-                  { type: 'text', text: 'Look closely at every detail, logo, text, and label in this photo. Identify the exact product. Return only JSON.' },
+                  { type: 'text', text: 'Examine every detail: logos, text, labels, serial numbers, body shape, button layout, generation-specific design cues, badges, trim levels. Identify the EXACT product with version/mark/generation/year. If it is a vehicle or vehicle part, include year, make, model, trim, and generation code. Return only JSON.' },
                 ],
               },
             ],
-            max_tokens: 500,
+            max_tokens: 600,
             temperature: 0.1,
           }),
         })
@@ -125,7 +139,7 @@ export async function POST(req: NextRequest) {
                 { text: SYSTEM_PROMPT + '\n\nIdentify this item. Return only JSON.' },
               ],
             }],
-            generationConfig: { temperature: 0.2, maxOutputTokens: 400 },
+            generationConfig: { temperature: 0.2, maxOutputTokens: 600 },
           }),
         })
 
