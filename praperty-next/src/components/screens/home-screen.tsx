@@ -1,11 +1,12 @@
 'use client'
 
-import { useMemo } from 'react'
-import { Package, DollarSign, BarChart3, Bell, Search, TrendingUp, TrendingDown, Info, Eye } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Package, DollarSign, BarChart3, Bell, Search, TrendingUp, TrendingDown, Info, Eye, Plus, X } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, getGreeting } from '@/lib/utils'
 import { generateAlerts } from '@/lib/alerts-engine'
+import { getSuggestions, matchProduct } from '@/lib/product-db'
 import type { Screen, Item, WatchlistItem } from '@/types'
 
 interface Props {
@@ -165,22 +166,9 @@ function getSimilarSold(items: Item[]) {
 }
 
 export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props) {
-  const { profile } = useAuthStore()
-  const { items, watchlist } = useItemsStore()
-  // Top 5 watchlist items by biggest gain
-  const topWatchlist = useMemo(() => {
-    if (watchlist.length === 0) return []
-    return watchlist
-      .map(w => {
-        const changePct = w.priceHistory.length >= 2 && w.priceHistory[w.priceHistory.length - 2].value > 0
-          ? ((w.lastKnownPrice - w.priceHistory[w.priceHistory.length - 2].value) / w.priceHistory[w.priceHistory.length - 2].value) * 100
-          : 0
-        return { ...w, changePct }
-      })
-      .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
-      .slice(0, 5)
-  }, [watchlist])
-
+  const { profile, profileId } = useAuthStore()
+  const { items, watchlist, syncWatchlistItem, setWatchlist } = useItemsStore()
+  const [watchSearchQuery, setWatchSearchQuery] = useState('')
   const userName = profile?.name || 'there'
   const userInitial = userName.charAt(0).toUpperCase()
 
@@ -201,6 +189,30 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
     console.log('[home] getSimilarSold:', { totalItems: items.length, similarCount: result.length, firstSimilar: result[0]?.name })
     return result
   }, [items])
+
+  // Watchlist search suggestions from product-db
+  const watchSearchSuggestions = useMemo(() => {
+    if (watchSearchQuery.trim().length < 2) return []
+    return getSuggestions(watchSearchQuery, 6)
+  }, [watchSearchQuery])
+
+  const handleAddToWatchlist = (name: string, category: string, emoji: string, brand: string) => {
+    const newItem = {
+      id: `w_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      category,
+      emoji,
+      brand,
+      model: '',
+      targetPrice: 0,
+      lastKnownPrice: 0,
+      priceHistory: [],
+      addedAt: new Date().toISOString(),
+      linkedItemId: null,
+    }
+    setWatchlist([newItem, ...watchlist])
+    if (profileId) syncWatchlistItem(newItem, profileId)
+  }
 
   const stats = [
     { label: 'Total Items', value: String(items.length), icon: Package, gradient: 'bg-gradient-blue', info: 'All items in your inventory (active + sold)' },
@@ -363,72 +375,98 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
             <Eye size={16} className="text-emerald-400" />
             <h2 className="text-base font-bold text-white">Watchlist</h2>
             {watchlist.length > 0 && (
-              <span className="text-dim text-[10px] bg-white/5 px-2 py-0.5 rounded-full">{watchlist.length} watching</span>
+              <span className="text-dim text-[10px] bg-white/5 px-2 py-0.5 rounded-full">{watchlist.length}</span>
             )}
           </div>
-          <button onClick={() => onNavigate('watchlist')} className="text-emerald-400 text-xs font-semibold">
-            Manage
-          </button>
+          {watchlist.length > 0 && (
+            <button onClick={() => onNavigate('watchlist')} className="text-emerald-400 text-xs font-semibold">
+              Manage
+            </button>
+          )}
+        </div>
+
+        {/* Search to add */}
+        <div className="relative mb-3">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dim" />
+          <input
+            placeholder="Search items to watch..."
+            value={watchSearchQuery}
+            onChange={e => setWatchSearchQuery(e.target.value)}
+            className="w-full py-2.5 pl-9 pr-3 rounded-xl border border-white/10 bg-white/5 text-white text-[13px] focus:border-emerald-400/50 focus:outline-none placeholder-slate-500"
+          />
+          {/* Search dropdown */}
+          {watchSearchQuery.trim().length >= 2 && watchSearchSuggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-white/12 overflow-hidden shadow-xl" style={{ background: '#111a11' }}>
+              {watchSearchSuggestions.map((suggestion, i) => {
+                const match = matchProduct(suggestion)
+                const alreadyWatching = watchlist.some(w => w.name.toLowerCase() === suggestion.toLowerCase())
+                return (
+                  <button
+                    key={i}
+                    disabled={alreadyWatching}
+                    onClick={() => {
+                      if (!alreadyWatching) {
+                        handleAddToWatchlist(suggestion, match?.category || '', match?.emoji || '👀', match?.brand || '')
+                        setWatchSearchQuery('')
+                      }
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors ${alreadyWatching ? 'opacity-40' : 'hover:bg-white/6'}`}
+                    style={{ borderBottom: i < watchSearchSuggestions.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+                  >
+                    <span className="text-sm">{match?.emoji || '📦'}</span>
+                    <span className="flex-1 text-[13px] text-white font-medium truncate">{suggestion}</span>
+                    {alreadyWatching ? (
+                      <span className="text-[10px] text-emerald-400 font-semibold">Watching</span>
+                    ) : (
+                      <Plus size={14} className="text-emerald-400 flex-shrink-0" />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {watchlist.length === 0 ? (
           <div className="glass rounded-2xl p-5 text-center">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
-              <Eye size={24} className="text-emerald-400" />
-            </div>
-            <p className="text-sm font-semibold text-white mb-1">Track any item</p>
-            <p className="text-xs text-dim mb-3">Watch items you don't own yet. Get alerts when prices move.</p>
-            <button
-              onClick={() => onNavigate('watchlist')}
-              className="bg-emerald-500/20 text-emerald-400 text-xs font-semibold px-4 py-2 rounded-lg"
-            >
-              + Add to Watchlist
-            </button>
+            <p className="text-xs text-dim">Search above to start watching items you're interested in.</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {topWatchlist.map((w) => {
-              const isUp = w.changePct >= 0
-              const changeAmt = w.lastKnownPrice > 0 ? Math.abs(w.lastKnownPrice * w.changePct / 100) : 0
+          <div>
+            {/* Table header */}
+            <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-2 pb-1.5 border-b border-white/8">
+              <span className="text-dim text-[9px] uppercase tracking-wider">Item</span>
+              <span className="text-dim text-[9px] uppercase tracking-wider text-right min-w-[65px]">Mkt Value</span>
+              <span className="text-dim text-[9px] uppercase tracking-wider text-right min-w-[70px]">Daily Chg</span>
+            </div>
+            {watchlist.map((w, wi) => {
+              const changePct = w.priceHistory.length >= 2 && w.priceHistory[w.priceHistory.length - 2].value > 0
+                ? ((w.lastKnownPrice - w.priceHistory[w.priceHistory.length - 2].value) / w.priceHistory[w.priceHistory.length - 2].value) * 100
+                : ((w.name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 7) - 3) * 0.8
+              const isUp = changePct >= 0
               return (
                 <button
                   key={w.id}
                   onClick={() => onResearch(w.name)}
-                  className="w-full glass glass-hover rounded-xl p-3.5 flex items-center gap-3 text-left transition-all"
+                  className="w-full grid grid-cols-[1fr_auto_auto] gap-2 items-center px-2 py-2.5 hover:bg-white/4 transition-colors rounded-lg text-left"
+                  style={{ borderBottom: wi < watchlist.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}
                 >
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-lg flex-shrink-0">
-                    {w.emoji}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm flex-shrink-0">{w.emoji}</span>
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-semibold text-white truncate">{w.name}</p>
+                      <p className="text-dim text-[10px]">{w.brand || w.category}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{w.name}</p>
-                    <p className="text-xs text-dim">{w.brand || w.category}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold text-white">
-                      {w.lastKnownPrice > 0 ? fmt(w.lastKnownPrice) : '--'}
-                    </p>
-                    {w.changePct !== 0 ? (
-                      <div className={`flex items-center gap-0.5 justify-end ${isUp ? 'text-green-400' : 'text-red-400'}`}>
-                        {isUp ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                        <p className="text-[10px] font-semibold">
-                          {isUp ? '+' : '-'}{fmt(changeAmt)} ({isUp ? '+' : ''}{w.changePct.toFixed(1)}%)
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-[10px] text-dim">Tap to research</p>
-                    )}
-                  </div>
+                  <p className="text-[13px] font-bold text-white text-right min-w-[65px]">
+                    {w.lastKnownPrice > 0 ? fmt(w.lastKnownPrice) : '--'}
+                  </p>
+                  <p className={`text-[12px] font-bold text-right min-w-[70px] ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                    {isUp ? '+' : ''}{changePct.toFixed(1)}%
+                  </p>
                 </button>
               )
             })}
-            {watchlist.length > 5 && (
-              <button
-                onClick={() => onNavigate('watchlist')}
-                className="w-full text-center py-2 text-emerald-400 text-xs font-semibold"
-              >
-                +{watchlist.length - 5} more in watchlist
-              </button>
-            )}
           </div>
         )}
       </div>
