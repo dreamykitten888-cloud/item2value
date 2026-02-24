@@ -49,7 +49,7 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
   // Smart auto-fill when user types item name
   const handleNameChange = useCallback((value: string) => {
     setItemName(value)
-    const suggs = getSuggestions(value)
+    const suggs = getSuggestions(value).map(s => s.name)
     setSuggestions(suggs)
 
     const match = matchProduct(value)
