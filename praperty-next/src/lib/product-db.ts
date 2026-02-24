@@ -171,20 +171,117 @@ export function matchProduct(input: string): ProductMatch | null {
   return null
 }
 
+// Popular actual products people search for (not just brands)
+const POPULAR_PRODUCTS: { name: string; brand: string; category: string; emoji: string }[] = [
+  // Sneakers
+  { name: 'Air Jordan 1 Retro High OG', brand: 'Nike', category: 'Sneakers', emoji: '👟' },
+  { name: 'Air Jordan 4 Retro', brand: 'Nike', category: 'Sneakers', emoji: '👟' },
+  { name: 'Nike Dunk Low', brand: 'Nike', category: 'Sneakers', emoji: '👟' },
+  { name: 'Nike Air Force 1', brand: 'Nike', category: 'Sneakers', emoji: '👟' },
+  { name: 'Yeezy Boost 350 V2', brand: 'Adidas', category: 'Sneakers', emoji: '👟' },
+  { name: 'New Balance 550', brand: 'New Balance', category: 'Sneakers', emoji: '👟' },
+  { name: 'New Balance 2002R', brand: 'New Balance', category: 'Sneakers', emoji: '👟' },
+  { name: 'Adidas Samba OG', brand: 'Adidas', category: 'Sneakers', emoji: '👟' },
+  // Bags
+  { name: 'Louis Vuitton Neverfull MM', brand: 'Louis Vuitton', category: 'Bags', emoji: '👜' },
+  { name: 'Louis Vuitton Speedy 25', brand: 'Louis Vuitton', category: 'Bags', emoji: '👜' },
+  { name: 'Louis Vuitton Keepall 55', brand: 'Louis Vuitton', category: 'Bags', emoji: '👜' },
+  { name: 'Chanel Classic Flap', brand: 'Chanel', category: 'Bags', emoji: '👜' },
+  { name: 'Hermes Birkin 30', brand: 'Hermes', category: 'Bags', emoji: '👜' },
+  { name: 'Gucci GG Marmont', brand: 'Gucci', category: 'Bags', emoji: '👜' },
+  { name: 'Goyard St Louis PM', brand: 'Goyard', category: 'Bags', emoji: '👜' },
+  // Watches
+  { name: 'Rolex Submariner', brand: 'Rolex', category: 'Watches', emoji: '⌚' },
+  { name: 'Rolex Daytona', brand: 'Rolex', category: 'Watches', emoji: '⌚' },
+  { name: 'Rolex Datejust 41', brand: 'Rolex', category: 'Watches', emoji: '⌚' },
+  { name: 'Omega Speedmaster Professional', brand: 'Omega', category: 'Watches', emoji: '⌚' },
+  { name: 'Audemars Piguet Royal Oak', brand: 'Audemars Piguet', category: 'Watches', emoji: '⌚' },
+  { name: 'Casio G-Shock DW-5600', brand: 'Casio', category: 'Watches', emoji: '⌚' },
+  { name: 'Seiko Presage Cocktail Time', brand: 'Seiko', category: 'Watches', emoji: '⌚' },
+  // Electronics
+  { name: 'iPhone 16 Pro Max', brand: 'Apple', category: 'Electronics', emoji: '📱' },
+  { name: 'MacBook Pro M4', brand: 'Apple', category: 'Electronics', emoji: '💻' },
+  { name: 'AirPods Pro 2', brand: 'Apple', category: 'Electronics', emoji: '🎧' },
+  { name: 'iPad Pro M4', brand: 'Apple', category: 'Electronics', emoji: '📱' },
+  { name: 'PlayStation 5', brand: 'Sony', category: 'Gaming', emoji: '🎮' },
+  { name: 'Nintendo Switch OLED', brand: 'Nintendo', category: 'Gaming', emoji: '🎮' },
+  { name: 'Steam Deck OLED', brand: 'Valve', category: 'Gaming', emoji: '🎮' },
+  { name: 'Sony A7 IV', brand: 'Sony', category: 'Electronics', emoji: '📷' },
+  { name: 'Canon EOS R6 Mark II', brand: 'Canon', category: 'Electronics', emoji: '📷' },
+  { name: 'Nvidia RTX 4090', brand: 'Nvidia', category: 'Electronics', emoji: '🖥️' },
+  { name: 'Dyson V15 Detect', brand: 'Dyson', category: 'Electronics', emoji: '🏠' },
+  // Collectibles
+  { name: 'Pokemon Charizard VMAX', brand: 'Pokemon', category: 'Trading Cards', emoji: '🃏' },
+  { name: 'LEGO Star Wars Millennium Falcon', brand: 'LEGO', category: 'Collectibles', emoji: '🧸' },
+  { name: 'Funko Pop Marvel', brand: 'Funko', category: 'Collectibles', emoji: '🧸' },
+  { name: 'Bearbrick 1000%', brand: 'Bearbrick', category: 'Collectibles', emoji: '🧸' },
+  // Automotive
+  { name: 'Nissan Skyline GT-R R34', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Supra A80', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda RX-7 FD', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda NSX NA1', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Silvia S15', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi Lancer Evolution IX', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Subaru Impreza WRX STI', brand: 'Subaru', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda S2000 AP1', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche 911 GT3', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW M3 E46', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  // Instruments
+  { name: 'Gibson Les Paul Standard', brand: 'Gibson', category: 'Instruments', emoji: '🎸' },
+  { name: 'Fender Stratocaster', brand: 'Fender', category: 'Instruments', emoji: '🎸' },
+  // Furniture
+  { name: 'Herman Miller Aeron', brand: 'Herman Miller', category: 'Furniture', emoji: '🪑' },
+  // Streetwear
+  { name: 'Supreme Box Logo Hoodie', brand: 'Supreme', category: 'Clothing', emoji: '👕' },
+  { name: 'Bape Shark Hoodie', brand: 'Bape', category: 'Clothing', emoji: '👕' },
+]
+
 /**
  * Get search suggestions as the user types.
- * Returns brand names that match the query for a dropdown.
+ * Returns actual product names (not just brands) that match the query.
+ * Also includes a "custom add" option so users can watch anything.
  */
-export function getSuggestions(query: string, limit = 6): string[] {
+export function getSuggestions(query: string, limit = 6): { name: string; brand: string; category: string; emoji: string }[] {
   if (!query || query.trim().length < 1) return []
   const lower = query.toLowerCase().trim()
 
-  const matches = new Set<string>()
-  for (const [alias, brandName] of SORTED_ALIASES) {
-    if (alias.includes(lower) || lower.includes(alias)) {
-      matches.add(brandName)
-      if (matches.size >= limit) break
+  const results: { name: string; brand: string; category: string; emoji: string }[] = []
+  const seen = new Set<string>()
+
+  // First: match actual products
+  for (const product of POPULAR_PRODUCTS) {
+    if (results.length >= limit) break
+    const pLower = product.name.toLowerCase()
+    const bLower = product.brand.toLowerCase()
+    if (pLower.includes(lower) || bLower.includes(lower) || lower.includes(bLower)) {
+      const key = product.name.toLowerCase()
+      if (!seen.has(key)) {
+        seen.add(key)
+        results.push(product)
+      }
     }
   }
-  return Array.from(matches)
+
+  // Second: if fewer than limit, add brand-level matches as generic entries
+  if (results.length < limit) {
+    for (const [alias, brandName] of SORTED_ALIASES) {
+      if (results.length >= limit) break
+      if (alias.includes(lower) || lower.includes(alias)) {
+        // Only add the brand if we don't already have a product from it
+        const hasBrand = results.some(r => r.brand === brandName)
+        if (!hasBrand) {
+          const info = BRAND_DB[brandName]
+          if (info) {
+            const key = brandName.toLowerCase()
+            if (!seen.has(key)) {
+              seen.add(key)
+              results.push({ name: brandName, brand: brandName, category: info.category, emoji: info.emoji })
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return results
 }

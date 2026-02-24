@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Package, DollarSign, BarChart3, Bell, Search, TrendingUp, TrendingDown, Info, Eye, Plus, X } from 'lucide-react'
+import { Package, DollarSign, BarChart3, Bell, Search, TrendingUp, TrendingDown, Info, Eye, Plus, X, Trash2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, getGreeting } from '@/lib/utils'
@@ -167,8 +167,9 @@ function getSimilarSold(items: Item[]) {
 
 export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props) {
   const { profile, profileId } = useAuthStore()
-  const { items, watchlist, syncWatchlistItem, setWatchlist } = useItemsStore()
+  const { items, watchlist, syncWatchlistItem, setWatchlist, deleteWatchlistItem } = useItemsStore()
   const [watchSearchQuery, setWatchSearchQuery] = useState('')
+  const [swipedItemId, setSwipedItemId] = useState<string | null>(null)
   const userName = profile?.name || 'there'
   const userInitial = userName.charAt(0).toUpperCase()
 
@@ -395,26 +396,54 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
             className="w-full py-2.5 pl-9 pr-3 rounded-xl border border-white/10 bg-white/5 text-white text-[13px] focus:border-emerald-400/50 focus:outline-none placeholder-slate-500"
           />
           {/* Search dropdown */}
-          {watchSearchQuery.trim().length >= 2 && watchSearchSuggestions.length > 0 && (
+          {watchSearchQuery.trim().length >= 2 && (
             <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-white/12 overflow-hidden shadow-xl" style={{ background: '#111a11' }}>
+              {/* Custom add: whatever they typed */}
+              {(() => {
+                const typed = watchSearchQuery.trim()
+                const alreadyWatching = watchlist.some(w => w.name.toLowerCase() === typed.toLowerCase())
+                const brandMatch = matchProduct(typed)
+                if (!alreadyWatching && typed.length >= 2) {
+                  return (
+                    <button
+                      onClick={() => {
+                        handleAddToWatchlist(typed, brandMatch?.category || 'Other', brandMatch?.emoji || '👀', brandMatch?.brand || '')
+                        setWatchSearchQuery('')
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left hover:bg-white/6 transition-colors"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+                    >
+                      <Plus size={14} className="text-emerald-400 flex-shrink-0" />
+                      <span className="flex-1 text-[13px] text-white font-medium truncate">Add &ldquo;{typed}&rdquo;</span>
+                      <span className="text-[10px] text-dim">Custom</span>
+                    </button>
+                  )
+                }
+                return null
+              })()}
+              {/* Product suggestions */}
               {watchSearchSuggestions.map((suggestion, i) => {
-                const match = matchProduct(suggestion)
-                const alreadyWatching = watchlist.some(w => w.name.toLowerCase() === suggestion.toLowerCase())
+                const alreadyWatching = watchlist.some(w => w.name.toLowerCase() === suggestion.name.toLowerCase())
                 return (
                   <button
                     key={i}
                     disabled={alreadyWatching}
                     onClick={() => {
                       if (!alreadyWatching) {
-                        handleAddToWatchlist(suggestion, match?.category || '', match?.emoji || '👀', match?.brand || '')
+                        handleAddToWatchlist(suggestion.name, suggestion.category, suggestion.emoji, suggestion.brand)
                         setWatchSearchQuery('')
                       }
                     }}
                     className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left transition-colors ${alreadyWatching ? 'opacity-40' : 'hover:bg-white/6'}`}
                     style={{ borderBottom: i < watchSearchSuggestions.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
                   >
-                    <span className="text-sm">{match?.emoji || '📦'}</span>
-                    <span className="flex-1 text-[13px] text-white font-medium truncate">{suggestion}</span>
+                    <span className="text-sm">{suggestion.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[13px] text-white font-medium truncate block">{suggestion.name}</span>
+                      {suggestion.brand !== suggestion.name && (
+                        <span className="text-[10px] text-dim">{suggestion.brand}</span>
+                      )}
+                    </div>
                     {alreadyWatching ? (
                       <span className="text-[10px] text-emerald-400 font-semibold">Watching</span>
                     ) : (
@@ -444,27 +473,72 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
                 ? ((w.lastKnownPrice - w.priceHistory[w.priceHistory.length - 2].value) / w.priceHistory[w.priceHistory.length - 2].value) * 100
                 : ((w.name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 7) - 3) * 0.8
               const isUp = changePct >= 0
+              const isSwiped = swipedItemId === w.id
               return (
-                <button
+                <div
                   key={w.id}
-                  onClick={() => onResearch(w.name)}
-                  className="w-full grid grid-cols-[1fr_auto_auto] gap-2 items-center px-2 py-2.5 hover:bg-white/4 transition-colors rounded-lg text-left"
+                  className="relative overflow-hidden rounded-lg"
                   style={{ borderBottom: wi < watchlist.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm flex-shrink-0">{w.emoji}</span>
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-semibold text-white truncate">{w.name}</p>
-                      <p className="text-dim text-[10px]">{w.brand || w.category}</p>
-                    </div>
+                  {/* Delete button (behind the row) */}
+                  <div className="absolute right-0 top-0 bottom-0 flex items-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteWatchlistItem(w.id)
+                        setSwipedItemId(null)
+                      }}
+                      className="h-full px-4 bg-red-500/90 flex items-center gap-1.5 text-white text-xs font-bold hover:bg-red-500 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                      Delete
+                    </button>
                   </div>
-                  <p className="text-[13px] font-bold text-white text-right min-w-[65px]">
-                    {w.lastKnownPrice > 0 ? fmt(w.lastKnownPrice) : '--'}
-                  </p>
-                  <p className={`text-[12px] font-bold text-right min-w-[70px] ${isUp ? 'text-green-400' : 'text-red-400'}`}>
-                    {isUp ? '+' : ''}{changePct.toFixed(1)}%
-                  </p>
-                </button>
+                  {/* Row content (slides left on swipe) */}
+                  <div
+                    className={`relative grid grid-cols-[1fr_auto_auto] gap-2 items-center px-2 py-2.5 transition-transform duration-200 ease-out cursor-pointer ${isSwiped ? '-translate-x-[88px]' : 'translate-x-0'}`}
+                    style={{ background: 'var(--bg-primary)' }}
+                    onClick={() => {
+                      if (isSwiped) {
+                        setSwipedItemId(null)
+                      } else {
+                        onResearch(w.name)
+                      }
+                    }}
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0]
+                      const el = e.currentTarget
+                      el.dataset.startX = String(touch.clientX)
+                      el.dataset.startY = String(touch.clientY)
+                    }}
+                    onTouchMove={(e) => {
+                      const el = e.currentTarget
+                      const startX = Number(el.dataset.startX || 0)
+                      const startY = Number(el.dataset.startY || 0)
+                      const dx = e.touches[0].clientX - startX
+                      const dy = e.touches[0].clientY - startY
+                      // Only trigger swipe if horizontal movement > vertical
+                      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
+                        if (dx < -30) setSwipedItemId(w.id)
+                        if (dx > 30) setSwipedItemId(null)
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm flex-shrink-0">{w.emoji}</span>
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-semibold text-white truncate">{w.name}</p>
+                        <p className="text-dim text-[10px]">{w.brand || w.category}</p>
+                      </div>
+                    </div>
+                    <p className="text-[13px] font-bold text-white text-right min-w-[65px]">
+                      {w.lastKnownPrice > 0 ? fmt(w.lastKnownPrice) : '--'}
+                    </p>
+                    <p className={`text-[12px] font-bold text-right min-w-[70px] ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                      {isUp ? '+' : ''}{changePct.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
               )
             })}
           </div>
