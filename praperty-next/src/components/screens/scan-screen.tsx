@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { ArrowLeft, Camera, Upload, Sparkles, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Camera, Upload, Sparkles, RefreshCw, ScanBarcode, Car } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import type { Screen } from '@/types'
 
@@ -52,8 +52,15 @@ function inferCategory(category: string): string {
   return 'Other'
 }
 
+// ─── VIN Detection ─────────────────
+// VINs are exactly 17 chars, alphanumeric, no I/O/Q
+function isVIN(text: string): boolean {
+  if (text.length !== 17) return false
+  return /^[A-HJ-NPR-Z0-9]{17}$/i.test(text)
+}
+
 export default function ScanScreen({ onNavigate, onScanData }: Props) {
-  const [scanMode, setScanMode] = useState<'photo' | 'barcode'>('photo')
+  const [scanMode, setScanMode] = useState<'photo' | 'scan'>('photo')
   const [scanData, setScanData] = useState<any>(null)
   const [barcodeScanning, setBarcodeScanning] = useState(false)
   const [scanStatus, setScanStatus] = useState('')
@@ -62,6 +69,7 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
   const [aiError, setAiError] = useState<string | null>(null)
   const [identifying, setIdentifying] = useState(false)
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
+  const [manualVin, setManualVin] = useState('')
   const hasScannedRef = useRef(false)
 
   // Reset scanned flag when switching modes or starting new scan
@@ -120,7 +128,63 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
     setIdentifying(false)
   }, [onScanData])
 
-  // ─── Barcode Lookup ─────────────────
+  // ─── VIN Lookup (NHTSA free API) ─────────────────
+  const lookupVIN = useCallback(async (vin: string) => {
+    setScanStatus('Decoding VIN...')
+    setLookingUp(true)
+    try {
+      const resp = await fetch(
+        `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${vin}?format=json`
+      )
+      const data = await resp.json()
+      const r = data.Results?.[0]
+
+      if (r && r.Make) {
+        const year = r.ModelYear || ''
+        const make = r.Make || ''
+        const model = r.Model || ''
+        const trim = r.Trim || ''
+        const bodyClass = r.BodyClass || ''
+        const engine = r.DisplacementL ? `${r.DisplacementL}L` : ''
+        const cylinders = r.EngineCylinders ? `${r.EngineCylinders}cyl` : ''
+        const driveType = r.DriveType || ''
+        const fuelType = r.FuelTypePrimary || ''
+        const doors = r.Doors || ''
+
+        const fullName = [year, make, model, trim].filter(Boolean).join(' ')
+        const specs = [engine, cylinders, driveType, fuelType].filter(Boolean).join(', ')
+
+        const sd = {
+          name: fullName,
+          brand: make,
+          model: [model, trim].filter(Boolean).join(' '),
+          category: 'Automotive',
+          condition: 'Good',
+          emoji: '🚗',
+          cost: 0,
+          value: 0, // NHTSA doesn't have pricing; user can research
+          photos: [],
+          barcode: vin,
+          source: 'vin',
+          vin: vin,
+          specs: specs,
+          bodyClass: bodyClass,
+          doors: doors,
+        }
+        setScanData(sd)
+        setScanStatus(`Vehicle found: ${fullName}`)
+        if (onScanData) onScanData(sd)
+      } else {
+        setScanStatus(`VIN ${vin} not recognized. Double-check and try again.`)
+      }
+    } catch (e) {
+      console.error('VIN lookup error:', e)
+      setScanStatus('VIN lookup failed. Check your connection and try again.')
+    }
+    setLookingUp(false)
+  }, [onScanData])
+
+  // ─── Barcode Lookup (UPC Item DB) ─────────────────
   const lookupBarcode = useCallback(async (code: string) => {
     setScanStatus('Looking up product...')
     setLookingUp(true)
@@ -154,16 +218,33 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
     setLookingUp(false)
   }, [onScanData])
 
-  // Handle successful barcode scan (html5-qrcode gives us a plain string)
+  // ─── Smart scan handler: auto-detect VIN vs barcode ─────────────────
   const onScanSuccess = useCallback((text: string) => {
     if (hasScannedRef.current) return
     if (!text) return
 
     hasScannedRef.current = true
     setBarcodeScanning(false)
-    setScanStatus(`Barcode found: ${text}`)
-    lookupBarcode(text)
-  }, [lookupBarcode])
+
+    if (isVIN(text)) {
+      setScanStatus(`VIN detected: ${text}`)
+      lookupVIN(text)
+    } else {
+      setScanStatus(`Barcode found: ${text}`)
+      lookupBarcode(text)
+    }
+  }, [lookupBarcode, lookupVIN])
+
+  // ─── Manual VIN submit ─────────────────
+  const handleManualVin = () => {
+    const cleaned = manualVin.trim().toUpperCase()
+    if (!isVIN(cleaned)) {
+      setScanStatus('Invalid VIN. Must be exactly 17 characters (no I, O, or Q).')
+      return
+    }
+    lookupVIN(cleaned)
+    setManualVin('')
+  }
 
   // ─── Compress image before sending to API ─────────────────
   const compressImage = (file: File, maxWidth = 1200): Promise<string> => {
@@ -182,7 +263,6 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
           canvas.height = height
           const ctx = canvas.getContext('2d')!
           ctx.drawImage(img, 0, 0, width, height)
-          // Compress to JPEG at 85% quality (good detail, ~300-500KB)
           resolve(canvas.toDataURL('image/jpeg', 0.85))
         }
         img.src = e.target?.result as string
@@ -195,19 +275,14 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    // Compress before sending (phone photos can be 5-10MB raw)
     const dataUrl = await compressImage(file)
     setCapturedPhoto(dataUrl)
-    // Immediately send to AI for identification
     identifyPhoto(dataUrl)
     e.target.value = ''
   }
 
   const handleRetry = () => {
-    if (capturedPhoto) {
-      identifyPhoto(capturedPhoto)
-    }
+    if (capturedPhoto) identifyPhoto(capturedPhoto)
   }
 
   const handleReset = () => {
@@ -216,13 +291,14 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
     setAiResult(null)
     setAiError(null)
     setScanStatus('')
+    setManualVin('')
     hasScannedRef.current = false
   }
 
   const startScanning = () => {
     hasScannedRef.current = false
     setBarcodeScanning(true)
-    setScanStatus('Point camera at barcode. Hold steady, about 6 inches away.')
+    setScanStatus('Point camera at a barcode or VIN plate.')
     setScanData(null)
   }
 
@@ -235,7 +311,6 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
     onNavigate('add-item')
   }
 
-  // Confidence to label
   const confidenceLabel = (c: number) => {
     if (c >= 0.85) return { text: 'Very confident', color: 'text-green-400' }
     if (c >= 0.6) return { text: 'Pretty sure', color: 'text-amber-brand' }
@@ -258,7 +333,7 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
       <div className="px-6 py-3 flex gap-2 flex-shrink-0">
         {[
           { id: 'photo' as const, label: 'AI Photo', icon: Sparkles },
-          { id: 'barcode' as const, label: 'Barcode', icon: Camera },
+          { id: 'scan' as const, label: 'Scan Code', icon: ScanBarcode },
         ].map(m => {
           const Icon = m.icon
           return (
@@ -283,9 +358,9 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
       </div>
 
       {/* Scanner Area */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 overflow-hidden">
-        {scanMode === 'barcode' ? (
-          /* ─── BARCODE MODE ─── */
+      <div className="flex-1 flex flex-col items-center justify-center px-6 overflow-y-auto">
+        {scanMode === 'scan' ? (
+          /* ─── SCAN CODE MODE (Barcode + VIN) ─── */
           <div className="w-full max-w-80">
             {barcodeScanning && (
               <div className="mb-4">
@@ -303,31 +378,64 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
 
             {!barcodeScanning && !scanData && !lookingUp && (
               <>
-                <div className="w-full rounded-2xl overflow-hidden bg-black/40 mb-4 flex items-center justify-center border border-white/5" style={{ minHeight: 260 }}>
-                  <div className="text-center">
-                    <p className="text-4xl mb-2">📊</p>
-                    <p className="text-dim text-sm">Scan UPC, EAN, QR codes</p>
+                <div className="w-full rounded-2xl overflow-hidden bg-black/40 mb-4 flex items-center justify-center border border-white/5" style={{ minHeight: 200 }}>
+                  <div className="text-center px-6">
+                    <p className="text-3xl mb-2">📊</p>
+                    <p className="text-white/80 text-sm font-semibold mb-1">Scan any code</p>
+                    <p className="text-dim text-xs">UPC, EAN, QR codes, or VIN plates</p>
                   </div>
                 </div>
                 <button
                   onClick={startScanning}
-                  className="w-full gradient-amber rounded-xl py-4 font-bold text-black text-[15px]"
+                  className="w-full gradient-amber rounded-xl py-4 font-bold text-black text-[15px] mb-3"
                 >
                   Start Scanning
                 </button>
+
+                {/* Manual VIN entry */}
+                <div className="glass rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Car size={14} className="text-amber-brand" />
+                    <span className="text-xs font-semibold text-white/70">Or type a VIN</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={manualVin}
+                      onChange={(e) => setManualVin(e.target.value.toUpperCase().slice(0, 17))}
+                      placeholder="e.g. JN1GANR34U0100001"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-xs font-mono placeholder:text-white/25 focus:outline-none focus:border-amber-brand/50"
+                      maxLength={17}
+                    />
+                    <button
+                      onClick={handleManualVin}
+                      disabled={manualVin.length !== 17}
+                      className={`px-4 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                        manualVin.length === 17
+                          ? 'gradient-amber text-black'
+                          : 'bg-white/5 text-white/30'
+                      }`}
+                    >
+                      Decode
+                    </button>
+                  </div>
+                  <p className="text-white/30 text-[10px] mt-1.5">{manualVin.length}/17 characters</p>
+                </div>
               </>
             )}
 
             {lookingUp && (
               <div className="text-center py-8">
                 <div className="w-10 h-10 border-3 border-amber-brand/30 border-t-amber-brand rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-amber-brand text-sm font-semibold">Looking up product...</p>
+                <p className="text-amber-brand text-sm font-semibold">
+                  {scanStatus.includes('VIN') ? 'Decoding VIN...' : 'Looking up product...'}
+                </p>
               </div>
             )}
 
             {barcodeScanning && !lookingUp && (
               <div className="text-center">
-                <p className="text-dim text-sm mb-3">Searching for barcode...</p>
+                <p className="text-dim text-sm mb-3">Scanning for barcodes and VINs...</p>
                 <button
                   onClick={stopScanning}
                   className="glass rounded-lg px-5 py-2 text-dim text-xs font-semibold hover:text-white transition-colors"
@@ -337,6 +445,37 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
               </div>
             )}
 
+            {/* VIN Result Card */}
+            {scanData && scanData.source === 'vin' && (
+              <div className="glass rounded-2xl p-4 mt-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">🚗</span>
+                  <div>
+                    <p className="text-white font-bold text-sm">{scanData.name}</p>
+                    {scanData.bodyClass && (
+                      <p className="text-dim text-xs">{scanData.bodyClass}{scanData.doors ? ` (${scanData.doors}-door)` : ''}</p>
+                    )}
+                  </div>
+                </div>
+                {scanData.specs && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {scanData.specs.split(', ').map((spec: string, i: number) => (
+                      <span key={i} className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-white/8 text-white/70">
+                        {spec}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-amber-brand/15 text-amber-brand">
+                    Automotive
+                  </span>
+                  <span className="text-[10px] text-dim font-mono">{scanData.vin}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Barcode Result Card */}
             {scanData && scanData.source === 'barcode' && (
               <div className="glass rounded-2xl p-4 mt-2">
                 {scanData.photos?.[0] && (
@@ -402,12 +541,10 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
                     alt="Captured"
                     className="w-full h-full rounded-2xl object-cover border border-white/10"
                   />
-                  {/* Scanning overlay */}
                   <div className="absolute inset-0 rounded-2xl bg-black/40 flex flex-col items-center justify-center">
                     <div className="w-8 h-8 border-2 border-amber-brand/30 border-t-amber-brand rounded-full animate-spin mb-2" />
                     <p className="text-amber-brand text-xs font-semibold">Identifying...</p>
                   </div>
-                  {/* Scan line animation */}
                   <div className="absolute inset-x-4 top-0 h-full overflow-hidden rounded-2xl">
                     <div className="w-full h-0.5 bg-amber-brand/50 animate-pulse" style={{ animation: 'scanLine 2s ease-in-out infinite' }} />
                   </div>
@@ -438,7 +575,6 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
                   </button>
                   <button
                     onClick={() => {
-                      // Still let them add manually with the photo
                       const sd = {
                         name: '',
                         brand: '',
@@ -530,9 +666,9 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
           <div className="glass rounded-xl p-3.5 text-center">
             <p
               className={`text-sm ${
-                scanStatus.includes('captured') || scanStatus.includes('found')
+                scanStatus.includes('captured') || scanStatus.includes('found') || scanStatus.includes('Vehicle found')
                   ? 'text-green-400'
-                  : scanStatus.includes('blocked') || scanStatus.includes('failed') || scanStatus.includes('error')
+                  : scanStatus.includes('blocked') || scanStatus.includes('failed') || scanStatus.includes('error') || scanStatus.includes('Invalid')
                   ? 'text-red-400'
                   : 'text-amber-brand'
               }`}
