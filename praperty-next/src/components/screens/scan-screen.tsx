@@ -184,33 +184,37 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
     setLookingUp(false)
   }, [onScanData])
 
-  // ─── Barcode Lookup (UPC Item DB) ─────────────────
+  // ─── Barcode Lookup (server-side proxy, multi-source) ─────────────────
   const lookupBarcode = useCallback(async (code: string) => {
     setScanStatus('Looking up product...')
     setLookingUp(true)
     try {
-      const resp = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`)
+      const resp = await fetch(`/api/barcode-lookup?code=${encodeURIComponent(code)}`)
+      if (!resp.ok) throw new Error(`Lookup error: ${resp.status}`)
       const data = await resp.json()
 
-      if (data.items && data.items.length > 0) {
-        const product = data.items[0]
-        const sd = {
-          name: product.title || '',
-          brand: product.brand || '',
-          model: product.model || '',
-          category: inferCategory(product.category || ''),
-          cost: product.lowest_recorded_price ? parseFloat(product.lowest_recorded_price) : 0,
-          value: product.highest_recorded_price ? parseFloat(product.highest_recorded_price) : 0,
-          photos: (product.images || []).slice(0, 1),
-          barcode: code,
-          source: 'barcode',
-        }
-        setScanData(sd)
-        setScanStatus('Product found! Review details below.')
-        if (onScanData) onScanData(sd)
-      } else {
-        setScanStatus(`Barcode ${code} not found in database. Try photo mode or add manually.`)
+      if (data.found === false) {
+        // No match in any database, show code and suggest alternatives
+        setScanStatus(`Barcode ${code} not found. Try photo mode for AI identification.`)
+        setLookingUp(false)
+        return
       }
+
+      // Got a match from one of the sources
+      const sd = {
+        name: data.name || '',
+        brand: data.brand || '',
+        model: data.model || '',
+        category: data.category || 'Other',
+        cost: data.cost || 0,
+        value: data.value || 0,
+        photos: data.photos || [],
+        barcode: code,
+        source: 'barcode',
+      }
+      setScanData(sd)
+      setScanStatus(`Product found via ${data.source === 'upc-itemdb' ? 'UPC database' : 'Open Products'}! Review below.`)
+      if (onScanData) onScanData(sd)
     } catch (e) {
       console.error('Barcode lookup error:', e)
       setScanStatus('Lookup failed. Check your connection and try again.')
