@@ -6,7 +6,7 @@
  * New data sources plug in by adding to the signals array.
  */
 
-import type { Item, Comp } from '@/types'
+import type { Item, Comp, MarketSignalData } from '@/types'
 
 // --- Category depreciation curves ---
 // How fast items typically lose value (months until 50% depreciation)
@@ -106,37 +106,52 @@ function calcPriceVelocity(item: Item): ConvictionSignal {
 }
 
 // --- Signal: Market Delta ---
-function calcMarketDelta(item: Item): ConvictionSignal {
+// Now accepts optional live eBay prices for real market data
+function calcMarketDelta(item: Item, marketSignal?: MarketSignalData): ConvictionSignal {
   const comps = item.comps || []
+  const baseValue = item.value || item.cost
 
-  if (comps.length === 0 || item.value <= 0) {
+  if (baseValue <= 0) {
     return {
       key: 'marketDelta', label: 'Market Price', emoji: '🏪',
-      score: 50, weight: 0.30, reason: 'No comps yet',
+      score: 50, weight: 0.30, reason: 'Set a value first',
       available: false,
     }
   }
 
-  // Average comp price
+  // Merge all available price data: live eBay prices + user comps
+  const allPrices: number[] = []
+
+  // Live eBay prices (highest priority, real market data)
+  if (marketSignal?.ebayPrices && marketSignal.ebayPrices.length > 0) {
+    allPrices.push(...marketSignal.ebayPrices)
+  }
+
+  // User-added comps
   const compPrices = comps.filter(c => c.price > 0).map(c => c.price)
-  if (compPrices.length === 0) {
+  allPrices.push(...compPrices)
+
+  if (allPrices.length === 0) {
     return {
       key: 'marketDelta', label: 'Market Price', emoji: '🏪',
-      score: 50, weight: 0.30, reason: 'No priced comps',
+      score: 50, weight: 0.30, reason: 'No market data yet',
       available: false,
     }
   }
 
-  const avgComp = compPrices.reduce((s, p) => s + p, 0) / compPrices.length
-  const delta = ((avgComp - item.value) / item.value) * 100
+  const avgMarket = allPrices.reduce((s, p) => s + p, 0) / allPrices.length
+  const delta = ((avgMarket - baseValue) / baseValue) * 100
 
   // If market avg is ABOVE your value, that's bullish (hold/buy more)
   // If market avg is BELOW your value, that's bearish (sell before it drops)
   let score = Math.max(0, Math.min(100, 50 + (delta * 2)))
 
   const direction = delta >= 0 ? 'above' : 'below'
-  const reason = `Market avg $${Math.round(avgComp).toLocaleString()} (${
-    delta >= 0 ? '+' : ''}${delta.toFixed(0)}% ${direction} your value)`
+  const source = marketSignal?.ebayPrices?.length
+    ? `${allPrices.length} listings`
+    : `${compPrices.length} comps`
+  const reason = `Avg $${Math.round(avgMarket).toLocaleString()} (${
+    delta >= 0 ? '+' : ''}${delta.toFixed(0)}% ${direction}) from ${source}`
 
   return {
     key: 'marketDelta', label: 'Market Price', emoji: '🏪',
@@ -228,23 +243,61 @@ function calcHoldDuration(item: Item): ConvictionSignal {
   }
 }
 
-// --- Signal: Social Trend (placeholder for future API) ---
-function calcSocialTrend(_item: Item): ConvictionSignal {
+// --- Signal: Social Trend (powered by Google Trends) ---
+function calcSocialTrend(_item: Item, marketSignal?: MarketSignalData): ConvictionSignal {
+  if (!marketSignal?.trendScore && marketSignal?.trendScore !== 0) {
+    return {
+      key: 'socialTrend', label: 'Trending', emoji: '🔥',
+      score: 50, weight: 0.10, reason: 'Loading trend data...',
+      available: false,
+    }
+  }
+
+  const trendScore = marketSignal.trendScore
+  const direction = marketSignal.trendDirection || 'stable'
+
+  // Map Google Trends interest (0-100) to conviction score
+  // High interest = more demand = bullish
+  // Low interest = fading = bearish
+  let score: number
+  if (trendScore >= 75) {
+    score = 80 + Math.min(20, (trendScore - 75))  // 80-100, very hot
+  } else if (trendScore >= 50) {
+    score = 55 + (trendScore - 50)                  // 55-80, solid interest
+  } else if (trendScore >= 25) {
+    score = 35 + (trendScore - 25) * 0.8            // 35-55, moderate
+  } else {
+    score = Math.max(10, 15 + trendScore * 0.8)     // 10-35, low interest
+  }
+
+  // Direction modifier
+  if (direction === 'rising') score = Math.min(100, score + 8)
+  if (direction === 'declining') score = Math.max(0, score - 8)
+
+  const emoji = trendScore >= 60 ? '🔥' : trendScore >= 30 ? '📊' : '📉'
+  const dirLabel = direction === 'rising' ? '↑' : direction === 'declining' ? '↓' : '→'
+  const reason = `${trendScore}/100 interest ${dirLabel} ${
+    trendScore >= 70 ? '(hot right now)' :
+    trendScore >= 40 ? '(steady demand)' :
+    '(low search volume)'
+  }`
+
   return {
-    key: 'socialTrend', label: 'Social', emoji: '📱',
-    score: 50, weight: 0.10, reason: 'Coming soon',
-    available: false,
+    key: 'socialTrend', label: 'Trending', emoji,
+    score: Math.round(score), weight: 0.10, reason,
+    available: true,
   }
 }
 
 // --- Main: Calculate Conviction ---
-export function calculateConviction(item: Item): ConvictionResult {
+// marketSignal is optional: when provided, lights up eBay + Trends signals with real data
+export function calculateConviction(item: Item, marketSignal?: MarketSignalData): ConvictionResult {
   const signals = [
     calcPriceVelocity(item),
-    calcMarketDelta(item),
+    calcMarketDelta(item, marketSignal),
     calcROIPosition(item),
     calcHoldDuration(item),
-    calcSocialTrend(item),
+    calcSocialTrend(item, marketSignal),
   ]
 
   // Calculate weighted score (only from available signals)

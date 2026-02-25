@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
-import type { Item, WatchlistItem, EbayListing, Comp, ResearchData } from '@/types'
+import type { Item, WatchlistItem, EbayListing, Comp, ResearchData, MarketSignalData } from '@/types'
 import type { Database } from '@/types/database'
 
 // Helpers to parse JSON fields from DB
@@ -64,6 +64,10 @@ interface ItemsState {
   // Community comps state
   communityComps: Comp[]
 
+  // Market signal state (live eBay + Trends for conviction engine)
+  marketSignal: MarketSignalData | null
+  marketSignalLoading: boolean
+
   // Actions
   loadAll: (profileId: string) => Promise<void>
   syncItem: (item: Item, profileId: string) => Promise<void>
@@ -76,6 +80,10 @@ interface ItemsState {
   addItem: (item: Item) => void
   updateItem: (id: string, updates: Partial<Item>) => void
   removeItem: (id: string) => void
+
+  // Market signal (conviction engine data)
+  fetchMarketSignal: (item: Item) => Promise<void>
+  clearMarketSignal: () => void
 
   // eBay + community comps
   fetchEbayComps: (item: Item) => Promise<void>
@@ -96,6 +104,8 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
   ebayLoading: false,
   ebayError: null,
   communityComps: [],
+  marketSignal: null,
+  marketSignalLoading: false,
 
   loadAll: async (profileId) => {
     console.log('[items] loadAll: starting with profileId:', profileId)
@@ -226,6 +236,35 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
   updateItem: (id, updates) =>
     set({ items: get().items.map(i => (i.id === id ? { ...i, ...updates } : i)) }),
   removeItem: (id) => set({ items: get().items.filter(i => i.id !== id) }),
+
+  // Market signal for conviction engine (eBay prices + Google Trends)
+  fetchMarketSignal: async (item) => {
+    if (!item) return
+    set({ marketSignalLoading: true })
+    try {
+      const seen = new Set<string>()
+      const query = [item.name, item.brand, item.model].filter(Boolean).join(' ')
+        .split(/\s+/).filter(w => {
+          const l = w.toLowerCase()
+          if (seen.has(l)) return false
+          seen.add(l)
+          return true
+        }).join(' ')
+
+      const res = await fetch(
+        `/api/market-signal?q=${encodeURIComponent(query)}&category=${encodeURIComponent(item.category || '')}`
+      )
+      if (!res.ok) throw new Error(`Market signal error: ${res.status}`)
+      const data: MarketSignalData = await res.json()
+      set({ marketSignal: data })
+    } catch (e) {
+      console.error('[market-signal] fetch error:', e)
+      set({ marketSignal: null })
+    }
+    set({ marketSignalLoading: false })
+  },
+
+  clearMarketSignal: () => set({ marketSignal: null, marketSignalLoading: false }),
 
   // eBay Live Prices via Supabase edge function
   fetchEbayComps: async (item) => {

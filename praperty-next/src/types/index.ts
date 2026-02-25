@@ -117,4 +117,17 @@ export type Screen =
   | 'settings'
   | 'watchlist'
 
+// Live market signal data from APIs (fed into conviction engine)
+export interface MarketSignalData {
+  // eBay sold/active listing prices for this item
+  ebayPrices?: number[]
+  ebayAvgSold?: number
+  ebaySoldCount?: number
+  // Google Trends interest score (0-100)
+  trendScore?: number
+  trendDirection?: 'rising' | 'stable' | 'declining'
+  // Timestamp of when this data was fetched
+  fetchedAt?: string
+}
+
 export type AuthMode = 'signin' | 'signup' | 'forgot'

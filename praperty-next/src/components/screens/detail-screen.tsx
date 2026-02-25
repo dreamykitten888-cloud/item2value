@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { ArrowLeft, Edit3, Trash2, Plus, ExternalLink, X, ChevronDown, ChevronUp, TrendingUp, TrendingDown } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
 import { useAuthStore } from '@/stores/auth-store'
@@ -18,7 +18,7 @@ interface Props {
 }
 
 export default function DetailScreen({ itemId, onBack, onNavigate, onResearch }: Props) {
-  const { items, deleteItem, ebayComps, ebayLoading, ebayError, communityComps, fetchEbayComps, fetchCommunityComps, addCompToItem, deleteCompFromItem, clearEbayComps, clearCommunityComps, syncItem } = useItemsStore()
+  const { items, deleteItem, ebayComps, ebayLoading, ebayError, communityComps, fetchEbayComps, fetchCommunityComps, addCompToItem, deleteCompFromItem, clearEbayComps, clearCommunityComps, syncItem, marketSignal, marketSignalLoading, fetchMarketSignal, clearMarketSignal } = useItemsStore()
   const { profileId } = useAuthStore()
 
   const item = items.find(i => i.id === itemId)
@@ -30,8 +30,21 @@ export default function DetailScreen({ itemId, onBack, onNavigate, onResearch }:
   const [addingComp, setAddingComp] = useState(false)
   const [compForm, setCompForm] = useState({ title: '', url: '', price: '', source: 'eBay', condition: 'Good' })
 
-  // Conviction score
-  const conviction = useMemo(() => item ? calculateConviction(item) : null, [item])
+  // Auto-fetch market signal when item loads (eBay prices + Google Trends)
+  const lastFetchedId = useRef<string | null>(null)
+  useEffect(() => {
+    if (item && item.id !== lastFetchedId.current) {
+      lastFetchedId.current = item.id
+      clearMarketSignal()
+      fetchMarketSignal(item)
+    }
+  }, [item?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Conviction score (now powered by live market data when available)
+  const conviction = useMemo(
+    () => item ? calculateConviction(item, marketSignal ?? undefined) : null,
+    [item, marketSignal]
+  )
 
   if (!item) {
     return (
