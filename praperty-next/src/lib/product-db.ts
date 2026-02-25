@@ -116,11 +116,168 @@ const BRAND_DB: Record<string, { category: string; emoji: string; aliases?: stri
   'Herman Miller': { category: 'Furniture', emoji: '🪑', aliases: ['herman miller', 'aeron', 'eames'] },
   'Steelcase': { category: 'Furniture', emoji: '🪑', aliases: ['steelcase'] },
 
-  // Automotive
-  'Tesla': { category: 'Automotive', emoji: '🚗', aliases: ['tesla'] },
-  'BMW': { category: 'Automotive', emoji: '🚗', aliases: ['bmw'] },
-  'Mercedes': { category: 'Automotive', emoji: '🚗', aliases: ['mercedes', 'mercedes-benz'] },
-  'Porsche': { category: 'Automotive', emoji: '🚗', aliases: ['porsche'] },
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE: Manufacturers
+  // ═══════════════════════════════════════════════════════
+
+  // JDM
+  'Nissan': { category: 'Automotive', emoji: '🚗', aliases: ['nissan', 'datsun', 'nismo', 'skyline', 'silvia', '240sx', '350z', '370z', 'z', 'fairlady', 'cefiro', 'laurel', 'stagea'] },
+  'Toyota': { category: 'Automotive', emoji: '🚗', aliases: ['toyota', 'trd', 'supra', 'ae86', 'corolla', 'celica', 'mr2', 'chaser', 'mark ii', 'soarer', 'aristo', 'altezza', 'crown'] },
+  'Honda': { category: 'Automotive', emoji: '🚗', aliases: ['honda', 'acura', 'mugen', 'nsx', 's2000', 'civic', 'integra', 'prelude', 'crx', 'del sol', 'beat', 'type r'] },
+  'Mazda': { category: 'Automotive', emoji: '🚗', aliases: ['mazda', 'mazdaspeed', 'rx-7', 'rx7', 'rx-8', 'rx8', 'miata', 'mx-5', 'cosmo', 'roadster', 'rotary'] },
+  'Subaru': { category: 'Automotive', emoji: '🚗', aliases: ['subaru', 'sti', 'wrx', 'impreza', 'brz', 'legacy', 'forester'] },
+  'Mitsubishi': { category: 'Automotive', emoji: '🚗', aliases: ['mitsubishi', 'evo', 'lancer', 'evolution', 'eclipse', 'gto', '3000gt', 'galant vr4'] },
+  'Suzuki': { category: 'Automotive', emoji: '🚗', aliases: ['suzuki', 'swift', 'cappuccino', 'jimny'] },
+  'Daihatsu': { category: 'Automotive', emoji: '🚗', aliases: ['daihatsu', 'copen'] },
+  'Lexus': { category: 'Automotive', emoji: '🚗', aliases: ['lexus', 'is300', 'gs300', 'sc300', 'sc400', 'lfa'] },
+  'Infiniti': { category: 'Automotive', emoji: '🚗', aliases: ['infiniti', 'g35', 'g37', 'q50', 'q60'] },
+
+  // Euro
+  'BMW': { category: 'Automotive', emoji: '🚗', aliases: ['bmw', 'e30', 'e36', 'e46', 'e90', 'e92', 'f80', 'g80', 'm3', 'm4', 'm5', 'm2'] },
+  'Mercedes': { category: 'Automotive', emoji: '🚗', aliases: ['mercedes', 'mercedes-benz', 'amg', 'c63', 'e63', 's63', 'g63', 'g-wagon'] },
+  'Porsche': { category: 'Automotive', emoji: '🚗', aliases: ['porsche', '911', '964', '993', '996', '997', 'gt3', 'gt2', 'turbo s', 'cayman', 'boxster', '944', '928'] },
+  'Volkswagen': { category: 'Automotive', emoji: '🚗', aliases: ['volkswagen', 'vw', 'gti', 'golf', 'r32', 'mk4', 'mk5', 'mk6', 'mk7', 'mk8', 'corrado'] },
+  'Audi': { category: 'Automotive', emoji: '🚗', aliases: ['audi', 'rs', 'rs3', 'rs4', 'rs6', 'rs7', 'ttrs', 's4', 's5', 'b5', 'b8', 'b9'] },
+  'Volvo': { category: 'Automotive', emoji: '🚗', aliases: ['volvo', '240', '740', '850', 's60', 'v70', 'c30'] },
+  'Alfa Romeo': { category: 'Automotive', emoji: '🚗', aliases: ['alfa romeo', 'alfa', 'giulia', '4c'] },
+  'Fiat': { category: 'Automotive', emoji: '🚗', aliases: ['fiat', 'abarth', '500'] },
+  'Lancia': { category: 'Automotive', emoji: '🚗', aliases: ['lancia', 'delta', 'integrale', 'stratos'] },
+
+  // Domestic
+  'Ford': { category: 'Automotive', emoji: '🚗', aliases: ['ford', 'mustang', 'gt', 'shelby', 'cobra', 'focus st', 'focus rs', 'raptor', 'bronco', 'f150', 'lightning'] },
+  'Chevrolet': { category: 'Automotive', emoji: '🚗', aliases: ['chevrolet', 'chevy', 'corvette', 'camaro', 'c5', 'c6', 'c7', 'c8', 'z06', 'zr1', 'ss', 'ls'] },
+  'Dodge': { category: 'Automotive', emoji: '🚗', aliases: ['dodge', 'challenger', 'charger', 'viper', 'srt', 'hellcat', 'demon'] },
+  'Tesla': { category: 'Automotive', emoji: '🚗', aliases: ['tesla', 'model s', 'model 3', 'model y', 'model x', 'cybertruck'] },
+  'Pontiac': { category: 'Automotive', emoji: '🚗', aliases: ['pontiac', 'gto', 'firebird', 'trans am'] },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE: Aftermarket Parts Brands
+  // ═══════════════════════════════════════════════════════
+
+  // Turbo & Engine
+  'Garrett': { category: 'Automotive', emoji: '🔧', aliases: ['garrett', 'gtx', 'gt35', 'gt28', 'g25', 'g30', 'g35'] },
+  'BorgWarner': { category: 'Automotive', emoji: '🔧', aliases: ['borgwarner', 'efr'] },
+  'Precision Turbo': { category: 'Automotive', emoji: '🔧', aliases: ['precision turbo', 'pte', 'precision'] },
+  'HKS': { category: 'Automotive', emoji: '🔧', aliases: ['hks'] },
+  'Tomei': { category: 'Automotive', emoji: '🔧', aliases: ['tomei', 'tomei powered'] },
+  'GReddy': { category: 'Automotive', emoji: '🔧', aliases: ['greddy', 'trust'] },
+  'Mishimoto': { category: 'Automotive', emoji: '🔧', aliases: ['mishimoto'] },
+  'Skunk2': { category: 'Automotive', emoji: '🔧', aliases: ['skunk2'] },
+  'Brian Crower': { category: 'Automotive', emoji: '🔧', aliases: ['brian crower', 'bc'] },
+  'AEM': { category: 'Automotive', emoji: '🔧', aliases: ['aem'] },
+  'Haltech': { category: 'Automotive', emoji: '🔧', aliases: ['haltech'] },
+  'Link ECU': { category: 'Automotive', emoji: '🔧', aliases: ['link ecu', 'link'] },
+  'APC Turbo': { category: 'Automotive', emoji: '🔧', aliases: ['apexi', 'a\'pexi'] },
+  'Turbonetics': { category: 'Automotive', emoji: '🔧', aliases: ['turbonetics'] },
+  'Full-Race': { category: 'Automotive', emoji: '🔧', aliases: ['full-race', 'full race'] },
+  'Vibrant Performance': { category: 'Automotive', emoji: '🔧', aliases: ['vibrant', 'vibrant performance'] },
+  'Manley': { category: 'Automotive', emoji: '🔧', aliases: ['manley'] },
+  'CP Pistons': { category: 'Automotive', emoji: '🔧', aliases: ['cp pistons', 'cp carrillo'] },
+  'Eagle Rods': { category: 'Automotive', emoji: '🔧', aliases: ['eagle rods', 'eagle'] },
+  'ACL Bearings': { category: 'Automotive', emoji: '🔧', aliases: ['acl', 'acl bearings'] },
+  'Cometic': { category: 'Automotive', emoji: '🔧', aliases: ['cometic'] },
+
+  // Exhaust
+  'Invidia': { category: 'Automotive', emoji: '🔧', aliases: ['invidia'] },
+  'Fujitsubo': { category: 'Automotive', emoji: '🔧', aliases: ['fujitsubo'] },
+  'Borla': { category: 'Automotive', emoji: '🔧', aliases: ['borla'] },
+  'MagnaFlow': { category: 'Automotive', emoji: '🔧', aliases: ['magnaflow'] },
+  'Kakimoto': { category: 'Automotive', emoji: '🔧', aliases: ['kakimoto'] },
+  'Amuse': { category: 'Automotive', emoji: '🔧', aliases: ['amuse'] },
+  'Tomei Expreme': { category: 'Automotive', emoji: '🔧', aliases: ['tomei expreme'] },
+
+  // Suspension
+  'Tein': { category: 'Automotive', emoji: '🔧', aliases: ['tein'] },
+  'KW': { category: 'Automotive', emoji: '🔧', aliases: ['kw', 'kw suspensions'] },
+  'Ohlins': { category: 'Automotive', emoji: '🔧', aliases: ['ohlins', 'öhlins'] },
+  'BC Racing': { category: 'Automotive', emoji: '🔧', aliases: ['bc racing'] },
+  'Stance': { category: 'Automotive', emoji: '🔧', aliases: ['stance'] },
+  'Cusco': { category: 'Automotive', emoji: '🔧', aliases: ['cusco'] },
+  'Whiteline': { category: 'Automotive', emoji: '🔧', aliases: ['whiteline'] },
+  'Hardrace': { category: 'Automotive', emoji: '🔧', aliases: ['hardrace'] },
+  'Megan Racing': { category: 'Automotive', emoji: '🔧', aliases: ['megan racing'] },
+  'Fortune Auto': { category: 'Automotive', emoji: '🔧', aliases: ['fortune auto'] },
+  'ISC Suspension': { category: 'Automotive', emoji: '🔧', aliases: ['isc', 'isc suspension'] },
+  'Eibach': { category: 'Automotive', emoji: '🔧', aliases: ['eibach'] },
+  'H&R': { category: 'Automotive', emoji: '🔧', aliases: ['h&r', 'h and r'] },
+  'Bilstein': { category: 'Automotive', emoji: '🔧', aliases: ['bilstein'] },
+
+  // Brakes
+  'Brembo': { category: 'Automotive', emoji: '🔧', aliases: ['brembo'] },
+  'StopTech': { category: 'Automotive', emoji: '🔧', aliases: ['stoptech'] },
+  'Wilwood': { category: 'Automotive', emoji: '🔧', aliases: ['wilwood'] },
+  'AP Racing': { category: 'Automotive', emoji: '🔧', aliases: ['ap racing'] },
+  'Project Mu': { category: 'Automotive', emoji: '🔧', aliases: ['project mu'] },
+  'Endless': { category: 'Automotive', emoji: '🔧', aliases: ['endless'] },
+  'DBA': { category: 'Automotive', emoji: '🔧', aliases: ['dba', 'disc brakes australia'] },
+  'EBC': { category: 'Automotive', emoji: '🔧', aliases: ['ebc', 'ebc brakes'] },
+
+  // Wheels
+  'Volk Racing': { category: 'Automotive', emoji: '🔧', aliases: ['volk', 'volk racing', 'te37', 'ce28'] },
+  'Work Wheels': { category: 'Automotive', emoji: '🔧', aliases: ['work', 'work wheels', 'meister', 'emotion'] },
+  'Enkei': { category: 'Automotive', emoji: '🔧', aliases: ['enkei', 'rpf1'] },
+  'BBS': { category: 'Automotive', emoji: '🔧', aliases: ['bbs', 'lm', 'rs', 'ri'] },
+  'SSR': { category: 'Automotive', emoji: '🔧', aliases: ['ssr', 'ssr wheels'] },
+  'Advan': { category: 'Automotive', emoji: '🔧', aliases: ['advan', 'yokohama advan'] },
+  'Weds': { category: 'Automotive', emoji: '🔧', aliases: ['weds', 'kranze'] },
+  'WedsSport': { category: 'Automotive', emoji: '🔧', aliases: ['wedssport', 'tc105'] },
+  'Gram Lights': { category: 'Automotive', emoji: '🔧', aliases: ['gram lights', 'rays gram lights', '57dr'] },
+  'Rotiform': { category: 'Automotive', emoji: '🔧', aliases: ['rotiform'] },
+  'Fifteen52': { category: 'Automotive', emoji: '🔧', aliases: ['fifteen52', '1552'] },
+  'Konig': { category: 'Automotive', emoji: '🔧', aliases: ['konig'] },
+  'Cosmis': { category: 'Automotive', emoji: '🔧', aliases: ['cosmis', 'cosmis racing'] },
+
+  // Drivetrain & Clutch
+  'Exedy': { category: 'Automotive', emoji: '🔧', aliases: ['exedy'] },
+  'ACT': { category: 'Automotive', emoji: '🔧', aliases: ['act', 'advanced clutch'] },
+  'Competition Clutch': { category: 'Automotive', emoji: '🔧', aliases: ['competition clutch', 'comp clutch'] },
+  'OS Giken': { category: 'Automotive', emoji: '🔧', aliases: ['os giken'] },
+  'Kaaz': { category: 'Automotive', emoji: '🔧', aliases: ['kaaz'] },
+  'Nismo': { category: 'Automotive', emoji: '🔧', aliases: ['nismo'] },
+  'TRD': { category: 'Automotive', emoji: '🔧', aliases: ['trd', 'toyota racing development'] },
+  'Mugen': { category: 'Automotive', emoji: '🔧', aliases: ['mugen'] },
+  'STI': { category: 'Automotive', emoji: '🔧', aliases: ['sti parts'] },
+  'Ralliart': { category: 'Automotive', emoji: '🔧', aliases: ['ralliart'] },
+
+  // Body & Aero
+  'Rocket Bunny': { category: 'Automotive', emoji: '🔧', aliases: ['rocket bunny', 'tra kyoto'] },
+  'Pandem': { category: 'Automotive', emoji: '🔧', aliases: ['pandem'] },
+  'Varis': { category: 'Automotive', emoji: '🔧', aliases: ['varis'] },
+  'Origin Lab': { category: 'Automotive', emoji: '🔧', aliases: ['origin lab', 'origin'] },
+  'Seibon': { category: 'Automotive', emoji: '🔧', aliases: ['seibon'] },
+  'Voltex': { category: 'Automotive', emoji: '🔧', aliases: ['voltex'] },
+  'APR Performance': { category: 'Automotive', emoji: '🔧', aliases: ['apr', 'apr performance'] },
+  'VIS Racing': { category: 'Automotive', emoji: '🔧', aliases: ['vis racing', 'vis'] },
+  'Duraflex': { category: 'Automotive', emoji: '🔧', aliases: ['duraflex'] },
+  'C-West': { category: 'Automotive', emoji: '🔧', aliases: ['c-west'] },
+  'RE Amemiya': { category: 'Automotive', emoji: '🔧', aliases: ['re amemiya', 'amemiya'] },
+
+  // Interior & Seats
+  'Bride': { category: 'Automotive', emoji: '🔧', aliases: ['bride'] },
+  'Recaro': { category: 'Automotive', emoji: '🔧', aliases: ['recaro'] },
+  'Sparco': { category: 'Automotive', emoji: '🔧', aliases: ['sparco'] },
+  'NRG': { category: 'Automotive', emoji: '🔧', aliases: ['nrg', 'nrg innovations'] },
+  'Momo': { category: 'Automotive', emoji: '🔧', aliases: ['momo'] },
+  'Nardi': { category: 'Automotive', emoji: '🔧', aliases: ['nardi'] },
+  'Takata': { category: 'Automotive', emoji: '🔧', aliases: ['takata'] },
+
+  // Gauges & Electronics
+  'Defi': { category: 'Automotive', emoji: '🔧', aliases: ['defi'] },
+  'GlowShift': { category: 'Automotive', emoji: '🔧', aliases: ['glowshift'] },
+  'Innovate': { category: 'Automotive', emoji: '🔧', aliases: ['innovate', 'innovate motorsports'] },
+  'AEM Electronics': { category: 'Automotive', emoji: '🔧', aliases: ['aem electronics'] },
+  'MoTeC': { category: 'Automotive', emoji: '🔧', aliases: ['motec'] },
+  'Grams Performance': { category: 'Automotive', emoji: '🔧', aliases: ['grams', 'grams performance'] },
+  'Walbro': { category: 'Automotive', emoji: '🔧', aliases: ['walbro'] },
+  'DeatschWerks': { category: 'Automotive', emoji: '🔧', aliases: ['deatschwerks', 'dw'] },
+  'Injector Dynamics': { category: 'Automotive', emoji: '🔧', aliases: ['injector dynamics', 'id'] },
+
+  // Tires
+  'Yokohama': { category: 'Automotive', emoji: '🔧', aliases: ['yokohama', 'advan neova'] },
+  'Toyo': { category: 'Automotive', emoji: '🔧', aliases: ['toyo', 'toyo tires', 'proxes'] },
+  'Nitto': { category: 'Automotive', emoji: '🔧', aliases: ['nitto', 'nt555', 'nt05'] },
+  'Federal': { category: 'Automotive', emoji: '🔧', aliases: ['federal', 'federal tires', 'rs-rr'] },
+  'Michelin': { category: 'Automotive', emoji: '🔧', aliases: ['michelin', 'pilot sport'] },
 }
 
 // Flatten for fast lookup: lowercase alias → brand name
@@ -215,17 +372,486 @@ const POPULAR_PRODUCTS: { name: string; brand: string; category: string; emoji: 
   { name: 'LEGO Star Wars Millennium Falcon', brand: 'LEGO', category: 'Collectibles', emoji: '🧸' },
   { name: 'Funko Pop Marvel', brand: 'Funko', category: 'Collectibles', emoji: '🧸' },
   { name: 'Bearbrick 1000%', brand: 'Bearbrick', category: 'Collectibles', emoji: '🧸' },
-  // Automotive
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE: JDM Cars (old school to modern)
+  // ═══════════════════════════════════════════════════════
+
+  // Nissan / Datsun
+  { name: 'Datsun 240Z S30', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Datsun 280Z S30', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Datsun 510 Bluebird', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Skyline GT-R R32', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Skyline GT-R R33', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
   { name: 'Nissan Skyline GT-R R34', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
-  { name: 'Toyota Supra A80', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
-  { name: 'Mazda RX-7 FD', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
-  { name: 'Honda NSX NA1', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Skyline GT-R R34 V-Spec II', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Skyline GT-R R34 Nur', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Skyline R31 GTS-R', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Silvia S13', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Silvia S14', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
   { name: 'Nissan Silvia S15', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
-  { name: 'Mitsubishi Lancer Evolution IX', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
-  { name: 'Subaru Impreza WRX STI', brand: 'Subaru', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan 240SX S13', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan 240SX S14', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan 180SX', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan 300ZX Z32 Twin Turbo', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan 350Z Z33', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan 370Z Z34', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Z RZ34', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Fairlady Z S30', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Cefiro A31', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Laurel C33', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Stagea 260RS', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan Pulsar GTI-R', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan GT-R R35', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+  { name: 'Nissan GT-R R35 Nismo', brand: 'Nissan', category: 'Automotive', emoji: '🚗' },
+
+  // Toyota
+  { name: 'Toyota 2000GT', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Celica TA22', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Celica GT-Four ST205', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota AE86 Sprinter Trueno', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota AE86 Corolla Levin', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Supra A70', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Supra A80', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Supra A80 Twin Turbo', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Supra A90 GR', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota MR2 AW11', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota MR2 SW20 Turbo', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota MR2 Spyder ZZW30', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Chaser JZX100', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Chaser JZX90', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Mark II JZX100', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Soarer Z30', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Aristo JZS161', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota Crown Athlete', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota GR86', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota GR Corolla', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Toyota GR Yaris', brand: 'Toyota', category: 'Automotive', emoji: '🚗' },
+  { name: 'Lexus IS300 SXE10', brand: 'Lexus', category: 'Automotive', emoji: '🚗' },
+  { name: 'Lexus GS300 JZS160', brand: 'Lexus', category: 'Automotive', emoji: '🚗' },
+  { name: 'Lexus SC300 / Soarer', brand: 'Lexus', category: 'Automotive', emoji: '🚗' },
+  { name: 'Lexus LFA', brand: 'Lexus', category: 'Automotive', emoji: '🚗' },
+  { name: 'Lexus LC500', brand: 'Lexus', category: 'Automotive', emoji: '🚗' },
+  { name: 'Lexus IS F', brand: 'Lexus', category: 'Automotive', emoji: '🚗' },
+
+  // Honda / Acura
+  { name: 'Honda NSX NA1', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda NSX NA2', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda NSX NC1', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
   { name: 'Honda S2000 AP1', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
-  { name: 'Porsche 911 GT3', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
-  { name: 'BMW M3 E46', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda S2000 AP2', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda Civic Type R EK9', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda Civic Type R EP3', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda Civic Type R FD2', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda Civic Type R FK8', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda Civic Type R FL5', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda Civic Si', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda CRX Si', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda CRX Del Sol', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda Integra Type R DC2', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda Integra Type R DC5', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda Prelude SH', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Honda Beat PP1', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Acura RSX Type-S', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Acura Integra Type R', brand: 'Honda', category: 'Automotive', emoji: '🚗' },
+
+  // Mazda
+  { name: 'Mazda Cosmo Sport 110S', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda RX-3 Savanna', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda RX-7 SA22C (FB)', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda RX-7 FC', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda RX-7 FC Turbo II', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda RX-7 FD Spirit R', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda RX-7 FD', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda RX-8', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda Miata NA', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda Miata NB', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda Miata NC', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda Miata ND', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mazda MX-5 RF', brand: 'Mazda', category: 'Automotive', emoji: '🚗' },
+
+  // Subaru
+  { name: 'Subaru Impreza WRX STI GC8', brand: 'Subaru', category: 'Automotive', emoji: '🚗' },
+  { name: 'Subaru Impreza WRX STI GDB', brand: 'Subaru', category: 'Automotive', emoji: '🚗' },
+  { name: 'Subaru Impreza WRX STI GRB', brand: 'Subaru', category: 'Automotive', emoji: '🚗' },
+  { name: 'Subaru WRX STI VAB', brand: 'Subaru', category: 'Automotive', emoji: '🚗' },
+  { name: 'Subaru WRX VB', brand: 'Subaru', category: 'Automotive', emoji: '🚗' },
+  { name: 'Subaru BRZ', brand: 'Subaru', category: 'Automotive', emoji: '🚗' },
+  { name: 'Subaru Legacy GT', brand: 'Subaru', category: 'Automotive', emoji: '🚗' },
+  { name: 'Subaru 22B STI', brand: 'Subaru', category: 'Automotive', emoji: '🚗' },
+
+  // Mitsubishi
+  { name: 'Mitsubishi Lancer Evolution I', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi Lancer Evolution III', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi Lancer Evolution V', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi Lancer Evolution VI TME', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi Lancer Evolution VII', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi Lancer Evolution VIII MR', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi Lancer Evolution IX', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi Lancer Evolution X', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi Eclipse GSX', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi 3000GT VR-4', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi GTO Twin Turbo', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi Starion', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mitsubishi Galant VR-4', brand: 'Mitsubishi', category: 'Automotive', emoji: '🚗' },
+
+  // Other JDM
+  { name: 'Suzuki Cappuccino', brand: 'Suzuki', category: 'Automotive', emoji: '🚗' },
+  { name: 'Suzuki Swift Sport', brand: 'Suzuki', category: 'Automotive', emoji: '🚗' },
+  { name: 'Suzuki Jimny', brand: 'Suzuki', category: 'Automotive', emoji: '🚗' },
+  { name: 'Daihatsu Copen', brand: 'Daihatsu', category: 'Automotive', emoji: '🚗' },
+  { name: 'Infiniti G35 Coupe', brand: 'Infiniti', category: 'Automotive', emoji: '🚗' },
+  { name: 'Infiniti G37 Coupe', brand: 'Infiniti', category: 'Automotive', emoji: '🚗' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE: Euro Cars
+  // ═══════════════════════════════════════════════════════
+
+  // BMW
+  { name: 'BMW 2002 Turbo', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW E30 M3', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW E36 M3', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW E46 M3', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW E46 M3 CSL', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW E90 M3', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW E92 M3', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW F80 M3', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW G80 M3', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW E39 M5', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW E60 M5', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW F90 M5', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW M2 Competition', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW 1M Coupe', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW Z3 M Coupe', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+  { name: 'BMW Z4 M40i', brand: 'BMW', category: 'Automotive', emoji: '🚗' },
+
+  // Mercedes
+  { name: 'Mercedes 190E 2.5-16 Evo II', brand: 'Mercedes', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mercedes C63 AMG W204', brand: 'Mercedes', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mercedes C63 AMG S W205', brand: 'Mercedes', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mercedes E63 AMG S', brand: 'Mercedes', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mercedes AMG GT', brand: 'Mercedes', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mercedes AMG GT Black Series', brand: 'Mercedes', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mercedes G63 AMG', brand: 'Mercedes', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mercedes SL65 AMG Black Series', brand: 'Mercedes', category: 'Automotive', emoji: '🚗' },
+  { name: 'Mercedes CLK63 AMG Black Series', brand: 'Mercedes', category: 'Automotive', emoji: '🚗' },
+
+  // Porsche
+  { name: 'Porsche 356 Speedster', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche 911 964 Carrera', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche 911 993 Carrera', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche 911 996 GT3', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche 911 997 GT3 RS', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche 911 991 GT3', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche 911 992 GT3', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche 911 Turbo S', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche 944 Turbo', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche 928 GTS', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche Cayman GT4', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche Boxster Spyder', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+  { name: 'Porsche 718 Cayman GTS', brand: 'Porsche', category: 'Automotive', emoji: '🚗' },
+
+  // VW / Audi
+  { name: 'Volkswagen Golf GTI Mk1', brand: 'Volkswagen', category: 'Automotive', emoji: '🚗' },
+  { name: 'Volkswagen Golf GTI Mk4', brand: 'Volkswagen', category: 'Automotive', emoji: '🚗' },
+  { name: 'Volkswagen Golf R Mk7', brand: 'Volkswagen', category: 'Automotive', emoji: '🚗' },
+  { name: 'Volkswagen Golf R Mk8', brand: 'Volkswagen', category: 'Automotive', emoji: '🚗' },
+  { name: 'Volkswagen Corrado VR6', brand: 'Volkswagen', category: 'Automotive', emoji: '🚗' },
+  { name: 'Volkswagen R32 Mk4', brand: 'Volkswagen', category: 'Automotive', emoji: '🚗' },
+  { name: 'Audi RS3', brand: 'Audi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Audi RS4 B5 Avant', brand: 'Audi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Audi RS6 C7 Avant', brand: 'Audi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Audi TTRS', brand: 'Audi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Audi R8 V10', brand: 'Audi', category: 'Automotive', emoji: '🚗' },
+  { name: 'Audi S4 B5', brand: 'Audi', category: 'Automotive', emoji: '🚗' },
+
+  // Other Euro
+  { name: 'Volvo 240 Turbo', brand: 'Volvo', category: 'Automotive', emoji: '🚗' },
+  { name: 'Volvo 850 T5-R', brand: 'Volvo', category: 'Automotive', emoji: '🚗' },
+  { name: 'Alfa Romeo Giulia Quadrifoglio', brand: 'Alfa Romeo', category: 'Automotive', emoji: '🚗' },
+  { name: 'Alfa Romeo 4C', brand: 'Alfa Romeo', category: 'Automotive', emoji: '🚗' },
+  { name: 'Lancia Delta Integrale', brand: 'Lancia', category: 'Automotive', emoji: '🚗' },
+  { name: 'Lancia Stratos', brand: 'Lancia', category: 'Automotive', emoji: '🚗' },
+  { name: 'Fiat 500 Abarth', brand: 'Fiat', category: 'Automotive', emoji: '🚗' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE: Domestic Cars
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Ford Mustang GT 5.0', brand: 'Ford', category: 'Automotive', emoji: '🚗' },
+  { name: 'Ford Mustang Shelby GT500', brand: 'Ford', category: 'Automotive', emoji: '🚗' },
+  { name: 'Ford Mustang Mach 1', brand: 'Ford', category: 'Automotive', emoji: '🚗' },
+  { name: 'Ford Mustang Boss 302', brand: 'Ford', category: 'Automotive', emoji: '🚗' },
+  { name: 'Ford GT40', brand: 'Ford', category: 'Automotive', emoji: '🚗' },
+  { name: 'Ford GT 2005', brand: 'Ford', category: 'Automotive', emoji: '🚗' },
+  { name: 'Ford Focus RS', brand: 'Ford', category: 'Automotive', emoji: '🚗' },
+  { name: 'Ford Bronco Raptor', brand: 'Ford', category: 'Automotive', emoji: '🚗' },
+  { name: 'Ford F-150 Raptor', brand: 'Ford', category: 'Automotive', emoji: '🚗' },
+  { name: 'Chevrolet Corvette C5 Z06', brand: 'Chevrolet', category: 'Automotive', emoji: '🚗' },
+  { name: 'Chevrolet Corvette C6 Z06', brand: 'Chevrolet', category: 'Automotive', emoji: '🚗' },
+  { name: 'Chevrolet Corvette C7 Z06', brand: 'Chevrolet', category: 'Automotive', emoji: '🚗' },
+  { name: 'Chevrolet Corvette C7 ZR1', brand: 'Chevrolet', category: 'Automotive', emoji: '🚗' },
+  { name: 'Chevrolet Corvette C8 Stingray', brand: 'Chevrolet', category: 'Automotive', emoji: '🚗' },
+  { name: 'Chevrolet Corvette C8 Z06', brand: 'Chevrolet', category: 'Automotive', emoji: '🚗' },
+  { name: 'Chevrolet Camaro ZL1', brand: 'Chevrolet', category: 'Automotive', emoji: '🚗' },
+  { name: 'Chevrolet Camaro SS 1LE', brand: 'Chevrolet', category: 'Automotive', emoji: '🚗' },
+  { name: 'Chevrolet Camaro Z/28', brand: 'Chevrolet', category: 'Automotive', emoji: '🚗' },
+  { name: 'Dodge Challenger SRT Hellcat', brand: 'Dodge', category: 'Automotive', emoji: '🚗' },
+  { name: 'Dodge Challenger SRT Demon', brand: 'Dodge', category: 'Automotive', emoji: '🚗' },
+  { name: 'Dodge Charger SRT Hellcat', brand: 'Dodge', category: 'Automotive', emoji: '🚗' },
+  { name: 'Dodge Viper GTS', brand: 'Dodge', category: 'Automotive', emoji: '🚗' },
+  { name: 'Dodge Viper ACR', brand: 'Dodge', category: 'Automotive', emoji: '🚗' },
+  { name: 'Pontiac GTO', brand: 'Pontiac', category: 'Automotive', emoji: '🚗' },
+  { name: 'Pontiac Firebird Trans Am', brand: 'Pontiac', category: 'Automotive', emoji: '🚗' },
+  { name: 'Tesla Model S Plaid', brand: 'Tesla', category: 'Automotive', emoji: '🚗' },
+  { name: 'Tesla Model 3 Performance', brand: 'Tesla', category: 'Automotive', emoji: '🚗' },
+  { name: 'Tesla Cybertruck', brand: 'Tesla', category: 'Automotive', emoji: '🚗' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE PARTS: Engine & Turbo
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Garrett GTX3576R Turbo', brand: 'Garrett', category: 'Automotive', emoji: '🔧' },
+  { name: 'Garrett GTX3071R Turbo', brand: 'Garrett', category: 'Automotive', emoji: '🔧' },
+  { name: 'Garrett G25-660 Turbo', brand: 'Garrett', category: 'Automotive', emoji: '🔧' },
+  { name: 'Garrett G30-770 Turbo', brand: 'Garrett', category: 'Automotive', emoji: '🔧' },
+  { name: 'Garrett G35-1050 Turbo', brand: 'Garrett', category: 'Automotive', emoji: '🔧' },
+  { name: 'BorgWarner EFR 7670 Turbo', brand: 'BorgWarner', category: 'Automotive', emoji: '🔧' },
+  { name: 'BorgWarner EFR 8374 Turbo', brand: 'BorgWarner', category: 'Automotive', emoji: '🔧' },
+  { name: 'Precision Turbo 6266 Gen2', brand: 'Precision Turbo', category: 'Automotive', emoji: '🔧' },
+  { name: 'HKS GT III RS Turbo Kit (RB26)', brand: 'HKS', category: 'Automotive', emoji: '🔧' },
+  { name: 'HKS GT Supercharger', brand: 'HKS', category: 'Automotive', emoji: '🔧' },
+  { name: 'HKS SSQV Blow Off Valve', brand: 'HKS', category: 'Automotive', emoji: '🔧' },
+  { name: 'HKS Hi-Power Exhaust', brand: 'HKS', category: 'Automotive', emoji: '🔧' },
+  { name: 'Tomei Poncam Camshafts (SR20)', brand: 'Tomei', category: 'Automotive', emoji: '🔧' },
+  { name: 'Tomei Poncam Camshafts (RB26)', brand: 'Tomei', category: 'Automotive', emoji: '🔧' },
+  { name: 'Tomei Poncam Camshafts (2JZ)', brand: 'Tomei', category: 'Automotive', emoji: '🔧' },
+  { name: 'Tomei Expreme Ti Exhaust', brand: 'Tomei', category: 'Automotive', emoji: '🔧' },
+  { name: 'Tomei Arms Turbo Kit', brand: 'Tomei', category: 'Automotive', emoji: '🔧' },
+  { name: 'GReddy Turbo Kit (SR20DET)', brand: 'GReddy', category: 'Automotive', emoji: '🔧' },
+  { name: 'GReddy Intercooler Kit', brand: 'GReddy', category: 'Automotive', emoji: '🔧' },
+  { name: 'GReddy Profec Boost Controller', brand: 'GReddy', category: 'Automotive', emoji: '🔧' },
+  { name: 'GReddy Oil Cooler Kit', brand: 'GReddy', category: 'Automotive', emoji: '🔧' },
+  { name: 'Mishimoto Radiator (S13/S14)', brand: 'Mishimoto', category: 'Automotive', emoji: '🔧' },
+  { name: 'Mishimoto Intercooler Universal', brand: 'Mishimoto', category: 'Automotive', emoji: '🔧' },
+  { name: 'Mishimoto Oil Catch Can', brand: 'Mishimoto', category: 'Automotive', emoji: '🔧' },
+  { name: 'Skunk2 Ultra Series Intake Manifold', brand: 'Skunk2', category: 'Automotive', emoji: '🔧' },
+  { name: 'Skunk2 Pro Series Camshafts', brand: 'Skunk2', category: 'Automotive', emoji: '🔧' },
+  { name: 'Skunk2 Alpha Header (B/K Series)', brand: 'Skunk2', category: 'Automotive', emoji: '🔧' },
+  { name: 'Brian Crower Stage 3 Cams (B Series)', brand: 'Brian Crower', category: 'Automotive', emoji: '🔧' },
+  { name: 'Brian Crower Stroker Kit (RB26)', brand: 'Brian Crower', category: 'Automotive', emoji: '🔧' },
+  { name: 'Manley H-Beam Rods (2JZ)', brand: 'Manley', category: 'Automotive', emoji: '🔧' },
+  { name: 'Manley Turbo Tuff Pistons (EJ257)', brand: 'Manley', category: 'Automotive', emoji: '🔧' },
+  { name: 'CP Pistons Forged Set (SR20DET)', brand: 'CP Pistons', category: 'Automotive', emoji: '🔧' },
+  { name: 'CP Pistons Forged Set (LS3)', brand: 'CP Pistons', category: 'Automotive', emoji: '🔧' },
+  { name: 'Eagle H-Beam Rods (B18C)', brand: 'Eagle Rods', category: 'Automotive', emoji: '🔧' },
+  { name: 'Cometic MLS Head Gasket (RB26)', brand: 'Cometic', category: 'Automotive', emoji: '🔧' },
+  { name: 'Cometic MLS Head Gasket (2JZ)', brand: 'Cometic', category: 'Automotive', emoji: '🔧' },
+  { name: 'Cometic MLS Head Gasket (SR20)', brand: 'Cometic', category: 'Automotive', emoji: '🔧' },
+
+  // ECU & Engine Management
+  { name: 'Haltech Elite 2500', brand: 'Haltech', category: 'Automotive', emoji: '🔧' },
+  { name: 'Haltech Nexus R5', brand: 'Haltech', category: 'Automotive', emoji: '🔧' },
+  { name: 'Link ECU G4X Xtreme', brand: 'Link ECU', category: 'Automotive', emoji: '🔧' },
+  { name: 'Link ECU G4X Thunder', brand: 'Link ECU', category: 'Automotive', emoji: '🔧' },
+  { name: 'AEM Infinity 508', brand: 'AEM', category: 'Automotive', emoji: '🔧' },
+  { name: 'AEM Cold Air Intake', brand: 'AEM', category: 'Automotive', emoji: '🔧' },
+  { name: 'MoTeC M150 ECU', brand: 'MoTeC', category: 'Automotive', emoji: '🔧' },
+  { name: 'MoTeC C125 Dash', brand: 'MoTeC', category: 'Automotive', emoji: '🔧' },
+
+  // Fuel System
+  { name: 'Injector Dynamics ID1050X', brand: 'Injector Dynamics', category: 'Automotive', emoji: '🔧' },
+  { name: 'Injector Dynamics ID1700X', brand: 'Injector Dynamics', category: 'Automotive', emoji: '🔧' },
+  { name: 'Injector Dynamics ID2600-XDS', brand: 'Injector Dynamics', category: 'Automotive', emoji: '🔧' },
+  { name: 'DeatschWerks DW300 Fuel Pump', brand: 'DeatschWerks', category: 'Automotive', emoji: '🔧' },
+  { name: 'DeatschWerks DW400 Fuel Pump', brand: 'DeatschWerks', category: 'Automotive', emoji: '🔧' },
+  { name: 'Walbro 450 LPH Fuel Pump', brand: 'Walbro', category: 'Automotive', emoji: '🔧' },
+  { name: 'Walbro 255 LPH Fuel Pump', brand: 'Walbro', category: 'Automotive', emoji: '🔧' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE PARTS: Exhaust
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Invidia Gemini Catback (350Z)', brand: 'Invidia', category: 'Automotive', emoji: '🔧' },
+  { name: 'Invidia N1 Catback (Civic Si)', brand: 'Invidia', category: 'Automotive', emoji: '🔧' },
+  { name: 'Invidia Q300 Catback (WRX/STI)', brand: 'Invidia', category: 'Automotive', emoji: '🔧' },
+  { name: 'Fujitsubo Legalis R Exhaust', brand: 'Fujitsubo', category: 'Automotive', emoji: '🔧' },
+  { name: 'Borla ATAK Catback (Mustang GT)', brand: 'Borla', category: 'Automotive', emoji: '🔧' },
+  { name: 'Borla S-Type Catback (C8 Corvette)', brand: 'Borla', category: 'Automotive', emoji: '🔧' },
+  { name: 'MagnaFlow Competition Catback', brand: 'MagnaFlow', category: 'Automotive', emoji: '🔧' },
+  { name: 'Tomei Expreme Ti Catback (370Z)', brand: 'Tomei', category: 'Automotive', emoji: '🔧' },
+  { name: 'HKS Hi-Power Spec-L (BRZ/86)', brand: 'HKS', category: 'Automotive', emoji: '🔧' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE PARTS: Suspension
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Tein Flex Z Coilovers', brand: 'Tein', category: 'Automotive', emoji: '🔧' },
+  { name: 'Tein Mono Sport Coilovers', brand: 'Tein', category: 'Automotive', emoji: '🔧' },
+  { name: 'Tein Super Racing Coilovers', brand: 'Tein', category: 'Automotive', emoji: '🔧' },
+  { name: 'KW V3 Coilovers', brand: 'KW', category: 'Automotive', emoji: '🔧' },
+  { name: 'KW Clubsport Coilovers', brand: 'KW', category: 'Automotive', emoji: '🔧' },
+  { name: 'Ohlins Road & Track Coilovers', brand: 'Ohlins', category: 'Automotive', emoji: '🔧' },
+  { name: 'Ohlins DFV Coilovers', brand: 'Ohlins', category: 'Automotive', emoji: '🔧' },
+  { name: 'BC Racing BR Coilovers', brand: 'BC Racing', category: 'Automotive', emoji: '🔧' },
+  { name: 'BC Racing DR Coilovers', brand: 'BC Racing', category: 'Automotive', emoji: '🔧' },
+  { name: 'Fortune Auto 500 Coilovers', brand: 'Fortune Auto', category: 'Automotive', emoji: '🔧' },
+  { name: 'Bilstein B16 PSS10 Coilovers', brand: 'Bilstein', category: 'Automotive', emoji: '🔧' },
+  { name: 'Eibach Pro-Kit Springs', brand: 'Eibach', category: 'Automotive', emoji: '🔧' },
+  { name: 'Eibach Anti-Roll Bar Kit', brand: 'Eibach', category: 'Automotive', emoji: '🔧' },
+  { name: 'Cusco Adjustable Sway Bars', brand: 'Cusco', category: 'Automotive', emoji: '🔧' },
+  { name: 'Cusco Strut Tower Bar', brand: 'Cusco', category: 'Automotive', emoji: '🔧' },
+  { name: 'Whiteline Sway Bar Kit', brand: 'Whiteline', category: 'Automotive', emoji: '🔧' },
+  { name: 'Whiteline Rear Camber Arms', brand: 'Whiteline', category: 'Automotive', emoji: '🔧' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE PARTS: Brakes
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Brembo GT Big Brake Kit', brand: 'Brembo', category: 'Automotive', emoji: '🔧' },
+  { name: 'Brembo Gran Turismo 4-Piston', brand: 'Brembo', category: 'Automotive', emoji: '🔧' },
+  { name: 'Brembo Gran Turismo 6-Piston', brand: 'Brembo', category: 'Automotive', emoji: '🔧' },
+  { name: 'StopTech ST-60 Big Brake Kit', brand: 'StopTech', category: 'Automotive', emoji: '🔧' },
+  { name: 'StopTech Slotted Rotors', brand: 'StopTech', category: 'Automotive', emoji: '🔧' },
+  { name: 'Wilwood Superlite 6R Brake Kit', brand: 'Wilwood', category: 'Automotive', emoji: '🔧' },
+  { name: 'AP Racing Radi-CAL Brake Kit', brand: 'AP Racing', category: 'Automotive', emoji: '🔧' },
+  { name: 'Project Mu HC+ Brake Pads', brand: 'Project Mu', category: 'Automotive', emoji: '🔧' },
+  { name: 'Project Mu Club Racer Pads', brand: 'Project Mu', category: 'Automotive', emoji: '🔧' },
+  { name: 'Endless MX72 Brake Pads', brand: 'Endless', category: 'Automotive', emoji: '🔧' },
+  { name: 'Endless SSM Brake Pads', brand: 'Endless', category: 'Automotive', emoji: '🔧' },
+  { name: 'EBC Yellowstuff Pads', brand: 'EBC', category: 'Automotive', emoji: '🔧' },
+  { name: 'EBC Bluestuff NDX Pads', brand: 'EBC', category: 'Automotive', emoji: '🔧' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE PARTS: Wheels
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Volk Racing TE37 Saga', brand: 'Volk Racing', category: 'Automotive', emoji: '🔧' },
+  { name: 'Volk Racing TE37 SL', brand: 'Volk Racing', category: 'Automotive', emoji: '🔧' },
+  { name: 'Volk Racing CE28N', brand: 'Volk Racing', category: 'Automotive', emoji: '🔧' },
+  { name: 'Volk Racing ZE40', brand: 'Volk Racing', category: 'Automotive', emoji: '🔧' },
+  { name: 'Work Meister S1 3-Piece', brand: 'Work Wheels', category: 'Automotive', emoji: '🔧' },
+  { name: 'Work Emotion D9R', brand: 'Work Wheels', category: 'Automotive', emoji: '🔧' },
+  { name: 'Work Emotion CR Kiwami', brand: 'Work Wheels', category: 'Automotive', emoji: '🔧' },
+  { name: 'Work VS-XX 3-Piece', brand: 'Work Wheels', category: 'Automotive', emoji: '🔧' },
+  { name: 'Enkei RPF1', brand: 'Enkei', category: 'Automotive', emoji: '🔧' },
+  { name: 'Enkei NT03+M', brand: 'Enkei', category: 'Automotive', emoji: '🔧' },
+  { name: 'Enkei GTC02', brand: 'Enkei', category: 'Automotive', emoji: '🔧' },
+  { name: 'BBS LM', brand: 'BBS', category: 'Automotive', emoji: '🔧' },
+  { name: 'BBS RS-GT', brand: 'BBS', category: 'Automotive', emoji: '🔧' },
+  { name: 'BBS RI-A', brand: 'BBS', category: 'Automotive', emoji: '🔧' },
+  { name: 'BBS FI-R', brand: 'BBS', category: 'Automotive', emoji: '🔧' },
+  { name: 'SSR Professor SP1', brand: 'SSR', category: 'Automotive', emoji: '🔧' },
+  { name: 'SSR Type-C', brand: 'SSR', category: 'Automotive', emoji: '🔧' },
+  { name: 'Advan Racing GT', brand: 'Advan', category: 'Automotive', emoji: '🔧' },
+  { name: 'Advan Racing RGIII', brand: 'Advan', category: 'Automotive', emoji: '🔧' },
+  { name: 'Advan Racing TC4', brand: 'Advan', category: 'Automotive', emoji: '🔧' },
+  { name: 'WedsSport TC105X', brand: 'WedsSport', category: 'Automotive', emoji: '🔧' },
+  { name: 'WedsSport SA-72R', brand: 'WedsSport', category: 'Automotive', emoji: '🔧' },
+  { name: 'Gram Lights 57DR', brand: 'Gram Lights', category: 'Automotive', emoji: '🔧' },
+  { name: 'Gram Lights 57CR', brand: 'Gram Lights', category: 'Automotive', emoji: '🔧' },
+  { name: 'Gram Lights 57Xtreme', brand: 'Gram Lights', category: 'Automotive', emoji: '🔧' },
+  { name: 'Rotiform LAS-R', brand: 'Rotiform', category: 'Automotive', emoji: '🔧' },
+  { name: 'Cosmis Racing XT-206R', brand: 'Cosmis', category: 'Automotive', emoji: '🔧' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE PARTS: Drivetrain & Clutch
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Exedy Stage 2 Clutch Kit', brand: 'Exedy', category: 'Automotive', emoji: '🔧' },
+  { name: 'Exedy Hyper Single Clutch', brand: 'Exedy', category: 'Automotive', emoji: '🔧' },
+  { name: 'Exedy Twin Plate Clutch', brand: 'Exedy', category: 'Automotive', emoji: '🔧' },
+  { name: 'ACT HD Clutch Kit', brand: 'ACT', category: 'Automotive', emoji: '🔧' },
+  { name: 'ACT Extreme Clutch Kit', brand: 'ACT', category: 'Automotive', emoji: '🔧' },
+  { name: 'Competition Clutch Stage 4', brand: 'Competition Clutch', category: 'Automotive', emoji: '🔧' },
+  { name: 'Competition Clutch Twin Disc', brand: 'Competition Clutch', category: 'Automotive', emoji: '🔧' },
+  { name: 'OS Giken Twin Plate Clutch', brand: 'OS Giken', category: 'Automotive', emoji: '🔧' },
+  { name: 'OS Giken LSD', brand: 'OS Giken', category: 'Automotive', emoji: '🔧' },
+  { name: 'Kaaz LSD 1.5-Way', brand: 'Kaaz', category: 'Automotive', emoji: '🔧' },
+  { name: 'Nismo GT LSD Pro', brand: 'Nismo', category: 'Automotive', emoji: '🔧' },
+  { name: 'Nismo Engine Bearings', brand: 'Nismo', category: 'Automotive', emoji: '🔧' },
+  { name: 'TRD Short Throw Shifter', brand: 'TRD', category: 'Automotive', emoji: '🔧' },
+  { name: 'Mugen Type R Shift Knob', brand: 'Mugen', category: 'Automotive', emoji: '🔧' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE PARTS: Body & Aero
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Rocket Bunny V2 Wide Body Kit (BRZ)', brand: 'Rocket Bunny', category: 'Automotive', emoji: '🔧' },
+  { name: 'Rocket Bunny V1 Kit (S13)', brand: 'Rocket Bunny', category: 'Automotive', emoji: '🔧' },
+  { name: 'Pandem Wide Body Kit (E46 M3)', brand: 'Pandem', category: 'Automotive', emoji: '🔧' },
+  { name: 'Pandem Wide Body Kit (R35 GT-R)', brand: 'Pandem', category: 'Automotive', emoji: '🔧' },
+  { name: 'Varis Arising II Body Kit (Evo X)', brand: 'Varis', category: 'Automotive', emoji: '🔧' },
+  { name: 'Varis Body Kit (BRZ)', brand: 'Varis', category: 'Automotive', emoji: '🔧' },
+  { name: 'Origin Lab Racing Line Kit (S13)', brand: 'Origin Lab', category: 'Automotive', emoji: '🔧' },
+  { name: 'Origin Lab Stream Line Kit (S14)', brand: 'Origin Lab', category: 'Automotive', emoji: '🔧' },
+  { name: 'Seibon Carbon Fiber Hood (Civic)', brand: 'Seibon', category: 'Automotive', emoji: '🔧' },
+  { name: 'Seibon Carbon Fiber Trunk', brand: 'Seibon', category: 'Automotive', emoji: '🔧' },
+  { name: 'Voltex Type 5 GT Wing', brand: 'Voltex', category: 'Automotive', emoji: '🔧' },
+  { name: 'Voltex Type 7 Swan Neck Wing', brand: 'Voltex', category: 'Automotive', emoji: '🔧' },
+  { name: 'APR GTC-300 Wing', brand: 'APR Performance', category: 'Automotive', emoji: '🔧' },
+  { name: 'APR GTC-500 Wing', brand: 'APR Performance', category: 'Automotive', emoji: '🔧' },
+  { name: 'RE Amemiya FD3S Body Kit', brand: 'RE Amemiya', category: 'Automotive', emoji: '🔧' },
+  { name: 'C-West N1 Body Kit (S2000)', brand: 'C-West', category: 'Automotive', emoji: '🔧' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE PARTS: Interior & Seats
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Bride ZETA III Bucket Seat', brand: 'Bride', category: 'Automotive', emoji: '🔧' },
+  { name: 'Bride Stradia II Reclining Seat', brand: 'Bride', category: 'Automotive', emoji: '🔧' },
+  { name: 'Bride Vios III Seat', brand: 'Bride', category: 'Automotive', emoji: '🔧' },
+  { name: 'Recaro Sportster CS Seat', brand: 'Recaro', category: 'Automotive', emoji: '🔧' },
+  { name: 'Recaro Pole Position ABE', brand: 'Recaro', category: 'Automotive', emoji: '🔧' },
+  { name: 'Sparco EVO QRT Seat', brand: 'Sparco', category: 'Automotive', emoji: '🔧' },
+  { name: 'Sparco Sprint V Seat', brand: 'Sparco', category: 'Automotive', emoji: '🔧' },
+  { name: 'NRG Quick Release Hub Kit', brand: 'NRG', category: 'Automotive', emoji: '🔧' },
+  { name: 'NRG Prisma Steering Wheel', brand: 'NRG', category: 'Automotive', emoji: '🔧' },
+  { name: 'Momo Prototipo Steering Wheel', brand: 'Momo', category: 'Automotive', emoji: '🔧' },
+  { name: 'Momo Mod. 78 Steering Wheel', brand: 'Momo', category: 'Automotive', emoji: '🔧' },
+  { name: 'Nardi Classic Steering Wheel', brand: 'Nardi', category: 'Automotive', emoji: '🔧' },
+  { name: 'Nardi Deep Corn Steering Wheel', brand: 'Nardi', category: 'Automotive', emoji: '🔧' },
+  { name: 'Takata 4-Point Harness', brand: 'Takata', category: 'Automotive', emoji: '🔧' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE PARTS: Gauges & Electronics
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Defi Advance BF Boost Gauge', brand: 'Defi', category: 'Automotive', emoji: '🔧' },
+  { name: 'Defi Advance CR Oil Temp Gauge', brand: 'Defi', category: 'Automotive', emoji: '🔧' },
+  { name: 'Defi Advance A1 Gauge Set', brand: 'Defi', category: 'Automotive', emoji: '🔧' },
+  { name: 'GlowShift Elite 10 Color Boost Gauge', brand: 'GlowShift', category: 'Automotive', emoji: '🔧' },
+  { name: 'Innovate MTX-L Wideband', brand: 'Innovate', category: 'Automotive', emoji: '🔧' },
+  { name: 'AEM X-Series Wideband UEGO', brand: 'AEM', category: 'Automotive', emoji: '🔧' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE PARTS: Tires
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Yokohama Advan Neova AD09', brand: 'Yokohama', category: 'Automotive', emoji: '🔧' },
+  { name: 'Yokohama Advan A052', brand: 'Yokohama', category: 'Automotive', emoji: '🔧' },
+  { name: 'Toyo Proxes R888R', brand: 'Toyo', category: 'Automotive', emoji: '🔧' },
+  { name: 'Toyo Proxes Sport', brand: 'Toyo', category: 'Automotive', emoji: '🔧' },
+  { name: 'Nitto NT555 G2', brand: 'Nitto', category: 'Automotive', emoji: '🔧' },
+  { name: 'Nitto NT05', brand: 'Nitto', category: 'Automotive', emoji: '🔧' },
+  { name: 'Federal 595RS-RR', brand: 'Federal', category: 'Automotive', emoji: '🔧' },
+  { name: 'Michelin Pilot Sport 4S', brand: 'Michelin', category: 'Automotive', emoji: '🔧' },
+  { name: 'Michelin Pilot Sport Cup 2', brand: 'Michelin', category: 'Automotive', emoji: '🔧' },
+
+  // ═══════════════════════════════════════════════════════
+  // AUTOMOTIVE PARTS: OEM Performance
+  // ═══════════════════════════════════════════════════════
+
+  { name: 'Nismo S-Tune Suspension Kit', brand: 'Nismo', category: 'Automotive', emoji: '🔧' },
+  { name: 'Nismo Aero Body Kit', brand: 'Nismo', category: 'Automotive', emoji: '🔧' },
+  { name: 'Nismo R-Tune Exhaust', brand: 'Nismo', category: 'Automotive', emoji: '🔧' },
+  { name: 'TRD Performance Air Filter', brand: 'TRD', category: 'Automotive', emoji: '🔧' },
+  { name: 'TRD Rear Sway Bar', brand: 'TRD', category: 'Automotive', emoji: '🔧' },
+  { name: 'Mugen Intake Manifold', brand: 'Mugen', category: 'Automotive', emoji: '🔧' },
+  { name: 'Mugen Twin Loop Exhaust', brand: 'Mugen', category: 'Automotive', emoji: '🔧' },
+  { name: 'Mugen Hardtop (S2000)', brand: 'Mugen', category: 'Automotive', emoji: '🔧' },
+  { name: 'STI Flexible Tower Bar', brand: 'STI', category: 'Automotive', emoji: '🔧' },
+  { name: 'STI Short Throw Shifter', brand: 'STI', category: 'Automotive', emoji: '🔧' },
+  { name: 'Ralliart Intake', brand: 'Ralliart', category: 'Automotive', emoji: '🔧' },
   // Instruments
   { name: 'Gibson Les Paul Standard', brand: 'Gibson', category: 'Instruments', emoji: '🎸' },
   { name: 'Fender Stratocaster', brand: 'Fender', category: 'Instruments', emoji: '🎸' },
