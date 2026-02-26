@@ -14,8 +14,8 @@ interface Props {
 const FILTER_TABS: ('all' | AlertCategory)[] = ['all', ...CATEGORY_ORDER]
 
 export default function AlertsScreen({ onNavigate, onViewItem }: Props) {
-  const { items } = useItemsStore()
-  const alerts = useMemo(() => generateAlerts(items), [items])
+  const { items, storedSignals } = useItemsStore()
+  const alerts = useMemo(() => generateAlerts(items, storedSignals), [items, storedSignals])
 
   const [filterTab, setFilterTab] = useState<'all' | AlertCategory>('all')
   const [expandedCats, setExpandedCats] = useState<string[]>(['highlights', 'pricing', 'action'])

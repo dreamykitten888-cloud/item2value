@@ -88,6 +88,7 @@ export type AlertType =
   | 'Needs Comps' | 'Set Market Value' | 'Add Photo'
   | 'New Item Added'
   | 'High Concentration' | 'Stale Item' | 'Ready to Sell'
+  | 'Price Surge' | 'Price Drop' | 'Sell Signal' | 'Buy Signal' | 'Market Hot'
 
 export type AlertCategory = 'highlights' | 'pricing' | 'action' | 'activity' | 'insights'
 

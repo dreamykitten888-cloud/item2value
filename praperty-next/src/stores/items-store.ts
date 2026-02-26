@@ -51,6 +51,21 @@ const mapRowToWatchlist = (row: Record<string, unknown>): WatchlistItem => ({
   linkedItemId: (row.linked_item_id as string) || null,
 })
 
+// Stored market signal from Supabase (background-refreshed)
+export interface StoredSignal {
+  itemId: string
+  ebayAvgPrice: number
+  ebayListingCount: number
+  trendScore: number
+  trendDirection: string
+  convictionScore: number
+  convictionLevel: string
+  convictionHeadline: string
+  priceChangePct: number
+  priceChangeAbs: number
+  fetchedAt: string
+}
+
 interface ItemsState {
   items: Item[]
   watchlist: WatchlistItem[]
@@ -68,6 +83,11 @@ interface ItemsState {
   marketSignal: MarketSignalData | null
   marketSignalLoading: boolean
 
+  // Stored signals (background-refreshed, for home screen + alerts)
+  storedSignals: Map<string, StoredSignal>
+  signalsLoading: boolean
+  signalsLastRefresh: string | null
+
   // Actions
   loadAll: (profileId: string) => Promise<void>
   syncItem: (item: Item, profileId: string) => Promise<void>
@@ -84,6 +104,10 @@ interface ItemsState {
   // Market signal (conviction engine data)
   fetchMarketSignal: (item: Item) => Promise<void>
   clearMarketSignal: () => void
+
+  // Stored signals (background batch)
+  loadStoredSignals: (profileId: string) => Promise<void>
+  refreshAllSignals: (profileId: string) => Promise<void>
 
   // eBay + community comps
   fetchEbayComps: (item: Item) => Promise<void>
@@ -106,6 +130,9 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
   communityComps: [],
   marketSignal: null,
   marketSignalLoading: false,
+  storedSignals: new Map(),
+  signalsLoading: false,
+  signalsLastRefresh: null,
 
   loadAll: async (profileId) => {
     console.log('[items] loadAll: starting with profileId:', profileId)
@@ -265,6 +292,64 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
   },
 
   clearMarketSignal: () => set({ marketSignal: null, marketSignalLoading: false }),
+
+  // Load stored signals from Supabase (fast, cached data)
+  loadStoredSignals: async (profileId) => {
+    try {
+      const { data, error } = await supabase
+        .from('market_signals')
+        .select('*')
+        .eq('user_id', profileId)
+
+      if (error) { console.error('[signals] load error:', error.message); return }
+
+      const signalMap = new Map<string, StoredSignal>()
+      ;(data || []).forEach((row: Record<string, unknown>) => {
+        signalMap.set(String(row.item_id), {
+          itemId: String(row.item_id),
+          ebayAvgPrice: Number(row.ebay_avg_price) || 0,
+          ebayListingCount: Number(row.ebay_listing_count) || 0,
+          trendScore: Number(row.trend_score) || 0,
+          trendDirection: (row.trend_direction as string) || 'stable',
+          convictionScore: Number(row.conviction_score) || 50,
+          convictionLevel: (row.conviction_level as string) || 'HOLD',
+          convictionHeadline: (row.conviction_headline as string) || '',
+          priceChangePct: Number(row.price_change_pct) || 0,
+          priceChangeAbs: Number(row.price_change_abs) || 0,
+          fetchedAt: (row.fetched_at as string) || '',
+        })
+      })
+
+      set({ storedSignals: signalMap })
+      console.log('[signals] loaded', signalMap.size, 'stored signals')
+    } catch (e) {
+      console.error('[signals] load error:', e)
+    }
+  },
+
+  // Trigger background refresh of all signals (fire-and-forget)
+  refreshAllSignals: async (profileId) => {
+    set({ signalsLoading: true })
+    try {
+      const res = await fetch('/api/refresh-signals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: profileId }),
+      })
+      const result = await res.json()
+      console.log('[signals] refresh complete:', result)
+      set({ signalsLastRefresh: new Date().toISOString() })
+
+      // Reload stored signals + items (prices may have updated)
+      await Promise.all([
+        get().loadStoredSignals(profileId),
+        get().loadAll(profileId),
+      ])
+    } catch (e) {
+      console.error('[signals] refresh error:', e)
+    }
+    set({ signalsLoading: false })
+  },
 
   // eBay Live Prices via Supabase edge function
   fetchEbayComps: async (item) => {

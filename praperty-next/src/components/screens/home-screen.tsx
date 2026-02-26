@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Package, DollarSign, BarChart3, Bell, Search, TrendingUp, TrendingDown, Info, Eye, Plus, X, Trash2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
-import { useItemsStore } from '@/stores/items-store'
+import { useItemsStore, type StoredSignal } from '@/stores/items-store'
 import { fmt, getGreeting } from '@/lib/utils'
 import { generateAlerts } from '@/lib/alerts-engine'
 import { getSuggestions, matchProduct, searchProducts } from '@/lib/product-db'
@@ -15,55 +15,37 @@ interface Props {
   onResearch: (query: string) => void
 }
 
-// Simulated product database for "Similar Items Sold" suggestions
-const SIMILAR_PRODUCTS: { name: string; emoji: string; cat: string; brand: string }[] = [
-  { name: 'Air Jordan 1 Retro', emoji: '👟', cat: 'Fashion', brand: 'Nike' },
-  { name: 'MacBook Pro 14"', emoji: '💻', cat: 'Electronics', brand: 'Apple' },
-  { name: 'Rolex Submariner', emoji: '⌚', cat: 'Watches', brand: 'Rolex' },
-  { name: 'Pokemon Base Set Charizard', emoji: '🃏', cat: 'Trading Cards', brand: 'Pokemon' },
-  { name: 'Supreme Box Logo Hoodie', emoji: '👕', cat: 'Fashion', brand: 'Supreme' },
-  { name: 'Dyson V15 Detect', emoji: '🔌', cat: 'Electronics', brand: 'Dyson' },
-  { name: 'Birkin 25 Togo', emoji: '👜', cat: 'Fashion', brand: 'Hermes' },
-  { name: 'PlayStation 5 Pro', emoji: '🎮', cat: 'Electronics', brand: 'Sony' },
-  { name: 'LEGO Millennium Falcon', emoji: '🧱', cat: 'LEGO', brand: 'LEGO' },
-  { name: 'Vintage Leica M6', emoji: '📷', cat: 'Electronics', brand: 'Leica' },
-  { name: 'Omega Speedmaster', emoji: '⌚', cat: 'Watches', brand: 'Omega' },
-  { name: 'Gibson Les Paul Standard', emoji: '🎸', cat: 'Musical Instruments', brand: 'Gibson' },
-  { name: 'Yeezy 350 V2', emoji: '👟', cat: 'Fashion', brand: 'Adidas' },
-  { name: 'iPad Pro M4', emoji: '📱', cat: 'Electronics', brand: 'Apple' },
-  { name: 'Tiffany Diamond Pendant', emoji: '💎', cat: 'Jewelry', brand: 'Tiffany' },
-]
-
-const PLATFORMS = ['eBay', 'StockX', 'Mercari', 'Poshmark', 'GOAT', 'Grailed', 'Facebook MP', 'Depop']
-
-// Demo data shown when user has no items yet
-const DEMO_MOVERS = [
-  { id: 'demo-1', name: 'Air Jordan 1 Retro', emoji: '👟', value: 340, cost: 170, category: 'Fashion', brand: 'Nike', change: 45, changePct: 15.3, priceHistory: [], dateSold: undefined, dateAcquired: '', notes: '', condition: '', images: [], earnings: 0 },
-  { id: 'demo-2', name: 'Pokemon Charizard', emoji: '🃏', value: 890, cost: 200, category: 'Trading Cards', brand: 'Pokemon', change: -62, changePct: -6.5, priceHistory: [], dateSold: undefined, dateAcquired: '', notes: '', condition: '', images: [], earnings: 0 },
-  { id: 'demo-3', name: 'Rolex Submariner', emoji: '⌚', value: 12500, cost: 9800, category: 'Watches', brand: 'Rolex', change: 875, changePct: 7.5, priceHistory: [], dateSold: undefined, dateAcquired: '', notes: '', condition: '', images: [], earnings: 0 },
-  { id: 'demo-4', name: 'MacBook Pro 14"', emoji: '💻', value: 1650, cost: 1999, category: 'Electronics', brand: 'Apple', change: -120, changePct: -6.8, priceHistory: [], dateSold: undefined, dateAcquired: '', notes: '', condition: '', images: [], earnings: 0 },
-  { id: 'demo-5', name: 'Supreme Box Logo', emoji: '👕', value: 780, cost: 168, category: 'Fashion', brand: 'Supreme', change: 52, changePct: 7.1, priceHistory: [], dateSold: undefined, dateAcquired: '', notes: '', condition: '', images: [], earnings: 0 },
-]
-
-const DEMO_SIMILAR_SOLD = [
-  { name: 'Air Jordan 4 Retro', emoji: '👟', cat: 'Fashion', brand: 'Nike', salePrice: 385, daysAgo: 2, platform: 'StockX', relatedTo: 'Your sneakers', relatedEmoji: '👟' },
-  { name: 'Omega Speedmaster', emoji: '⌚', cat: 'Watches', brand: 'Omega', salePrice: 6200, daysAgo: 1, platform: 'eBay', relatedTo: 'Your watches', relatedEmoji: '⌚' },
-  { name: 'iPad Pro M4', emoji: '📱', cat: 'Electronics', brand: 'Apple', salePrice: 950, daysAgo: 3, platform: 'Mercari', relatedTo: 'Your electronics', relatedEmoji: '💻' },
-  { name: 'LEGO Millennium Falcon', emoji: '🧱', cat: 'LEGO', brand: 'LEGO', salePrice: 720, daysAgo: 5, platform: 'eBay', relatedTo: 'Your collectibles', relatedEmoji: '🧱' },
-  { name: 'Birkin 25 Togo', emoji: '👜', cat: 'Fashion', brand: 'Hermes', salePrice: 14200, daysAgo: 1, platform: 'Poshmark', relatedTo: 'Your fashion', relatedEmoji: '👜' },
-]
-
-function getMarketMovers(items: Item[]) {
+/**
+ * Market Movers: uses REAL stored signals from background refresh.
+ * Falls back to price history when signals haven't loaded yet.
+ */
+function getMarketMovers(items: Item[], signals: Map<string, StoredSignal>) {
   const activeItems = items.filter(i => !i.dateSold)
-  console.log('[movers] activeItems:', activeItems.length, 'first:', activeItems[0]?.name, 'value:', activeItems[0]?.value, 'cost:', activeItems[0]?.cost)
+  if (activeItems.length === 0) return []
 
-  // Demo mode: show sample data when no items
-  if (activeItems.length === 0) {
-    console.log('[movers] returning DEMO data')
-    return DEMO_MOVERS as unknown as (Item & { change: number; changePct: number })[]
-  }
+  // Priority 1: Items with stored signals that show real price changes
+  const withSignals = activeItems
+    .map(item => {
+      const signal = signals.get(item.id)
+      if (signal && signal.ebayAvgPrice > 0) {
+        return {
+          ...item,
+          change: signal.priceChangeAbs,
+          changePct: signal.priceChangePct,
+          convictionLevel: signal.convictionLevel,
+          convictionScore: signal.convictionScore,
+          ebayAvg: signal.ebayAvgPrice,
+        }
+      }
+      return null
+    })
+    .filter(Boolean)
+    .sort((a, b) => Math.abs(b!.changePct) - Math.abs(a!.changePct))
+    .slice(0, 5) as (Item & { change: number; changePct: number; convictionLevel?: string; convictionScore?: number; ebayAvg?: number })[]
 
-  // First try: items with 2+ price history entries (real movers)
+  if (withSignals.length > 0) return withSignals
+
+  // Priority 2: Items with 2+ price history entries (from comps or manual updates)
   const realMovers = activeItems
     .filter(i => i.priceHistory && i.priceHistory.length >= 2)
     .map(item => {
@@ -79,95 +61,64 @@ function getMarketMovers(items: Item[]) {
     .sort((a, b) => Math.abs(b!.changePct) - Math.abs(a!.changePct))
     .slice(0, 5) as (Item & { change: number; changePct: number })[]
 
-  if (realMovers.length > 0) {
-    console.log('[movers] returning realMovers:', realMovers.length)
-    return realMovers
-  }
+  if (realMovers.length > 0) return realMovers
 
-  // Fallback: show top valued items as "portfolio highlights" with simulated daily change
-  const withValue = activeItems.filter(i => (i.value || i.cost) > 0)
-  console.log('[movers] fallback: items with value:', withValue.length)
+  // Priority 3: Show top items by value (no fake changes, just portfolio view)
   return activeItems
     .filter(i => (i.value || i.cost) > 0)
     .sort((a, b) => (b.value || b.cost) - (a.value || a.cost))
     .slice(0, 5)
-    .map(item => {
-      // Deterministic daily change based on item name hash
-      const hash = item.name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-      const changePct = ((hash % 120) - 40) / 10 // range: -4% to +8%
-      const baseVal = item.value || item.cost || 100
-      const change = Math.round(baseVal * changePct / 100)
-      return { ...item, change, changePct }
-    })
+    .map(item => ({ ...item, change: 0, changePct: 0 }))
 }
 
-function getSimilarSold(items: Item[]) {
+/**
+ * Conviction Banners: Items with strong BUY or SELL signals.
+ * The "AYOOO SELL" energy. Only shows when real signals exist.
+ */
+function getConvictionAlerts(items: Item[], signals: Map<string, StoredSignal>) {
   const activeItems = items.filter(i => !i.dateSold)
 
-  // Demo mode: show sample data when no items
-  if (activeItems.length === 0) return DEMO_SIMILAR_SOLD
-
-  type Suggestion = {
-    name: string; emoji: string; cat: string; brand: string
-    salePrice: number; daysAgo: number; platform: string
-    relatedTo: string; relatedEmoji: string
-  }
-  const suggestions: Suggestion[] = []
-  const seenNames = new Set<string>()
-
-  // First pass: match by category or brand
-  activeItems.forEach(item => {
-    const similar = SIMILAR_PRODUCTS.filter(
-      p => p.name !== item.name && !seenNames.has(p.name) &&
-        (p.cat.toLowerCase() === item.category.toLowerCase() ||
-         (item.brand && p.brand.toLowerCase() === item.brand.toLowerCase()))
-    ).slice(0, 2)
-
-    similar.forEach(s => {
-      if (suggestions.length >= 5 || seenNames.has(s.name)) return
-      seenNames.add(s.name)
-      const basePrice = item.value > 0 ? item.value : (item.cost || 200)
-      const variance = 0.7 + (Math.abs(s.name.charCodeAt(0) % 60) / 100)
-      const salePrice = Math.round(basePrice * variance)
-      const daysAgo = 1 + (s.name.charCodeAt(1) % 12)
-      const platform = PLATFORMS[s.name.charCodeAt(0) % PLATFORMS.length]
-      suggestions.push({
-        name: s.name, emoji: s.emoji, cat: s.cat, brand: s.brand,
-        salePrice, daysAgo, platform, relatedTo: item.name, relatedEmoji: item.emoji,
-      })
+  return activeItems
+    .map(item => {
+      const signal = signals.get(item.id)
+      if (!signal || signal.ebayAvgPrice === 0) return null
+      if (signal.convictionLevel === 'SELL' && signal.convictionScore >= 65) {
+        return { ...item, signal, urgency: 'sell' as const }
+      }
+      if (signal.convictionLevel === 'BUY' && signal.priceChangePct < -10) {
+        return { ...item, signal, urgency: 'buy' as const }
+      }
+      return null
     })
-  })
+    .filter(Boolean) as (Item & { signal: StoredSignal; urgency: 'buy' | 'sell' })[]
+}
 
-  // Fallback: if no matches, pick random products related to the user's highest-value items
-  if (suggestions.length < 3) {
-    const topItems = activeItems
-      .sort((a, b) => (b.value || b.cost || 0) - (a.value || a.cost || 0))
-      .slice(0, 3)
+/**
+ * Top Market Values: replaces fake "Similar Items Sold" with real eBay avg prices
+ * from stored signals. Shows your items ranked by market value.
+ */
+function getMarketPriced(items: Item[], signals: Map<string, StoredSignal>) {
+  const activeItems = items.filter(i => !i.dateSold)
 
-    topItems.forEach(item => {
-      const remaining = SIMILAR_PRODUCTS.filter(p => !seenNames.has(p.name))
-      if (remaining.length === 0 || suggestions.length >= 5) return
-
-      const pick = remaining[Math.abs(item.name.charCodeAt(0)) % remaining.length]
-      seenNames.add(pick.name)
-      const basePrice = item.value > 0 ? item.value : (item.cost || 200)
-      const variance = 0.7 + (Math.abs(pick.name.charCodeAt(0) % 60) / 100)
-      suggestions.push({
-        name: pick.name, emoji: pick.emoji, cat: pick.cat, brand: pick.brand,
-        salePrice: Math.round(basePrice * variance),
-        daysAgo: 1 + (pick.name.charCodeAt(1) % 12),
-        platform: PLATFORMS[pick.name.charCodeAt(0) % PLATFORMS.length],
-        relatedTo: item.name, relatedEmoji: item.emoji,
-      })
+  return activeItems
+    .map(item => {
+      const signal = signals.get(item.id)
+      const ebayAvg = signal?.ebayAvgPrice || 0
+      const listingCount = signal?.ebayListingCount || 0
+      const trendDirection = signal?.trendDirection || 'stable'
+      const roi = item.cost > 0 && ebayAvg > 0
+        ? Math.round(((ebayAvg - item.cost) / item.cost) * 100)
+        : null
+      return { ...item, ebayAvg, listingCount, trendDirection, roi }
     })
-  }
-
-  return suggestions
+    .filter(i => i.ebayAvg > 0)
+    .sort((a, b) => b.ebayAvg - a.ebayAvg)
+    .slice(0, 5)
 }
 
 export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props) {
   const { profile, profileId } = useAuthStore()
-  const { items, watchlist, syncWatchlistItem, setWatchlist, deleteWatchlistItem } = useItemsStore()
+  const { items, watchlist, syncWatchlistItem, setWatchlist, deleteWatchlistItem, storedSignals, signalsLoading, loadStoredSignals, refreshAllSignals } = useItemsStore()
   const [watchSearchQuery, setWatchSearchQuery] = useState('')
   const [swipedItemId, setSwipedItemId] = useState<string | null>(null)
   const userName = profile?.name || 'there'
@@ -178,18 +129,20 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
   const totalValue = activeItems.reduce((sum, i) => sum + (i.value || 0), 0)
   const totalEarnings = soldItems.reduce((sum, i) => sum + (i.earnings || i.value || 0), 0)
 
-  const alerts = useMemo(() => generateAlerts(items), [items])
+  // Load stored signals on mount, trigger background refresh if stale
+  useEffect(() => {
+    if (!profileId || items.length === 0) return
+    // Load cached signals immediately
+    loadStoredSignals(profileId)
+    // Background refresh (fire and forget, won't block UI)
+    refreshAllSignals(profileId)
+  }, [profileId, items.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const alerts = useMemo(() => generateAlerts(items, storedSignals), [items, storedSignals])
   const alertCount = alerts.length
-  const movers = useMemo(() => {
-    const result = getMarketMovers(items)
-    console.log('[home] getMarketMovers:', { totalItems: items.length, activeItems: items.filter(i => !i.dateSold).length, moversCount: result.length, firstMover: result[0]?.name })
-    return result
-  }, [items])
-  const similarSold = useMemo(() => {
-    const result = getSimilarSold(items)
-    console.log('[home] getSimilarSold:', { totalItems: items.length, similarCount: result.length, firstSimilar: result[0]?.name })
-    return result
-  }, [items])
+  const movers = useMemo(() => getMarketMovers(items, storedSignals), [items, storedSignals])
+  const convictionAlerts = useMemo(() => getConvictionAlerts(items, storedSignals), [items, storedSignals])
+  const marketPriced = useMemo(() => getMarketPriced(items, storedSignals), [items, storedSignals])
 
   // Watchlist search suggestions: instant local + debounced Supabase
   const [watchSearchSuggestions, setWatchSearchSuggestions] = useState<{ name: string; brand: string; category: string; emoji: string }[]>([])
@@ -283,13 +236,55 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
         </div>
       </div>
 
+      {/* Conviction Banners - "AYOOO SELL" / "YO BUY" */}
+      {convictionAlerts.length > 0 && (
+        <div className="px-6 pb-3">
+          {convictionAlerts.map((alert, i) => {
+            const isSell = alert.urgency === 'sell'
+            return (
+              <div
+                key={alert.id}
+                onClick={() => onViewItem(alert.id)}
+                className="rounded-2xl p-4 mb-2 cursor-pointer animate-fade-up"
+                style={{
+                  animationDelay: `${i * 0.08}s`,
+                  background: isSell
+                    ? 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(249,115,22,0.10))'
+                    : 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(16,185,129,0.10))',
+                  border: `1px solid ${isSell ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}`,
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{alert.emoji}</span>
+                    <div>
+                      <p className="text-sm font-bold text-white">{alert.name}</p>
+                      <p className={`text-xs font-bold mt-0.5 ${isSell ? 'text-red-400' : 'text-green-400'}`}>
+                        {isSell ? '🔥 SELL NOW' : '💰 BUY OPPORTUNITY'} - Score {alert.signal.convictionScore}/100
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-base font-extrabold text-white">{fmt(alert.signal.ebayAvgPrice)}</p>
+                    <p className="text-[10px] text-dim">eBay avg</p>
+                  </div>
+                </div>
+                <p className="text-xs text-dim mt-2">{alert.signal.convictionHeadline}</p>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Market Movers */}
       {movers.length > 0 && (
         <div className="px-6 pb-4">
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-white">Market Movers</h2>
-              {items.length === 0 && <span className="text-[10px] text-amber-brand/60 bg-amber-brand/10 px-2 py-0.5 rounded-full">Demo</span>}
+              {signalsLoading && (
+                <span className="text-[10px] text-amber-brand/60 bg-amber-brand/10 px-2 py-0.5 rounded-full animate-pulse">Refreshing</span>
+              )}
             </div>
             <button onClick={() => onNavigate('alerts')} className="text-amber-brand text-xs font-semibold">
               All Alerts
@@ -298,27 +293,44 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
           <div className="flex gap-2.5 overflow-x-auto scroll-hide pb-1">
             {movers.map((m, i) => {
               const isUp = m.change >= 0
-              const isDemo = String(m.id).startsWith('demo-')
+              const hasChange = m.changePct !== 0
+              const conviction = (m as any).convictionLevel
               return (
                 <div
                   key={m.id}
-                  onClick={() => isDemo ? onNavigate('add-item') : onViewItem(m.id)}
+                  onClick={() => onViewItem(m.id)}
                   className="glass glass-hover rounded-2xl p-3.5 min-w-[150px] flex-shrink-0 cursor-pointer animate-fade-up"
                   style={{
                     animationDelay: `${i * 0.06}s`,
-                    borderTop: `3px solid ${isUp ? '#4ade80' : '#f87171'}`,
+                    borderTop: `3px solid ${hasChange ? (isUp ? '#4ade80' : '#f87171') : '#EB9C35'}`,
                   }}
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-lg">{m.emoji}</span>
                     <p className="text-xs font-semibold text-white truncate max-w-[100px]">{m.name}</p>
                   </div>
-                  <p className={`text-base font-extrabold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
-                    {isUp ? '+' : ''}{m.changePct.toFixed(1)}%
-                  </p>
-                  <p className="text-dim text-[10px] mt-0.5">
-                    {isUp ? '+' : ''}${Math.abs(Math.round(m.change)).toLocaleString()} since last update
-                  </p>
+                  {hasChange ? (
+                    <>
+                      <p className={`text-base font-extrabold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                        {isUp ? '+' : ''}{m.changePct.toFixed(1)}%
+                      </p>
+                      <p className="text-dim text-[10px] mt-0.5">
+                        {isUp ? '+' : ''}${Math.abs(Math.round(m.change)).toLocaleString()} since last check
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base font-extrabold text-amber-brand">{fmt(m.value || m.cost)}</p>
+                      <p className="text-dim text-[10px] mt-0.5">Current value</p>
+                    </>
+                  )}
+                  {conviction && (
+                    <span className={`inline-block mt-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                      conviction === 'SELL' ? 'bg-red-500/20 text-red-400' :
+                      conviction === 'BUY' ? 'bg-green-500/20 text-green-400' :
+                      'bg-amber-500/20 text-amber-400'
+                    }`}>{conviction}</span>
+                  )}
                 </div>
               )
             })}
@@ -326,39 +338,46 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
         </div>
       )}
 
-      {/* Similar Items Sold */}
-      {similarSold.length > 0 && (
+      {/* Market Values (replaces fake "Similar Items Sold" with real eBay data) */}
+      {marketPriced.length > 0 && (
         <div className="px-6 pb-4">
           <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-base font-bold text-white">Similar Items Sold</h2>
+            <h2 className="text-base font-bold text-white">Market Values</h2>
             <span className="text-dim text-[10px] bg-white/5 px-2 py-0.5 rounded-full">
-              {items.length === 0 ? 'Trending now' : 'Based on your inventory'}
+              Live eBay data
             </span>
-            {items.length === 0 && <span className="text-[10px] text-purple-400/60 bg-purple-500/10 px-2 py-0.5 rounded-full">Demo</span>}
           </div>
           <div className="flex gap-2.5 overflow-x-auto scroll-hide pb-1">
-            {similarSold.map((s, i) => (
-              <div
-                key={i}
-                onClick={() => onNavigate('discover')}
-                className="glass glass-hover rounded-2xl p-3.5 min-w-[180px] max-w-[200px] flex-shrink-0 cursor-pointer animate-fade-up"
-                style={{
-                  animationDelay: `${i * 0.06}s`,
-                  borderTop: '3px solid #a855f7',
-                }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg">{s.emoji}</span>
-                  <p className="text-xs font-semibold text-white truncate max-w-[130px]">{s.name}</p>
+            {marketPriced.map((item, i) => {
+              const roiColor = item.roi !== null ? (item.roi >= 0 ? 'text-green-400' : 'text-red-400') : 'text-dim'
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => onViewItem(item.id)}
+                  className="glass glass-hover rounded-2xl p-3.5 min-w-[180px] max-w-[200px] flex-shrink-0 cursor-pointer animate-fade-up"
+                  style={{
+                    animationDelay: `${i * 0.06}s`,
+                    borderTop: '3px solid #a855f7',
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{item.emoji}</span>
+                    <p className="text-xs font-semibold text-white truncate max-w-[130px]">{item.name}</p>
+                  </div>
+                  <p className="text-lg font-extrabold text-purple-400">{fmt(item.ebayAvg)}</p>
+                  <p className="text-dim text-[10px] mt-0.5">{item.listingCount} listings on eBay</p>
+                  {item.roi !== null && (
+                    <p className={`text-[11px] font-bold mt-1 ${roiColor}`}>
+                      {item.roi >= 0 ? '+' : ''}{item.roi}% ROI vs cost
+                    </p>
+                  )}
+                  <div className="mt-2 flex items-center gap-1.5 bg-white/4 rounded-md px-2 py-1">
+                    <span className="text-[11px]">{item.trendDirection === 'rising' ? '📈' : item.trendDirection === 'declining' ? '📉' : '➡️'}</span>
+                    <p className="text-dim text-[10px] capitalize">{item.trendDirection} trend</p>
+                  </div>
                 </div>
-                <p className="text-lg font-extrabold text-purple-400">{fmt(s.salePrice)}</p>
-                <p className="text-dim text-[10px] mt-1">Sold {s.daysAgo}d ago on {s.platform}</p>
-                <div className="mt-2 flex items-center gap-1.5 bg-white/4 rounded-md px-2 py-1">
-                  <span className="text-[11px]">{s.relatedEmoji}</span>
-                  <p className="text-dim text-[10px] truncate">Similar to {s.relatedTo}</p>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -480,10 +499,12 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
               <span className="text-dim text-[9px] uppercase tracking-wider text-right min-w-[70px]">Daily Chg</span>
             </div>
             {watchlist.map((w, wi) => {
-              const changePct = w.priceHistory.length >= 2 && w.priceHistory[w.priceHistory.length - 2].value > 0
+              // Real price change from actual history only, no fake hash fallback
+              const hasRealHistory = w.priceHistory.length >= 2 && w.priceHistory[w.priceHistory.length - 2].value > 0
+              const changePct = hasRealHistory
                 ? ((w.lastKnownPrice - w.priceHistory[w.priceHistory.length - 2].value) / w.priceHistory[w.priceHistory.length - 2].value) * 100
-                : ((w.name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 7) - 3) * 0.8
-              const isUp = changePct >= 0
+                : null
+              const isUp = changePct !== null ? changePct >= 0 : true
               const isSwiped = swipedItemId === w.id
               return (
                 <div
@@ -545,8 +566,8 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
                     <p className="text-[13px] font-bold text-white text-right min-w-[65px]">
                       {w.lastKnownPrice > 0 ? fmt(w.lastKnownPrice) : '--'}
                     </p>
-                    <p className={`text-[12px] font-bold text-right min-w-[70px] ${isUp ? 'text-green-400' : 'text-red-400'}`}>
-                      {isUp ? '+' : ''}{changePct.toFixed(1)}%
+                    <p className={`text-[12px] font-bold text-right min-w-[70px] ${changePct === null ? 'text-dim' : isUp ? 'text-green-400' : 'text-red-400'}`}>
+                      {changePct !== null ? `${isUp ? '+' : ''}${changePct.toFixed(1)}%` : '--'}
                     </p>
                   </div>
                 </div>

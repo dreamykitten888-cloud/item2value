@@ -1,4 +1,5 @@
 import type { Item, Alert, AlertType, AlertCategory } from '@/types'
+import type { StoredSignal } from '@/stores/items-store'
 
 // --- Colors per alert type ---
 export const ALERT_COLORS: Record<AlertType, string> = {
@@ -16,6 +17,11 @@ export const ALERT_COLORS: Record<AlertType, string> = {
   'High Concentration': '#f59e0b',
   'Stale Item': '#94a3b8',
   'Ready to Sell': '#22d3ee',
+  'Price Surge': '#22c55e',
+  'Price Drop': '#ef4444',
+  'Sell Signal': '#f97316',
+  'Buy Signal': '#10b981',
+  'Market Hot': '#f59e0b',
 }
 
 export const CATEGORY_META: Record<AlertCategory, { label: string; emoji: string }> = {
@@ -35,7 +41,15 @@ const getGain = (item: Item): number => {
   return Math.round(((item.value - item.cost) / item.cost) * 100)
 }
 
-export function generateAlerts(items: Item[]): Alert[] {
+/**
+ * Generate alerts from items + optional stored market signals.
+ * When signals are provided, we fire real market-driven alerts:
+ * price surges, price drops, sell signals, buy signals, etc.
+ */
+export function generateAlerts(
+  items: Item[],
+  signals?: Map<string, StoredSignal>
+): Alert[] {
   const a: Alert[] = []
   let id = 1
   const now = new Date()
@@ -48,6 +62,61 @@ export function generateAlerts(items: Item[]): Alert[] {
   const topGainer = activeItems.length > 0
     ? activeItems.reduce((m, i) => getGain(i) > getGain(m) ? i : m)
     : null
+
+  // ==================== MARKET SIGNAL ALERTS ====================
+  // These fire first because they're the most actionable, real-time alerts
+
+  if (signals && signals.size > 0) {
+    activeItems.forEach(item => {
+      const signal = signals.get(item.id)
+      if (!signal || signal.ebayAvgPrice === 0) return
+
+      // SELL SIGNAL: conviction >= 70 with real market data
+      if (signal.convictionLevel === 'SELL' && signal.convictionScore >= 70) {
+        a.push({
+          id: id++, type: 'Sell Signal', category: 'highlights', priority: -2,
+          emoji: item.emoji, itemId: item.id,
+          msg: `${item.name} has a strong sell signal (${signal.convictionScore}/100). eBay avg ${fmt(signal.ebayAvgPrice)}.`,
+        })
+      }
+
+      // BUY SIGNAL: price dropped >10% and conviction says BUY
+      if (signal.convictionLevel === 'BUY' && signal.priceChangePct < -10) {
+        a.push({
+          id: id++, type: 'Buy Signal', category: 'highlights', priority: -1,
+          emoji: item.emoji, itemId: item.id,
+          msg: `${item.name} price dropped ${Math.abs(signal.priceChangePct).toFixed(1)}%. Good time to buy more.`,
+        })
+      }
+
+      // PRICE SURGE: market avg went up >5% since last check
+      if (signal.priceChangePct > 5) {
+        a.push({
+          id: id++, type: 'Price Surge', category: 'pricing', priority: 3,
+          emoji: item.emoji, itemId: item.id,
+          msg: `${item.name} market price is up ${signal.priceChangePct.toFixed(1)}% to ${fmt(signal.ebayAvgPrice)}.`,
+        })
+      }
+
+      // PRICE DROP: market avg went down >5% since last check
+      if (signal.priceChangePct < -5) {
+        a.push({
+          id: id++, type: 'Price Drop', category: 'pricing', priority: 4,
+          emoji: item.emoji, itemId: item.id,
+          msg: `${item.name} market price dropped ${Math.abs(signal.priceChangePct).toFixed(1)}% to ${fmt(signal.ebayAvgPrice)}.`,
+        })
+      }
+
+      // MARKET HOT: trend is rising + high listing count
+      if (signal.trendDirection === 'rising' && signal.trendScore >= 70) {
+        a.push({
+          id: id++, type: 'Market Hot', category: 'insights', priority: 8,
+          emoji: item.emoji, itemId: item.id,
+          msg: `${item.name} is trending up with high search interest. Market is hot.`,
+        })
+      }
+    })
+  }
 
   // ==================== HIGHLIGHTS ====================
 
@@ -99,6 +168,7 @@ export function generateAlerts(items: Item[]): Alert[] {
 
   activeItems.forEach(item => {
     const gain = getGain(item)
+    const signal = signals?.get(item.id)
 
     // Strong Performer (>15% gain)
     if (gain > 15) {
@@ -109,28 +179,29 @@ export function generateAlerts(items: Item[]): Alert[] {
       })
     }
 
-    // Below Cost
-    if (item.value < item.cost && item.cost > 0) {
-      const loss = Math.round(((item.cost - item.value) / item.cost) * 100)
+    // Below Cost (use eBay avg if available, otherwise item.value)
+    const marketVal = signal?.ebayAvgPrice || item.value
+    if (marketVal < item.cost && item.cost > 0) {
+      const loss = Math.round(((item.cost - marketVal) / item.cost) * 100)
       a.push({
         id: id++, type: 'Below Cost', category: 'pricing', priority: 5,
         emoji: item.emoji, itemId: item.id,
-        msg: `${item.name} market value is ${loss}% below what you paid.`,
+        msg: `${item.name} market value is ${loss}% below what you paid${signal?.ebayAvgPrice ? ' (eBay avg)' : ''}.`,
       })
     }
 
     // Priced High (asking >20% above market)
-    if (item.asking > 0 && item.value > 0 && item.asking > item.value * 1.2) {
-      const pct = Math.round(((item.asking - item.value) / item.value) * 100)
+    if (item.asking > 0 && marketVal > 0 && item.asking > marketVal * 1.2) {
+      const pct = Math.round(((item.asking - marketVal) / marketVal) * 100)
       a.push({
         id: id++, type: 'Priced High', category: 'pricing', priority: 7,
         emoji: item.emoji, itemId: item.id,
-        msg: `${item.name} asking is ${pct}% above market. May be hard to sell.`,
+        msg: `${item.name} asking is ${pct}% above market${signal?.ebayAvgPrice ? ' (eBay avg)' : ''}. May be hard to sell.`,
       })
     }
 
     // Underpriced (asking <90% of market)
-    if (item.asking > 0 && item.value > 0 && item.asking < item.value * 0.9) {
+    if (item.asking > 0 && marketVal > 0 && item.asking < marketVal * 0.9) {
       a.push({
         id: id++, type: 'Underpriced', category: 'pricing', priority: 6,
         emoji: item.emoji, itemId: item.id,
@@ -227,7 +298,7 @@ export function generateAlerts(items: Item[]): Alert[] {
     }
   })
 
-  // Sort by priority
+  // Sort by priority (lower = higher priority, negative = market signal urgency)
   a.sort((x, y) => x.priority - y.priority)
   return a
 }
