@@ -413,11 +413,6 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
               <span className="text-dim text-[10px] bg-white/5 px-2 py-0.5 rounded-full">{watchlist.length}</span>
             )}
           </div>
-          {watchlist.length > 0 && (
-            <button onClick={() => onNavigate('watchlist')} className="text-emerald-400 text-xs font-semibold">
-              Manage
-            </button>
-          )}
         </div>
 
         {/* Search to add */}

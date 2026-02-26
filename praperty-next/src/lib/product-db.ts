@@ -278,6 +278,85 @@ const BRAND_DB: Record<string, { category: string; emoji: string; aliases?: stri
   'Nitto': { category: 'Automotive', emoji: '🔧', aliases: ['nitto', 'nt555', 'nt05'] },
   'Federal': { category: 'Automotive', emoji: '🔧', aliases: ['federal', 'federal tires', 'rs-rr'] },
   'Michelin': { category: 'Automotive', emoji: '🔧', aliases: ['michelin', 'pilot sport'] },
+
+  // ═══════════════════════════════════════════════════════
+  // FASHION & CLOTHING
+  // ═══════════════════════════════════════════════════════
+
+  // Athleisure & Contemporary
+  'Alo Yoga': { category: 'Clothing', emoji: '👗', aliases: ['alo', 'alo yoga'] },
+  'Aritzia': { category: 'Clothing', emoji: '👗', aliases: ['aritzia', 'tna', 'babaton', 'wilfred', 'sunday best'] },
+  'Lululemon': { category: 'Clothing', emoji: '👗', aliases: ['lululemon', 'lulu'] },
+
+  // Mall & Y2K Brands
+  'Hollister': { category: 'Clothing', emoji: '👕', aliases: ['hollister', 'hco'] },
+  'Abercrombie & Fitch': { category: 'Clothing', emoji: '👕', aliases: ['abercrombie', 'abercrombie & fitch', 'abercrombie and fitch', 'a&f'] },
+  'Baby Phat': { category: 'Clothing', emoji: '👗', aliases: ['baby phat', 'babyphat'] },
+  'JNCO': { category: 'Clothing', emoji: '👖', aliases: ['jnco', 'jinco', 'jnco jeans'] },
+  'Jordache': { category: 'Clothing', emoji: '👖', aliases: ['jordache'] },
+  'Topshop': { category: 'Clothing', emoji: '👗', aliases: ['topshop', 'topman'] },
+  'Ed Hardy': { category: 'Clothing', emoji: '👕', aliases: ['ed hardy'] },
+  'Von Dutch': { category: 'Clothing', emoji: '🧢', aliases: ['von dutch'] },
+  'Juicy Couture': { category: 'Clothing', emoji: '👗', aliases: ['juicy couture', 'juicy'] },
+  'True Religion': { category: 'Clothing', emoji: '👖', aliases: ['true religion'] },
+  'Miss Me': { category: 'Clothing', emoji: '👖', aliases: ['miss me', 'miss me jeans'] },
+  'Rock Revival': { category: 'Clothing', emoji: '👖', aliases: ['rock revival'] },
+
+  // Designer Shoes & Heels
+  'Christian Louboutin': { category: 'Shoes', emoji: '👠', aliases: ['louboutin', 'christian louboutin', 'louboutins', 'red bottoms', 'red bottom'] },
+  'Manolo Blahnik': { category: 'Shoes', emoji: '👠', aliases: ['manolo blahnik', 'manolo', 'manolos'] },
+  'Jimmy Choo': { category: 'Shoes', emoji: '👠', aliases: ['jimmy choo', 'jimmy choos', 'choo'] },
+  'Stuart Weitzman': { category: 'Shoes', emoji: '👠', aliases: ['stuart weitzman'] },
+  'Salvatore Ferragamo': { category: 'Shoes', emoji: '👞', aliases: ['ferragamo', 'salvatore ferragamo'] },
+  'Valentino': { category: 'Shoes', emoji: '👠', aliases: ['valentino', 'valentino garavani', 'rockstud'] },
+
+  // Japanese & Avant-Garde Designers
+  'Issey Miyake': { category: 'Clothing', emoji: '👗', aliases: ['issey miyake', 'miyake', 'pleats please', 'bao bao', 'homme plisse'] },
+  'Comme des Garcons': { category: 'Clothing', emoji: '👕', aliases: ['comme des garcons', 'cdg', 'comme des garçons', 'rei kawakubo'] },
+  'Yohji Yamamoto': { category: 'Clothing', emoji: '👕', aliases: ['yohji yamamoto', 'yohji', 'y-3'] },
+  'Kapital': { category: 'Clothing', emoji: '👕', aliases: ['kapital'] },
+  'Undercover': { category: 'Clothing', emoji: '👕', aliases: ['undercover', 'jun takahashi'] },
+  'Visvim': { category: 'Clothing', emoji: '👟', aliases: ['visvim'] },
+  'Neighborhood': { category: 'Clothing', emoji: '👕', aliases: ['neighborhood', 'nbhd'] },
+  'Human Made': { category: 'Clothing', emoji: '👕', aliases: ['human made', 'nigo'] },
+
+  // Luxury Fashion Houses (more)
+  'Versace': { category: 'Clothing', emoji: '👗', aliases: ['versace', 'gianni versace'] },
+  'Dolce & Gabbana': { category: 'Clothing', emoji: '👗', aliases: ['dolce gabbana', 'dolce & gabbana', 'd&g'] },
+  'Burberry': { category: 'Clothing', emoji: '👕', aliases: ['burberry'] },
+  'Saint Laurent': { category: 'Clothing', emoji: '👗', aliases: ['saint laurent', 'ysl', 'yves saint laurent'] },
+  'Alexander McQueen': { category: 'Clothing', emoji: '👟', aliases: ['alexander mcqueen', 'mcqueen'] },
+  'Givenchy': { category: 'Clothing', emoji: '👕', aliases: ['givenchy'] },
+  'Miu Miu': { category: 'Clothing', emoji: '👗', aliases: ['miu miu'] },
+  'Maison Margiela': { category: 'Clothing', emoji: '👟', aliases: ['margiela', 'maison margiela', 'martin margiela', 'mmm'] },
+  'Acne Studios': { category: 'Clothing', emoji: '👕', aliases: ['acne studios', 'acne'] },
+  'Rick Owens': { category: 'Clothing', emoji: '👕', aliases: ['rick owens', 'drkshdw'] },
+
+  // Denim & Heritage
+  'Levis': { category: 'Clothing', emoji: '👖', aliases: ['levis', "levi's", 'levi'] },
+  'Wrangler': { category: 'Clothing', emoji: '👖', aliases: ['wrangler'] },
+  'Diesel': { category: 'Clothing', emoji: '👖', aliases: ['diesel'] },
+  'Evisu': { category: 'Clothing', emoji: '👖', aliases: ['evisu'] },
+  'Naked & Famous': { category: 'Clothing', emoji: '👖', aliases: ['naked and famous', 'naked & famous'] },
+
+  // Vintage & Sportswear
+  'Ralph Lauren': { category: 'Clothing', emoji: '👕', aliases: ['ralph lauren', 'polo', 'polo ralph lauren'] },
+  'Tommy Hilfiger': { category: 'Clothing', emoji: '👕', aliases: ['tommy hilfiger', 'tommy'] },
+  'Calvin Klein': { category: 'Clothing', emoji: '👕', aliases: ['calvin klein', 'ck'] },
+  'Lacoste': { category: 'Clothing', emoji: '👕', aliases: ['lacoste'] },
+  'Fred Perry': { category: 'Clothing', emoji: '👕', aliases: ['fred perry'] },
+  'The North Face': { category: 'Clothing', emoji: '🧥', aliases: ['north face', 'the north face', 'tnf'] },
+  'Patagonia': { category: 'Clothing', emoji: '🧥', aliases: ['patagonia'] },
+  'Arc\'teryx': { category: 'Clothing', emoji: '🧥', aliases: ['arcteryx', "arc'teryx", 'arc teryx'] },
+
+  // Contemporary Women's
+  'Reformation': { category: 'Clothing', emoji: '👗', aliases: ['reformation'] },
+  'Zimmermann': { category: 'Clothing', emoji: '👗', aliases: ['zimmermann'] },
+  'Sandro': { category: 'Clothing', emoji: '👗', aliases: ['sandro'] },
+  'Maje': { category: 'Clothing', emoji: '👗', aliases: ['maje'] },
+  'Self-Portrait': { category: 'Clothing', emoji: '👗', aliases: ['self-portrait', 'self portrait'] },
+  'Free People': { category: 'Clothing', emoji: '👗', aliases: ['free people'] },
+  'Anthropologie': { category: 'Clothing', emoji: '👗', aliases: ['anthropologie'] },
 }
 
 // Flatten for fast lookup: lowercase alias → brand name
@@ -860,6 +939,168 @@ const POPULAR_PRODUCTS: { name: string; brand: string; category: string; emoji: 
   // Streetwear
   { name: 'Supreme Box Logo Hoodie', brand: 'Supreme', category: 'Clothing', emoji: '👕' },
   { name: 'Bape Shark Hoodie', brand: 'Bape', category: 'Clothing', emoji: '👕' },
+
+  // ═══════════════════════════════════════════════════════
+  // FASHION & CLOTHING
+  // ═══════════════════════════════════════════════════════
+
+  // Alo Yoga
+  { name: 'Alo Airlift Leggings', brand: 'Alo Yoga', category: 'Clothing', emoji: '👗' },
+  { name: 'Alo Accolade Hoodie', brand: 'Alo Yoga', category: 'Clothing', emoji: '👗' },
+  { name: 'Alo Muse Sweatpant', brand: 'Alo Yoga', category: 'Clothing', emoji: '👗' },
+  { name: 'Alo Airlift Sports Bra', brand: 'Alo Yoga', category: 'Clothing', emoji: '👗' },
+  { name: 'Alo Cargo Jogger', brand: 'Alo Yoga', category: 'Clothing', emoji: '👗' },
+
+  // Aritzia
+  { name: 'Aritzia Super Puff Jacket', brand: 'Aritzia', category: 'Clothing', emoji: '👗' },
+  { name: 'Aritzia TNA Butter Leggings', brand: 'Aritzia', category: 'Clothing', emoji: '👗' },
+  { name: 'Aritzia Babaton Contour Bodysuit', brand: 'Aritzia', category: 'Clothing', emoji: '👗' },
+  { name: 'Aritzia Wilfred Free Divinity Romper', brand: 'Aritzia', category: 'Clothing', emoji: '👗' },
+  { name: 'Aritzia Effortless Pant', brand: 'Aritzia', category: 'Clothing', emoji: '👗' },
+  { name: 'Aritzia Sunday Best Maxi Dress', brand: 'Aritzia', category: 'Clothing', emoji: '👗' },
+
+  // Hollister
+  { name: 'Hollister Graphic Tee', brand: 'Hollister', category: 'Clothing', emoji: '👕' },
+  { name: 'Hollister Cargo Pants', brand: 'Hollister', category: 'Clothing', emoji: '👕' },
+  { name: 'Hollister Vintage Logo Hoodie', brand: 'Hollister', category: 'Clothing', emoji: '👕' },
+  { name: 'Hollister California Surf Tee (Vintage)', brand: 'Hollister', category: 'Clothing', emoji: '👕' },
+
+  // Abercrombie & Fitch
+  { name: 'Abercrombie Fierce Cologne', brand: 'Abercrombie & Fitch', category: 'Clothing', emoji: '👕' },
+  { name: 'Abercrombie Curve Love Jeans', brand: 'Abercrombie & Fitch', category: 'Clothing', emoji: '👕' },
+  { name: 'Abercrombie Sloane Tailored Pant', brand: 'Abercrombie & Fitch', category: 'Clothing', emoji: '👕' },
+  { name: 'Abercrombie Vintage Logo Tee (Y2K)', brand: 'Abercrombie & Fitch', category: 'Clothing', emoji: '👕' },
+  { name: 'Abercrombie Muscle Polo (Vintage 2000s)', brand: 'Abercrombie & Fitch', category: 'Clothing', emoji: '👕' },
+
+  // Baby Phat
+  { name: 'Baby Phat Logo Tee', brand: 'Baby Phat', category: 'Clothing', emoji: '👗' },
+  { name: 'Baby Phat Puffer Jacket', brand: 'Baby Phat', category: 'Clothing', emoji: '👗' },
+  { name: 'Baby Phat Velour Tracksuit (Vintage)', brand: 'Baby Phat', category: 'Clothing', emoji: '👗' },
+  { name: 'Baby Phat Cat Logo Hoodie (Y2K)', brand: 'Baby Phat', category: 'Clothing', emoji: '👗' },
+  { name: 'Baby Phat Denim Mini Skirt (Vintage)', brand: 'Baby Phat', category: 'Clothing', emoji: '👗' },
+
+  // JNCO
+  { name: 'JNCO Mammoth Wide Leg Jeans', brand: 'JNCO', category: 'Clothing', emoji: '👖' },
+  { name: 'JNCO Flamehead Jeans', brand: 'JNCO', category: 'Clothing', emoji: '👖' },
+  { name: 'JNCO Crown Jeans (Vintage 90s)', brand: 'JNCO', category: 'Clothing', emoji: '👖' },
+  { name: 'JNCO Kangaroo Jeans (Vintage)', brand: 'JNCO', category: 'Clothing', emoji: '👖' },
+  { name: 'JNCO Twin Cannon Jeans', brand: 'JNCO', category: 'Clothing', emoji: '👖' },
+
+  // Jordache
+  { name: 'Jordache High Rise Mom Jeans', brand: 'Jordache', category: 'Clothing', emoji: '👖' },
+  { name: 'Jordache Horse Logo Jeans (Vintage 80s)', brand: 'Jordache', category: 'Clothing', emoji: '👖' },
+  { name: 'Jordache Denim Jacket (Vintage)', brand: 'Jordache', category: 'Clothing', emoji: '👖' },
+  { name: 'Jordache Skinny Jeans', brand: 'Jordache', category: 'Clothing', emoji: '👖' },
+
+  // Christian Louboutin
+  { name: 'Louboutin So Kate 120mm', brand: 'Christian Louboutin', category: 'Shoes', emoji: '👠' },
+  { name: 'Louboutin Pigalle Follies', brand: 'Christian Louboutin', category: 'Shoes', emoji: '👠' },
+  { name: 'Louboutin Kate 85mm', brand: 'Christian Louboutin', category: 'Shoes', emoji: '👠' },
+  { name: 'Louboutin Hot Chick 100mm', brand: 'Christian Louboutin', category: 'Shoes', emoji: '👠' },
+  { name: 'Louboutin Iriza Pumps', brand: 'Christian Louboutin', category: 'Shoes', emoji: '👠' },
+  { name: 'Louboutin Louis Spikes Sneakers', brand: 'Christian Louboutin', category: 'Shoes', emoji: '👠' },
+  { name: 'Louboutin Cabata Tote', brand: 'Christian Louboutin', category: 'Bags', emoji: '👜' },
+
+  // Manolo Blahnik
+  { name: 'Manolo Blahnik Hangisi Pumps', brand: 'Manolo Blahnik', category: 'Shoes', emoji: '👠' },
+  { name: 'Manolo Blahnik BB Pumps', brand: 'Manolo Blahnik', category: 'Shoes', emoji: '👠' },
+  { name: 'Manolo Blahnik Maysale Mules', brand: 'Manolo Blahnik', category: 'Shoes', emoji: '👠' },
+  { name: 'Manolo Blahnik Lurum Slingback', brand: 'Manolo Blahnik', category: 'Shoes', emoji: '👠' },
+  { name: 'Manolo Blahnik Chaos Sandals', brand: 'Manolo Blahnik', category: 'Shoes', emoji: '👠' },
+
+  // Jimmy Choo
+  { name: 'Jimmy Choo Romy 100 Pumps', brand: 'Jimmy Choo', category: 'Shoes', emoji: '👠' },
+  { name: 'Jimmy Choo Anouk Pumps', brand: 'Jimmy Choo', category: 'Shoes', emoji: '👠' },
+  { name: 'Jimmy Choo Love 100 Pumps', brand: 'Jimmy Choo', category: 'Shoes', emoji: '👠' },
+  { name: 'Jimmy Choo Bon Bon Bag', brand: 'Jimmy Choo', category: 'Bags', emoji: '👜' },
+  { name: 'Jimmy Choo Lance Sandals', brand: 'Jimmy Choo', category: 'Shoes', emoji: '👠' },
+  { name: 'Jimmy Choo Diamond Sneakers', brand: 'Jimmy Choo', category: 'Shoes', emoji: '👠' },
+
+  // Topshop
+  { name: 'Topshop Jamie Jeans', brand: 'Topshop', category: 'Clothing', emoji: '👗' },
+  { name: 'Topshop Joni Jeans', brand: 'Topshop', category: 'Clothing', emoji: '👗' },
+  { name: 'Topshop Blazer Dress', brand: 'Topshop', category: 'Clothing', emoji: '👗' },
+  { name: 'Topshop Unique (Vintage)', brand: 'Topshop', category: 'Clothing', emoji: '👗' },
+
+  // Issey Miyake
+  { name: 'Issey Miyake Pleats Please Top', brand: 'Issey Miyake', category: 'Clothing', emoji: '👗' },
+  { name: 'Issey Miyake Pleats Please Pants', brand: 'Issey Miyake', category: 'Clothing', emoji: '👗' },
+  { name: 'Issey Miyake Bao Bao Lucent Tote', brand: 'Issey Miyake', category: 'Bags', emoji: '👜' },
+  { name: 'Issey Miyake Bao Bao Prism Bag', brand: 'Issey Miyake', category: 'Bags', emoji: '👜' },
+  { name: 'Issey Miyake Homme Plisse Joggers', brand: 'Issey Miyake', category: 'Clothing', emoji: '👗' },
+  { name: 'Issey Miyake L\'Eau d\'Issey Perfume', brand: 'Issey Miyake', category: 'Clothing', emoji: '👗' },
+  { name: 'Issey Miyake Plantation (Vintage 80s)', brand: 'Issey Miyake', category: 'Clothing', emoji: '👗' },
+
+  // Comme des Garcons
+  { name: 'CDG Play Heart Logo Tee', brand: 'Comme des Garcons', category: 'Clothing', emoji: '👕' },
+  { name: 'CDG Play Converse High Top', brand: 'Comme des Garcons', category: 'Sneakers', emoji: '👟' },
+  { name: 'CDG Wallet SA0641', brand: 'Comme des Garcons', category: 'Clothing', emoji: '👕' },
+  { name: 'CDG Homme Plus Blazer (Vintage)', brand: 'Comme des Garcons', category: 'Clothing', emoji: '👕' },
+
+  // Valentino
+  { name: 'Valentino Rockstud Heels', brand: 'Valentino', category: 'Shoes', emoji: '👠' },
+  { name: 'Valentino Rockstud Flats', brand: 'Valentino', category: 'Shoes', emoji: '👠' },
+  { name: 'Valentino Garavani Roman Stud Bag', brand: 'Valentino', category: 'Bags', emoji: '👜' },
+  { name: 'Valentino Open Sneakers', brand: 'Valentino', category: 'Sneakers', emoji: '👟' },
+
+  // Versace
+  { name: 'Versace Medusa Head Tee', brand: 'Versace', category: 'Clothing', emoji: '👗' },
+  { name: 'Versace Chain Reaction Sneakers', brand: 'Versace', category: 'Sneakers', emoji: '👟' },
+  { name: 'Versace Baroque Print Shirt (Vintage)', brand: 'Versace', category: 'Clothing', emoji: '👗' },
+  { name: 'Versace Medusa Belt', brand: 'Versace', category: 'Clothing', emoji: '👗' },
+
+  // Saint Laurent / YSL
+  { name: 'YSL Loulou Bag', brand: 'Saint Laurent', category: 'Bags', emoji: '👜' },
+  { name: 'YSL Kate Bag', brand: 'Saint Laurent', category: 'Bags', emoji: '👜' },
+  { name: 'Saint Laurent Wyatt Chelsea Boots', brand: 'Saint Laurent', category: 'Shoes', emoji: '👞' },
+  { name: 'Saint Laurent Court Classic Sneakers', brand: 'Saint Laurent', category: 'Sneakers', emoji: '👟' },
+
+  // Maison Margiela
+  { name: 'Margiela Tabi Boots', brand: 'Maison Margiela', category: 'Shoes', emoji: '👟' },
+  { name: 'Margiela Replica Sneakers', brand: 'Maison Margiela', category: 'Sneakers', emoji: '👟' },
+  { name: 'Margiela Paint Splatter Tee', brand: 'Maison Margiela', category: 'Clothing', emoji: '👕' },
+
+  // Rick Owens
+  { name: 'Rick Owens DRKSHDW Ramones', brand: 'Rick Owens', category: 'Sneakers', emoji: '👟' },
+  { name: 'Rick Owens Geobasket', brand: 'Rick Owens', category: 'Sneakers', emoji: '👟' },
+  { name: 'Rick Owens Leather Jacket', brand: 'Rick Owens', category: 'Clothing', emoji: '👕' },
+
+  // Burberry
+  { name: 'Burberry Trench Coat', brand: 'Burberry', category: 'Clothing', emoji: '👕' },
+  { name: 'Burberry Nova Check Scarf', brand: 'Burberry', category: 'Clothing', emoji: '👕' },
+  { name: 'Burberry Vintage Check Bag', brand: 'Burberry', category: 'Bags', emoji: '👜' },
+
+  // Ralph Lauren (vintage gold)
+  { name: 'Polo Ralph Lauren Bear Sweater (Vintage)', brand: 'Ralph Lauren', category: 'Clothing', emoji: '👕' },
+  { name: 'Ralph Lauren Polo Sport Jacket (Vintage 90s)', brand: 'Ralph Lauren', category: 'Clothing', emoji: '👕' },
+  { name: 'Ralph Lauren Purple Label Blazer', brand: 'Ralph Lauren', category: 'Clothing', emoji: '👕' },
+
+  // Heritage Denim
+  { name: 'Levis 501 Original Fit', brand: 'Levis', category: 'Clothing', emoji: '👖' },
+  { name: 'Levis 501 Vintage (80s/90s)', brand: 'Levis', category: 'Clothing', emoji: '👖' },
+  { name: 'Levis Trucker Jacket', brand: 'Levis', category: 'Clothing', emoji: '👖' },
+  { name: 'Evisu No.2 Painted Jeans', brand: 'Evisu', category: 'Clothing', emoji: '👖' },
+  { name: 'True Religion Super T Jeans', brand: 'True Religion', category: 'Clothing', emoji: '👖' },
+
+  // Y2K Revival
+  { name: 'Juicy Couture Velour Tracksuit', brand: 'Juicy Couture', category: 'Clothing', emoji: '👗' },
+  { name: 'Juicy Couture Daydreamer Bag', brand: 'Juicy Couture', category: 'Bags', emoji: '👜' },
+  { name: 'Von Dutch Trucker Hat', brand: 'Von Dutch', category: 'Clothing', emoji: '🧢' },
+  { name: 'Ed Hardy Tiger Tee', brand: 'Ed Hardy', category: 'Clothing', emoji: '👕' },
+  { name: 'Ed Hardy Love Kills Slowly Hoodie', brand: 'Ed Hardy', category: 'Clothing', emoji: '👕' },
+
+  // Outerwear
+  { name: 'North Face Nuptse 1996 Puffer', brand: 'The North Face', category: 'Clothing', emoji: '🧥' },
+  { name: 'North Face Denali Fleece', brand: 'The North Face', category: 'Clothing', emoji: '🧥' },
+  { name: 'Patagonia Retro-X Fleece', brand: 'Patagonia', category: 'Clothing', emoji: '🧥' },
+  { name: 'Arc\'teryx Alpha SV Jacket', brand: 'Arc\'teryx', category: 'Clothing', emoji: '🧥' },
+
+  // Contemporary Women's
+  { name: 'Reformation Gavin Dress', brand: 'Reformation', category: 'Clothing', emoji: '👗' },
+  { name: 'Zimmermann Postcard Mini Dress', brand: 'Zimmermann', category: 'Clothing', emoji: '👗' },
+  { name: 'Free People FP Movement Set', brand: 'Free People', category: 'Clothing', emoji: '👗' },
+  { name: 'Miu Miu Ballet Flats', brand: 'Miu Miu', category: 'Shoes', emoji: '👠' },
+  { name: 'Miu Miu Micro Mini Skirt', brand: 'Miu Miu', category: 'Clothing', emoji: '👗' },
 ]
 
 /**
