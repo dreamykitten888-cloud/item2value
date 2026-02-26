@@ -911,3 +911,40 @@ export function getSuggestions(query: string, limit = 6): { name: string; brand:
 
   return results
 }
+
+/**
+ * Async product search: hits Supabase full-text search API first,
+ * falls back to local getSuggestions if the API fails or is slow.
+ */
+export async function searchProducts(
+  query: string,
+  limit = 8
+): Promise<{ name: string; brand: string; model?: string; category: string; emoji: string }[]> {
+  if (!query || query.trim().length < 2) {
+    return getSuggestions(query, limit)
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 2000)
+
+    const res = await fetch(
+      `/api/product-search?q=${encodeURIComponent(query)}&limit=${limit}`,
+      { signal: controller.signal }
+    )
+    clearTimeout(timeout)
+
+    if (!res.ok) throw new Error('API error')
+
+    const { results } = await res.json()
+    if (results && results.length > 0) {
+      return results
+    }
+
+    // API returned empty: fall back to local
+    return getSuggestions(query, limit)
+  } catch {
+    // Network error or timeout: fall back to local
+    return getSuggestions(query, limit)
+  }
+}

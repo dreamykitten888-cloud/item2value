@@ -1,12 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Package, DollarSign, BarChart3, Bell, Search, TrendingUp, TrendingDown, Info, Eye, Plus, X, Trash2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, getGreeting } from '@/lib/utils'
 import { generateAlerts } from '@/lib/alerts-engine'
-import { getSuggestions, matchProduct } from '@/lib/product-db'
+import { getSuggestions, matchProduct, searchProducts } from '@/lib/product-db'
 import type { Screen, Item, WatchlistItem } from '@/types'
 
 interface Props {
@@ -191,10 +191,21 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
     return result
   }, [items])
 
-  // Watchlist search suggestions from product-db
-  const watchSearchSuggestions = useMemo(() => {
-    if (watchSearchQuery.trim().length < 2) return []
-    return getSuggestions(watchSearchQuery, 6)
+  // Watchlist search suggestions: instant local + debounced Supabase
+  const [watchSearchSuggestions, setWatchSearchSuggestions] = useState<{ name: string; brand: string; category: string; emoji: string }[]>([])
+  useEffect(() => {
+    if (watchSearchQuery.trim().length < 2) {
+      setWatchSearchSuggestions([])
+      return
+    }
+    // Instant local results
+    setWatchSearchSuggestions(getSuggestions(watchSearchQuery, 6))
+    // Debounced Supabase upgrade
+    const timer = setTimeout(async () => {
+      const results = await searchProducts(watchSearchQuery, 6)
+      if (results.length > 0) setWatchSearchSuggestions(results)
+    }, 250)
+    return () => clearTimeout(timer)
   }, [watchSearchQuery])
 
   const handleAddToWatchlist = (name: string, category: string, emoji: string, brand: string) => {

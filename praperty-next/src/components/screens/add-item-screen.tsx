@@ -5,7 +5,7 @@ import { Camera, X, ArrowLeft, Sparkles, ChevronDown, ChevronUp } from 'lucide-r
 import { useItemsStore } from '@/stores/items-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { fmt, uuid, CATEGORIES, CONDITIONS, CATEGORY_EMOJIS } from '@/lib/utils'
-import { matchProduct, getSuggestions } from '@/lib/product-db'
+import { matchProduct, getSuggestions, searchProducts } from '@/lib/product-db'
 import type { Screen } from '@/types'
 
 interface Props {
@@ -40,6 +40,7 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
   const [notes, setNotes] = useState('')
 
   const nameRef = useRef<HTMLInputElement>(null)
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Auto-focus name on mount
   useEffect(() => {
@@ -49,9 +50,12 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
   // Smart auto-fill when user types item name
   const handleNameChange = useCallback((value: string) => {
     setItemName(value)
-    const suggs = getSuggestions(value).map(s => s.name)
-    setSuggestions(suggs)
 
+    // Instant local suggestions while typing
+    const localSuggs = getSuggestions(value).map(s => s.name)
+    setSuggestions(localSuggs)
+
+    // Auto-fill from local match immediately
     const match = matchProduct(value)
     if (match && match.confidence > 0.15) {
       setBrand(match.brand)
@@ -60,6 +64,27 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
       setEmoji(match.emoji)
       setAutoFilled(true)
       setTimeout(() => setAutoFilled(false), 2000)
+    }
+
+    // Debounced Supabase search for richer results
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    if (value.trim().length >= 2) {
+      searchTimer.current = setTimeout(async () => {
+        const results = await searchProducts(value)
+        if (results.length > 0) {
+          setSuggestions(results.map(r => r.name))
+          // If Supabase returned a strong match, auto-fill from it
+          const top = results[0]
+          if (top.brand && top.category) {
+            setBrand(top.brand)
+            setModel(top.model || '')
+            setCategory(top.category)
+            setEmoji(top.emoji)
+            setAutoFilled(true)
+            setTimeout(() => setAutoFilled(false), 2000)
+          }
+        }
+      }, 250)
     }
   }, [])
 
@@ -131,6 +156,16 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
     if (profileId) {
       syncItem(newItem, profileId).catch(e => console.error('Failed to save item:', e))
     }
+
+    // Fire-and-forget: contribute this product to the catalog
+    if (name && brand.trim()) {
+      fetch('/api/product-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, brand: brand.trim(), model: model.trim(), category, emoji }),
+      }).catch(() => {}) // silently ignore errors
+    }
+
     onNavigate('inventory')
   }
 
