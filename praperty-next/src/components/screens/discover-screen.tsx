@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef, useMemo } from 'react'
-import { Search, ChevronDown, Plus, X, Edit3 } from 'lucide-react'
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
+import { Search, ChevronDown, Plus, X, Edit3, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
+import { BRAND_DB } from '@/lib/product-db'
 import { fmt } from '@/lib/utils'
 import type { Screen } from '@/types'
 
@@ -11,44 +12,16 @@ interface Props {
   onResearch?: (query: string) => void
 }
 
-// Product database for trending items (similar to prototype's PRODUCT_DB)
-const PRODUCT_DB: { name: string; emoji: string; cat: string; brand: string; model?: string; basePrice: number }[] = [
-  { name: 'Air Jordan 1 Retro High OG', emoji: '👟', cat: 'Fashion', brand: 'Nike', model: 'Jordan 1', basePrice: 180 },
-  { name: 'MacBook Pro 14" M3', emoji: '💻', cat: 'Electronics', brand: 'Apple', model: 'MacBook Pro', basePrice: 1999 },
-  { name: 'Rolex Submariner Date', emoji: '⌚', cat: 'Watches', brand: 'Rolex', model: 'Submariner', basePrice: 9500 },
-  { name: 'Pokemon PSA 10 Charizard', emoji: '🃏', cat: 'Trading Cards', brand: 'Pokemon', basePrice: 450 },
-  { name: 'Supreme Box Logo Tee', emoji: '👕', cat: 'Fashion', brand: 'Supreme', basePrice: 250 },
-  { name: 'Dyson Airwrap Complete', emoji: '🔌', cat: 'Electronics', brand: 'Dyson', basePrice: 599 },
-  { name: 'Birkin 25 Togo Leather', emoji: '👜', cat: 'Fashion', brand: 'Hermes', basePrice: 12000 },
-  { name: 'PlayStation 5 Pro', emoji: '🎮', cat: 'Electronics', brand: 'Sony', basePrice: 699 },
-  { name: 'LEGO Star Wars UCS', emoji: '🧱', cat: 'LEGO', brand: 'LEGO', basePrice: 850 },
-  { name: 'Vintage Leica M6 TTL', emoji: '📷', cat: 'Electronics', brand: 'Leica', basePrice: 2800 },
-  { name: 'Omega Speedmaster Pro', emoji: '⌚', cat: 'Watches', brand: 'Omega', model: 'Speedmaster', basePrice: 6500 },
-  { name: 'Gibson Les Paul Standard', emoji: '🎸', cat: 'Musical Instruments', brand: 'Gibson', basePrice: 2500 },
-  { name: 'Yeezy Boost 350 V2', emoji: '👟', cat: 'Fashion', brand: 'Adidas', model: 'Yeezy', basePrice: 230 },
-  { name: 'iPad Pro M4 12.9"', emoji: '📱', cat: 'Electronics', brand: 'Apple', model: 'iPad Pro', basePrice: 1299 },
-  { name: 'Tiffany T Wire Bracelet', emoji: '💎', cat: 'Jewelry', brand: 'Tiffany', basePrice: 1200 },
-  { name: 'Nike Dunk Low Panda', emoji: '👟', cat: 'Fashion', brand: 'Nike', model: 'Dunk Low', basePrice: 110 },
-  { name: 'Canon EOS R5', emoji: '📷', cat: 'Electronics', brand: 'Canon', basePrice: 3899 },
-  { name: 'Sonos Arc Soundbar', emoji: '🔊', cat: 'Electronics', brand: 'Sonos', basePrice: 899 },
-  { name: 'MTG Black Lotus (Replica)', emoji: '🃏', cat: 'Trading Cards', brand: 'MTG', basePrice: 350 },
-  { name: 'Vintage Chanel Flap Bag', emoji: '👜', cat: 'Fashion', brand: 'Chanel', basePrice: 8500 },
-  { name: 'Herman Miller Aeron', emoji: '🪑', cat: 'Home', brand: 'Herman Miller', basePrice: 1400 },
-  { name: 'Fender Stratocaster', emoji: '🎸', cat: 'Musical Instruments', brand: 'Fender', basePrice: 1800 },
-  { name: 'Bose QC Ultra Headphones', emoji: '🎧', cat: 'Electronics', brand: 'Bose', basePrice: 429 },
-  { name: 'LEGO Technic Bugatti', emoji: '🧱', cat: 'LEGO', brand: 'LEGO', basePrice: 450 },
-  { name: 'Tudor Black Bay 58', emoji: '⌚', cat: 'Watches', brand: 'Tudor', basePrice: 3800 },
-]
-
-const DEFAULT_BROWSE_CATS = ['Fashion', 'Electronics', 'Watches', 'Trading Cards']
-
+// Category metadata
 const CATEGORY_COLORS: Record<string, string> = {
   Fashion: '#ec4899', Electronics: '#3b82f6', Watches: '#EB9C35',
   'Trading Cards': '#8b5cf6', LEGO: '#f97316', Home: '#10b981',
   'Musical Instruments': '#ef4444', Jewelry: '#ec4899', Collectibles: '#a855f7',
   Sports: '#22c55e', 'Vinyl & Music': '#6366f1', Art: '#f43f5e',
   Automotive: '#64748b', Books: '#78716c', Toys: '#f59e0b',
-  Tools: '#475569', Other: '#94a3b8',
+  Tools: '#475569', Sneakers: '#3b82f6', Bags: '#ec4899',
+  Clothing: '#a855f7', Fragrance: '#f43f5e', Accessories: '#EB9C35',
+  Other: '#94a3b8',
 }
 
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -57,68 +30,176 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   'Musical Instruments': '🎸', Jewelry: '💎', Collectibles: '🏆',
   Sports: '⚽', 'Vinyl & Music': '🎵', Art: '🎨',
   Automotive: '🚗', Books: '📚', Toys: '🧸',
-  Tools: '🔧', Other: '📦',
+  Tools: '🔧', Sneakers: '👟', Bags: '👜',
+  Clothing: '👕', Fragrance: '🧴', Accessories: '🕶️',
+  Other: '📦',
 }
 
+const ALL_CATEGORIES = [
+  'Fashion', 'Electronics', 'Home', 'Watches', 'Sports',
+  'Collectibles', 'Trading Cards', 'Vinyl & Music', 'Musical Instruments',
+  'LEGO', 'Art', 'Automotive', 'Books', 'Toys', 'Tools',
+  'Sneakers', 'Bags', 'Clothing', 'Jewelry', 'Fragrance', 'Accessories',
+]
+
+const DEFAULT_BROWSE_TERMS = ['Chanel', 'Gucci', 'Rolex', 'Nike']
+
+// Persistence key for user's custom categories
+const STORAGE_KEY = 'praperty_discover_categories'
+
+function loadSavedCategories(): string[] {
+  if (typeof window === 'undefined') return DEFAULT_BROWSE_TERMS
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    }
+  } catch {}
+  return DEFAULT_BROWSE_TERMS
+}
+
+function saveCategories(cats: string[]) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cats)) } catch {}
+}
+
+// Get color/emoji metadata for a brand or category
 function getTermMeta(term: string) {
+  // Check if it's a brand in our DB
+  const brandInfo = BRAND_DB[term]
+  if (brandInfo) {
+    return {
+      color: CATEGORY_COLORS[brandInfo.category] || '#EB9C35',
+      emoji: brandInfo.emoji,
+      isBrand: true,
+    }
+  }
   // Check if it's a category
-  if (CATEGORY_COLORS[term]) return { color: CATEGORY_COLORS[term], emoji: CATEGORY_EMOJIS[term] || '📦' }
-  // Check if it's a brand
-  const brandProduct = PRODUCT_DB.find(p => p.brand === term)
-  if (brandProduct) return { color: CATEGORY_COLORS[brandProduct.cat] || '#94a3b8', emoji: brandProduct.emoji }
-  return { color: '#94a3b8', emoji: '🔍' }
+  if (CATEGORY_COLORS[term]) {
+    return {
+      color: CATEGORY_COLORS[term],
+      emoji: CATEGORY_EMOJIS[term] || '📦',
+      isBrand: false,
+    }
+  }
+  // Unknown term, treat as brand search
+  return { color: '#EB9C35', emoji: '🔍', isBrand: true }
 }
 
-function getItemsForTerm(term: string) {
-  return PRODUCT_DB.filter(p =>
-    p.cat === term || p.brand === term || (p.model && p.model === term)
-  ).slice(0, 8)
+// Product result from eBay search
+interface LiveProduct {
+  name: string
+  brand: string
+  category: string
+  emoji: string
+  price?: number
+  source: string
 }
 
-// Generate deterministic "market value" and "daily change" from item name
-function getSimulatedPrice(item: { name: string; basePrice: number }) {
-  const hash = item.name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-  const variance = 0.85 + (hash % 30) / 100
-  const mktVal = Math.round(item.basePrice * variance)
-  const dailyPct = ((hash % 7) - 3) * 0.8 // -2.4% to +2.4%
-  return { mktVal, dailyPct }
-}
+// Cache for fetched products so we don't re-fetch on every expand
+const productCache: Record<string, { products: LiveProduct[]; fetchedAt: number }> = {}
+const CACHE_TTL = 5 * 60 * 1000 // 5 min cache
 
 export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
   const { items } = useItemsStore()
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [browseCats, setBrowseCats] = useState<string[]>(DEFAULT_BROWSE_CATS)
-  const [expandedCats, setExpandedCats] = useState<string[]>([browseCats[0]])
+  const [browseCats, setBrowseCats] = useState<string[]>(DEFAULT_BROWSE_TERMS)
+  const [expandedCats, setExpandedCats] = useState<string[]>([])
   const [editing, setEditing] = useState(false)
   const [addQuery, setAddQuery] = useState('')
+  const [loadingCats, setLoadingCats] = useState<Set<string>>(new Set())
+  const [liveProducts, setLiveProducts] = useState<Record<string, LiveProduct[]>>({})
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const [mounted, setMounted] = useState(false)
 
-  const CATEGORIES = [
-    'All', 'Fashion', 'Electronics', 'Home', 'Watches', 'Sports',
-    'Collectibles', 'Trading Cards', 'Vinyl & Music', 'Musical Instruments',
-    'LEGO', 'Coins & Stamps', 'Art', 'Automotive', 'Books', 'Toys', 'Tools', 'Other',
-  ]
+  // Load saved categories on mount
+  useEffect(() => {
+    setBrowseCats(loadSavedCategories())
+    setMounted(true)
+  }, [])
 
-  // Suggestions when adding categories in edit mode
+  // Save categories whenever they change
+  useEffect(() => {
+    if (mounted) saveCategories(browseCats)
+  }, [browseCats, mounted])
+
+  // Fetch live products for a term (brand or category)
+  const fetchProductsForTerm = useCallback(async (term: string) => {
+    // Check cache
+    const cached = productCache[term]
+    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
+      setLiveProducts(prev => ({ ...prev, [term]: cached.products }))
+      return
+    }
+
+    setLoadingCats(prev => new Set(prev).add(term))
+
+    try {
+      const res = await fetch(`/api/ebay-search?q=${encodeURIComponent(term)}&limit=12`, {
+        signal: AbortSignal.timeout(10000),
+      })
+      if (!res.ok) throw new Error('fetch failed')
+      const data = await res.json()
+      const products: LiveProduct[] = data.results || []
+
+      // Cache it
+      productCache[term] = { products, fetchedAt: Date.now() }
+      setLiveProducts(prev => ({ ...prev, [term]: products }))
+    } catch (e) {
+      console.error(`[discover] Failed to fetch products for "${term}":`, e)
+      setLiveProducts(prev => ({ ...prev, [term]: [] }))
+    } finally {
+      setLoadingCats(prev => {
+        const next = new Set(prev)
+        next.delete(term)
+        return next
+      })
+    }
+  }, [])
+
+  // When a category is expanded, fetch products
+  const toggleExpand = useCallback((term: string) => {
+    setExpandedCats(prev => {
+      const isCurrentlyExpanded = prev.includes(term)
+      if (!isCurrentlyExpanded) {
+        // Expanding: fetch products if not cached
+        if (!liveProducts[term]) {
+          fetchProductsForTerm(term)
+        }
+        return [...prev, term]
+      }
+      return prev.filter(t => t !== term)
+    })
+  }, [liveProducts, fetchProductsForTerm])
+
+  // Build brand/category suggestions for edit mode
   const addSuggestions = useMemo(() => {
     if (!addQuery.trim()) return []
     const lower = addQuery.toLowerCase()
     const seen = new Set<string>()
     const results: { text: string; type: string; emoji: string }[] = []
-    // Brands
-    PRODUCT_DB.forEach(p => {
-      if (p.brand.toLowerCase().includes(lower) && !seen.has(p.brand) && !browseCats.includes(p.brand)) {
-        seen.add(p.brand); results.push({ text: p.brand, type: 'Brand', emoji: p.emoji })
+
+    // Search brands from BRAND_DB (80+ brands)
+    for (const [brand, info] of Object.entries(BRAND_DB)) {
+      if (results.length >= 12) break
+      const matchesBrand = brand.toLowerCase().includes(lower)
+      const matchesAlias = info.aliases?.some(a => a.includes(lower))
+      if ((matchesBrand || matchesAlias) && !seen.has(brand) && !browseCats.includes(brand)) {
+        seen.add(brand)
+        results.push({ text: brand, type: info.category, emoji: info.emoji })
       }
-    })
-    // Categories
-    CATEGORIES.forEach(cat => {
-      if (cat !== 'All' && cat.toLowerCase().includes(lower) && !seen.has(cat) && !browseCats.includes(cat)) {
-        seen.add(cat); results.push({ text: cat, type: 'Category', emoji: CATEGORY_EMOJIS[cat] || '📦' })
+    }
+
+    // Search categories
+    for (const cat of ALL_CATEGORIES) {
+      if (results.length >= 12) break
+      if (cat.toLowerCase().includes(lower) && !seen.has(cat) && !browseCats.includes(cat)) {
+        seen.add(cat)
+        results.push({ text: cat, type: 'Category', emoji: CATEGORY_EMOJIS[cat] || '📦' })
       }
-    })
-    return results.slice(0, 8)
+    }
+
+    return results.slice(0, 10)
   }, [addQuery, browseCats])
 
   const handleSearch = () => {
@@ -128,8 +209,11 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
     }
   }
 
-  const toggleExpand = (term: string) => {
-    setExpandedCats(prev => prev.includes(term) ? prev.filter(t => t !== term) : [...prev, term])
+  const handleAddTerm = (term: string) => {
+    if (!browseCats.includes(term)) {
+      setBrowseCats(prev => [...prev, term])
+    }
+    setAddQuery('')
   }
 
   return (
@@ -137,7 +221,7 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
       {/* Header */}
       <div className="px-6 pt-8 pb-2">
         <h1 className="text-2xl font-bold text-white mb-1">Discover</h1>
-        <p className="text-dim text-sm">Search what anything is buying and selling for</p>
+        <p className="text-dim text-sm">Track brands, find the best investments</p>
       </div>
 
       {/* Search Bar */}
@@ -147,7 +231,7 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
           <input
             ref={searchInputRef}
             type="text"
-            placeholder="Search any item (e.g. Nike Air Max 90)"
+            placeholder="Search any item (e.g. Chanel Classic Flap)"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
@@ -169,41 +253,42 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
         </div>
       </div>
 
-      {/* Trending Items Section */}
+      {/* Brand/Category Tracking Section */}
       <div className="px-6 pt-4">
         <div className="flex justify-between items-center mb-3">
-          <p className="text-dim text-[11px] uppercase tracking-wider font-semibold">Trending Items</p>
+          <p className="text-dim text-[11px] uppercase tracking-wider font-semibold">Your Tracked Brands</p>
           <button
             onClick={() => { setEditing(!editing); setAddQuery('') }}
-            className="text-amber-brand text-[11px] font-semibold"
+            className="text-amber-brand text-[11px] font-semibold flex items-center gap-1"
           >
-            {editing ? 'Done' : 'Edit'}
+            {editing ? 'Done' : <><Edit3 size={11} /> Edit</>}
           </button>
         </div>
 
-        {/* Edit mode: add/remove categories */}
+        {/* Edit mode: add/remove brands */}
         {editing && (
           <div className="glass rounded-xl p-3.5 mb-3 animate-fade-up">
-            <p className="text-dim text-[11px] mb-2">Search to add any brand, category, or model:</p>
+            <p className="text-dim text-[11px] mb-2">Add any brand or category to track:</p>
             <div className="relative mb-2.5">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
-                placeholder="e.g. Nike, Coach, Fujifilm..."
+                placeholder="e.g. Chanel, Leica, Hermes, Jordan..."
                 value={addQuery}
                 onChange={e => setAddQuery(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter' && addQuery.trim() && !browseCats.includes(addQuery.trim())) {
-                    setBrowseCats(prev => [...prev, addQuery.trim()])
-                    setAddQuery('')
+                  if (e.key === 'Enter' && addQuery.trim()) {
+                    handleAddTerm(addQuery.trim())
                   }
                 }}
-                className="w-full py-2.5 px-3 rounded-lg border border-white/12 bg-white/6 text-white text-[13px] focus:border-amber-brand/50 focus:outline-none placeholder-slate-500"
+                className="w-full py-2.5 pl-9 pr-3 rounded-lg border border-white/12 bg-white/6 text-white text-[13px] focus:border-amber-brand/50 focus:outline-none placeholder-slate-500"
+                autoFocus
               />
               {addQuery.trim() && addSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-white/12 overflow-hidden" style={{ background: '#1a1a2e' }}>
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-white/12 overflow-hidden max-h-[300px] overflow-y-auto" style={{ background: '#1a1a2e' }}>
                   {addSuggestions.map((s, i) => (
                     <button
                       key={i}
-                      onClick={() => { setBrowseCats(prev => [...prev, s.text]); setAddQuery('') }}
+                      onClick={() => handleAddTerm(s.text)}
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-white/6 transition-colors"
                       style={{ borderBottom: i < addSuggestions.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
                     >
@@ -212,10 +297,20 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                       <span className="text-[10px] text-dim bg-white/6 px-2 py-0.5 rounded-md font-semibold">{s.type}</span>
                     </button>
                   ))}
+                  {/* Allow custom entry */}
+                  {!addSuggestions.some(s => s.text.toLowerCase() === addQuery.toLowerCase()) && (
+                    <button
+                      onClick={() => handleAddTerm(addQuery.trim())}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-white/6 transition-colors border-t border-white/8"
+                    >
+                      <Plus size={14} className="text-amber-brand" />
+                      <span className="flex-1 text-[13px] text-amber-brand font-medium">Add &quot;{addQuery.trim()}&quot; as custom</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
-            {/* Current categories as removable chips */}
+            {/* Current tracked brands/categories as removable chips */}
             <div className="flex flex-wrap gap-1.5">
               {browseCats.map(term => {
                 const meta = getTermMeta(term)
@@ -241,12 +336,13 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
           </div>
         )}
 
-        {/* Category sections with collapsible rows */}
+        {/* Brand/Category sections with live products */}
         {browseCats.map(term => {
           const meta = getTermMeta(term)
-          const catItems = getItemsForTerm(term)
-          if (catItems.length === 0) return null
           const isExpanded = expandedCats.includes(term)
+          const isLoading = loadingCats.has(term)
+          const products = liveProducts[term] || []
+          const productCount = products.length
 
           return (
             <div key={term} className="mb-2.5">
@@ -259,7 +355,10 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                 <div className="flex items-center gap-2">
                   <span className="text-sm">{meta.emoji}</span>
                   <p className="text-[13px] font-bold" style={{ color: meta.color }}>{term}</p>
-                  <span className="text-dim text-[11px]">({catItems.length})</span>
+                  {isExpanded && productCount > 0 && (
+                    <span className="text-dim text-[11px]">({productCount} items)</span>
+                  )}
+                  {isLoading && <Loader2 size={12} className="text-dim animate-spin" />}
                 </div>
                 <ChevronDown
                   size={14}
@@ -267,78 +366,97 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                 />
               </button>
 
-              {/* Expanded table */}
+              {/* Expanded product list */}
               {isExpanded && (
                 <div className="animate-fade-up mt-1">
-                  {/* Table header */}
-                  <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-2 pb-1.5 border-b border-white/8">
-                    <span className="text-dim text-[9px] uppercase tracking-wider">Item</span>
-                    <span className="text-dim text-[9px] uppercase tracking-wider text-right min-w-[65px]">Mkt Value</span>
-                    <span className="text-dim text-[9px] uppercase tracking-wider text-right min-w-[70px]">Daily Chg</span>
-                  </div>
-                  {catItems.map((p, pi) => {
-                    const owned = items.find(it => it.name.toLowerCase() === p.name.toLowerCase())
-                    const { mktVal, dailyPct } = getSimulatedPrice(p)
-                    const displayPrice = owned ? (owned.value || owned.cost) : mktVal
-                    const isUp = dailyPct >= 0
-                    return (
+                  {isLoading && products.length === 0 ? (
+                    <div className="flex items-center justify-center py-6 gap-2">
+                      <Loader2 size={16} className="text-amber-brand animate-spin" />
+                      <span className="text-dim text-[12px]">Finding {term} products on the market...</span>
+                    </div>
+                  ) : products.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-dim text-[12px]">No products found. Try searching directly.</p>
                       <button
-                        key={pi}
                         onClick={() => {
-                          if (onResearch) onResearch(p.name)
+                          if (onResearch) onResearch(term)
                           onNavigate('research')
                         }}
-                        className="w-full grid grid-cols-[1fr_auto_auto] gap-2 items-center px-2 py-2.5 hover:bg-white/4 transition-colors rounded-lg text-left"
-                        style={{ borderBottom: pi < catItems.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}
+                        className="mt-2 text-amber-brand text-[12px] font-semibold"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-sm flex-shrink-0">{p.emoji}</span>
-                          <div className="min-w-0">
-                            <p className="text-[12px] font-semibold text-white truncate">{p.name}</p>
-                            <p className="text-dim text-[10px]">{p.brand}</p>
-                          </div>
-                          {owned && (
-                            <span className="flex-shrink-0 text-[8px] font-bold text-amber-brand bg-amber-brand/10 px-1.5 py-0.5 rounded">OWNED</span>
-                          )}
-                        </div>
-                        <p className="text-[13px] font-bold text-white text-right min-w-[65px]">{fmt(displayPrice)}</p>
-                        <p className={`text-[12px] font-bold text-right min-w-[70px] ${isUp ? 'text-green-400' : 'text-red-400'}`}>
-                          {isUp ? '+' : ''}{dailyPct.toFixed(1)}%
-                        </p>
+                        Research &quot;{term}&quot;
                       </button>
-                    )
-                  })}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Table header */}
+                      <div className="grid grid-cols-[1fr_auto] gap-2 px-2 pb-1.5 border-b border-white/8">
+                        <span className="text-dim text-[9px] uppercase tracking-wider">Item</span>
+                        <span className="text-dim text-[9px] uppercase tracking-wider text-right min-w-[75px]">Market Price</span>
+                      </div>
+                      {products.map((p, pi) => {
+                        const owned = items.find(it => it.name.toLowerCase() === p.name.toLowerCase())
+                        const price = owned ? (owned.value || owned.cost) : p.price
+                        return (
+                          <button
+                            key={pi}
+                            onClick={() => {
+                              if (onResearch) onResearch(p.name)
+                              onNavigate('research')
+                            }}
+                            className="w-full grid grid-cols-[1fr_auto] gap-2 items-center px-2 py-2.5 hover:bg-white/4 transition-colors rounded-lg text-left"
+                            style={{ borderBottom: pi < products.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-sm flex-shrink-0">{p.emoji}</span>
+                              <div className="min-w-0">
+                                <p className="text-[12px] font-semibold text-white truncate">{p.name}</p>
+                                <p className="text-dim text-[10px]">{p.brand}{p.source === 'ebay' ? ' · eBay' : ''}</p>
+                              </div>
+                              {owned && (
+                                <span className="flex-shrink-0 text-[8px] font-bold text-amber-brand bg-amber-brand/10 px-1.5 py-0.5 rounded">OWNED</span>
+                              )}
+                            </div>
+                            <p className="text-[13px] font-bold text-white text-right min-w-[75px]">
+                              {price ? fmt(price) : 'Research'}
+                            </p>
+                          </button>
+                        )
+                      })}
+                      {/* Research all button */}
+                      <button
+                        onClick={() => {
+                          if (onResearch) onResearch(term)
+                          onNavigate('research')
+                        }}
+                        className="w-full text-center py-2.5 text-amber-brand text-[11px] font-semibold hover:bg-white/4 rounded-lg transition-colors"
+                      >
+                        Deep Research &quot;{term}&quot; →
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
           )
         })}
+
+        {/* Empty state */}
+        {browseCats.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-dim text-sm mb-2">No brands tracked yet</p>
+            <button
+              onClick={() => setEditing(true)}
+              className="text-amber-brand text-sm font-semibold"
+            >
+              + Add brands to track
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Helpful Links */}
-      <div className="px-6 pt-4 pb-4 space-y-3">
-        <div className="glass rounded-2xl p-4 border border-white/8">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-gradient-amber flex items-center justify-center text-sm">🌐</div>
-            <div>
-              <p className="font-bold text-white text-sm">Popular Marketplaces</p>
-              <p className="text-dim text-xs mt-0.5">Find real prices online</p>
-            </div>
-          </div>
-          <div className="space-y-2">
-            {[
-              { name: 'eBay', url: 'https://ebay.com' },
-              { name: 'Amazon', url: 'https://amazon.com' },
-              { name: 'StockX', url: 'https://stockx.com' },
-              { name: 'Mercari', url: 'https://mercari.com' },
-            ].map(m => (
-              <a key={m.name} href={m.url} target="_blank" rel="noopener noreferrer" className="block text-amber-brand text-xs font-semibold hover:text-amber-brand/80">
-                {m.name}
-              </a>
-            ))}
-          </div>
-        </div>
-
+      {/* Community Data */}
+      <div className="px-6 pt-4 pb-4">
         <div className="glass rounded-2xl p-4 border border-white/8">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-7 h-7 rounded-lg bg-gradient-purple flex items-center justify-center text-sm">👥</div>

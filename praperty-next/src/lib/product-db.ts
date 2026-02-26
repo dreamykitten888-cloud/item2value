@@ -13,7 +13,7 @@ export interface ProductMatch {
 }
 
 // Brand → category + emoji mapping
-const BRAND_DB: Record<string, { category: string; emoji: string; aliases?: string[] }> = {
+export const BRAND_DB: Record<string, { category: string; emoji: string; aliases?: string[] }> = {
   // Sneakers & Shoes
   'Nike': { category: 'Sneakers', emoji: '👟', aliases: ['nike'] },
   'Jordan': { category: 'Sneakers', emoji: '👟', aliases: ['jordan', 'air jordan'] },
