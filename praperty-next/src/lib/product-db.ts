@@ -1291,38 +1291,94 @@ export function getSuggestions(query: string, limit = 6): { name: string; brand:
 }
 
 /**
- * Async product search: hits Supabase full-text search API first,
- * falls back to local getSuggestions if the API fails or is slow.
+ * Async product search: 3-tier fallback for maximum coverage.
+ *
+ * Tier 1: Local POPULAR_PRODUCTS + BRAND_DB (instant, offline)
+ * Tier 2: Supabase full-text search (fast, server-side)
+ * Tier 3: Live eBay Browse API search (slower, but infinite coverage)
+ *
+ * If tiers 1+2 return fewer than `limit` results, tier 3 fills the gap
+ * with real eBay listing titles, cleaned and deduplicated.
  */
 export async function searchProducts(
   query: string,
   limit = 8
-): Promise<{ name: string; brand: string; model?: string; category: string; emoji: string }[]> {
+): Promise<{ name: string; brand: string; model?: string; category: string; emoji: string; price?: number; source?: string }[]> {
   if (!query || query.trim().length < 2) {
     return getSuggestions(query, limit)
   }
 
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 2000)
+  // Tier 1: Local suggestions (instant)
+  const localResults = getSuggestions(query, limit)
 
-    const res = await fetch(
-      `/api/product-search?q=${encodeURIComponent(query)}&limit=${limit}`,
-      { signal: controller.signal }
-    )
-    clearTimeout(timeout)
-
-    if (!res.ok) throw new Error('API error')
-
-    const { results } = await res.json()
-    if (results && results.length > 0) {
-      return results
-    }
-
-    // API returned empty: fall back to local
-    return getSuggestions(query, limit)
-  } catch {
-    // Network error or timeout: fall back to local
-    return getSuggestions(query, limit)
+  // If local has enough results, return immediately (fast path)
+  if (localResults.length >= limit) {
+    return localResults.map(r => ({ ...r, source: 'local' }))
   }
+
+  // Tier 2: Supabase full-text search + Tier 3: eBay live search (run in parallel)
+  const seen = new Set<string>()
+  const merged: { name: string; brand: string; model?: string; category: string; emoji: string; price?: number; source?: string }[] = []
+
+  // Seed with local results
+  for (const r of localResults) {
+    const key = r.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+    seen.add(key)
+    merged.push({ ...r, source: 'local' })
+  }
+
+  // Fire both Supabase and eBay in parallel
+  const [supabaseResult, ebayResult] = await Promise.allSettled([
+    // Supabase search
+    (async () => {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 2000)
+      const res = await fetch(
+        `/api/product-search?q=${encodeURIComponent(query)}&limit=${limit}`,
+        { signal: controller.signal }
+      )
+      clearTimeout(timeout)
+      if (!res.ok) return []
+      const { results } = await res.json()
+      return results || []
+    })(),
+    // eBay live search
+    (async () => {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 6000)
+      const res = await fetch(
+        `/api/ebay-search?q=${encodeURIComponent(query)}&limit=${limit + 4}`,
+        { signal: controller.signal }
+      )
+      clearTimeout(timeout)
+      if (!res.ok) return []
+      const { results } = await res.json()
+      return results || []
+    })(),
+  ])
+
+  // Merge Supabase results (higher priority)
+  if (supabaseResult.status === 'fulfilled') {
+    for (const r of supabaseResult.value) {
+      const key = (r.name || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      if (key && !seen.has(key)) {
+        seen.add(key)
+        merged.push({ ...r, source: 'supabase' })
+      }
+    }
+  }
+
+  // Merge eBay results (fills gaps)
+  if (ebayResult.status === 'fulfilled') {
+    for (const r of ebayResult.value) {
+      if (merged.length >= limit) break
+      const key = (r.name || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      if (key && !seen.has(key)) {
+        seen.add(key)
+        merged.push(r)
+      }
+    }
+  }
+
+  return merged.length > 0 ? merged.slice(0, limit) : getSuggestions(query, limit)
 }
