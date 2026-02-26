@@ -118,7 +118,7 @@ function getMarketPriced(items: Item[], signals: Map<string, StoredSignal>) {
 
 export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props) {
   const { profile, profileId } = useAuthStore()
-  const { items, watchlist, syncWatchlistItem, setWatchlist, deleteWatchlistItem, storedSignals, signalsLoading, loadStoredSignals, refreshAllSignals } = useItemsStore()
+  const { items, watchlist, syncWatchlistItem, setWatchlist, deleteWatchlistItem, storedSignals, signalsLoading, loadStoredSignals, refreshAllSignals, refreshWatchlistPrices } = useItemsStore()
   const [watchSearchQuery, setWatchSearchQuery] = useState('')
   const [swipedItemId, setSwipedItemId] = useState<string | null>(null)
   const userName = profile?.name || 'there'
@@ -131,12 +131,16 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
 
   // Load stored signals on mount, trigger background refresh if stale
   useEffect(() => {
-    if (!profileId || items.length === 0) return
-    // Load cached signals immediately
-    loadStoredSignals(profileId)
-    // Background refresh (fire and forget, won't block UI)
-    refreshAllSignals(profileId)
-  }, [profileId, items.length]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!profileId) return
+    if (items.length > 0) {
+      loadStoredSignals(profileId)
+      refreshAllSignals(profileId)
+    }
+    // Also refresh watchlist prices client-side (no service key needed)
+    if (watchlist.length > 0) {
+      refreshWatchlistPrices(profileId)
+    }
+  }, [profileId, items.length, watchlist.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const alerts = useMemo(() => generateAlerts(items, storedSignals), [items, storedSignals])
   const alertCount = alerts.length

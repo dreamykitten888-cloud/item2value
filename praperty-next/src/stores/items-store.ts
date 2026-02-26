@@ -109,6 +109,9 @@ interface ItemsState {
   loadStoredSignals: (profileId: string) => Promise<void>
   refreshAllSignals: (profileId: string) => Promise<void>
 
+  // Watchlist price refresh (client-side)
+  refreshWatchlistPrices: (profileId: string) => Promise<void>
+
   // eBay + community comps
   fetchEbayComps: (item: Item) => Promise<void>
   fetchCommunityComps: (itemName: string, itemBrand: string) => Promise<void>
@@ -349,6 +352,68 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
       console.error('[signals] refresh error:', e)
     }
     set({ signalsLoading: false })
+  },
+
+  // Client-side watchlist price refresh (no service key needed)
+  refreshWatchlistPrices: async (profileId) => {
+    const watchlist = get().watchlist
+    if (!watchlist.length) return
+
+    console.log('[watchlist] refreshing prices for', watchlist.length, 'items')
+    const BATCH_SIZE = 3
+    let updated = 0
+
+    for (let i = 0; i < watchlist.length; i += BATCH_SIZE) {
+      const batch = watchlist.slice(i, i + BATCH_SIZE)
+      await Promise.allSettled(
+        batch.map(async (w) => {
+          try {
+            const query = [w.name, w.brand].filter(Boolean).join(' ').trim()
+            if (!query) return
+
+            const res = await fetch(
+              `/api/market-signal?q=${encodeURIComponent(query)}&category=${encodeURIComponent(w.category || '')}`
+            )
+            if (!res.ok) return
+            const signal = await res.json()
+            const ebayAvg = signal.ebayAvgSold || 0
+            if (ebayAvg === 0) return
+
+            const today = new Date().toISOString().split('T')[0]
+            const existing = Array.isArray(w.priceHistory) ? w.priceHistory : []
+            const alreadyHasToday = existing.some(p => p.date === today)
+
+            const updatedHistory = alreadyHasToday
+              ? existing
+              : [...existing, { date: today, value: ebayAvg }].slice(-90)
+
+            // Update in Supabase
+            const watchTable = supabase.from('watchlist') as any
+            await watchTable
+              .update({
+                last_known_price: ebayAvg,
+                price_history: JSON.stringify(updatedHistory),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', w.id)
+
+            updated++
+          } catch (e) {
+            // Skip failed items
+          }
+        })
+      )
+
+      if (i + BATCH_SIZE < watchlist.length) {
+        await new Promise(r => setTimeout(r, 500))
+      }
+    }
+
+    console.log('[watchlist] refreshed prices for', updated, 'items')
+    // Reload watchlist from DB to pick up new prices
+    if (updated > 0) {
+      await get().loadAll(profileId)
+    }
   },
 
   // eBay Live Prices via Supabase edge function

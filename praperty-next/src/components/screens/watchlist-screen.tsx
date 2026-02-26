@@ -1,23 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Search, Plus, X } from 'lucide-react'
+import { ArrowLeft, Search, Plus, X, TrendingUp, TrendingDown } from 'lucide-react'
 import { fmt } from '@/lib/utils'
+import { useItemsStore } from '@/stores/items-store'
 import type { Screen, WatchlistItem } from '@/types'
 
 interface Props {
   onNavigate: (screen: Screen) => void
-  watchlist?: WatchlistItem[]
-  onAddToWatchlist?: (item: WatchlistItem) => void
-  onRemoveFromWatchlist?: (id: string) => void
+  onResearch?: (query: string) => void
 }
 
 export default function WatchlistScreen({
   onNavigate,
-  watchlist = [],
-  onAddToWatchlist,
-  onRemoveFromWatchlist,
+  onResearch,
 }: Props) {
+  const { watchlist, syncWatchlistItem, deleteWatchlistItem } = useItemsStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [newItemName, setNewItemName] = useState('')
 
@@ -26,7 +24,7 @@ export default function WatchlistScreen({
   )
 
   const handleAddItem = () => {
-    if (newItemName.trim() && onAddToWatchlist) {
+    if (newItemName.trim()) {
       const newItem: WatchlistItem = {
         id: Math.random().toString(36).substr(2, 9),
         name: newItemName.trim(),
@@ -40,8 +38,18 @@ export default function WatchlistScreen({
         addedAt: new Date().toISOString(),
         linkedItemId: null,
       }
-      onAddToWatchlist(newItem)
+      const profileId = localStorage.getItem('praperty_profile_id')
+      if (profileId) {
+        syncWatchlistItem(newItem, profileId)
+      }
       setNewItemName('')
+    }
+  }
+
+  const handleTapItem = (item: WatchlistItem) => {
+    const query = [item.name, item.brand].filter(Boolean).join(' ').trim()
+    if (onResearch && query) {
+      onResearch(query)
     }
   }
 
@@ -107,16 +115,20 @@ export default function WatchlistScreen({
         ) : (
           <div className="space-y-2">
             {filtered.map((item, i) => {
-              const priceChange = item.priceHistory.length > 1
-                ? item.lastKnownPrice - (item.priceHistory[item.priceHistory.length - 2]?.value || item.lastKnownPrice)
-                : 0
-              const pricePct = item.lastKnownPrice > 0 ? (priceChange / item.lastKnownPrice) * 100 : 0
-              const isUp = priceChange >= 0
+              const hasRealHistory = item.priceHistory.length >= 2 && item.priceHistory[item.priceHistory.length - 2].value > 0
+              const priceChange = hasRealHistory
+                ? item.lastKnownPrice - item.priceHistory[item.priceHistory.length - 2].value
+                : null
+              const pricePct = priceChange !== null && item.lastKnownPrice > 0
+                ? (priceChange / item.lastKnownPrice) * 100
+                : null
+              const isUp = pricePct !== null ? pricePct >= 0 : true
 
               return (
                 <button
                   key={item.id}
-                  className="w-full glass rounded-xl p-4 border border-white/8 hover:bg-white/8 transition-colors text-left animate-fade-up group"
+                  onClick={() => handleTapItem(item)}
+                  className="w-full glass rounded-xl p-4 border border-white/8 hover:bg-white/8 active:bg-white/12 transition-colors text-left animate-fade-up group"
                   style={{ animationDelay: `${i * 0.04}s` }}
                 >
                   <div className="flex items-center gap-3">
@@ -132,17 +144,26 @@ export default function WatchlistScreen({
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-white text-sm">{fmt(item.lastKnownPrice)}</p>
-                      {item.priceHistory.length > 1 && (
-                        <p className={`text-xs font-semibold mt-0.5 ${isUp ? 'text-green-400' : 'text-red-400'}`}>
-                          {isUp ? '+' : ''}{pricePct.toFixed(1)}%
-                        </p>
-                      )}
+                      <p className="font-bold text-white text-sm">
+                        {item.lastKnownPrice > 0 ? fmt(item.lastKnownPrice) : '--'}
+                      </p>
+                      <div className="flex items-center justify-end gap-1 mt-0.5">
+                        {pricePct !== null ? (
+                          <>
+                            {isUp ? <TrendingUp size={12} className="text-green-400" /> : <TrendingDown size={12} className="text-red-400" />}
+                            <p className={`text-xs font-semibold ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+                              {isUp ? '+' : ''}{pricePct.toFixed(1)}%
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-xs text-dim">--</p>
+                        )}
+                      </div>
                     </div>
                     <button
                       onClick={e => {
                         e.stopPropagation()
-                        onRemoveFromWatchlist?.(item.id)
+                        deleteWatchlistItem(item.id)
                       }}
                       className="ml-2 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all p-1"
                     >
@@ -152,9 +173,14 @@ export default function WatchlistScreen({
                   {item.targetPrice > 0 && (
                     <div className="mt-2 pt-2 border-t border-white/8 flex items-center justify-between text-xs">
                       <span className="text-dim">Target: {fmt(item.targetPrice)}</span>
-                      {item.lastKnownPrice <= item.targetPrice && (
+                      {item.lastKnownPrice > 0 && item.lastKnownPrice <= item.targetPrice && (
                         <span className="text-green-400 font-semibold">✓ At target!</span>
                       )}
+                    </div>
+                  )}
+                  {item.lastKnownPrice > 0 && (
+                    <div className="mt-2 pt-2 border-t border-white/8">
+                      <p className="text-[10px] text-dim">Tap for eBay price intel &amp; market research</p>
                     </div>
                   )}
                 </button>

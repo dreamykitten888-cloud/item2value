@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Home, Package, Search, Settings, Camera, Plus, Keyboard, Sparkles, X } from 'lucide-react'
-import type { Screen, WatchlistItem } from '@/types'
+import type { Screen } from '@/types'
 import SetupScreen from '@/components/screens/setup-screen'
 import HomeScreen from '@/components/screens/home-screen'
 import InventoryScreen from '@/components/screens/inventory-screen'
@@ -38,7 +38,6 @@ export default function AppShell() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [researchQuery, setResearchQuery] = useState('')
   const [scanData, setScanData] = useState<any>(null)
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [showAddSheet, setShowAddSheet] = useState(false)
 
   // Show tutorial for first-time users
@@ -70,13 +69,6 @@ export default function AppShell() {
     setScanData(data)
   }
 
-  const handleAddToWatchlist = (item: WatchlistItem) => {
-    setWatchlist(prev => [...prev, item])
-  }
-
-  const handleRemoveFromWatchlist = (id: string) => {
-    setWatchlist(prev => prev.filter(w => w.id !== id))
-  }
 
   const renderScreen = () => {
     // Show tutorial/onboarding for first-time users
@@ -115,9 +107,7 @@ export default function AppShell() {
         return (
           <WatchlistScreen
             onNavigate={setScreen}
-            watchlist={watchlist}
-            onAddToWatchlist={handleAddToWatchlist}
-            onRemoveFromWatchlist={handleRemoveFromWatchlist}
+            onResearch={handleResearch}
           />
         )
       case 'settings':
