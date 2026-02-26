@@ -357,6 +357,22 @@ const BRAND_DB: Record<string, { category: string; emoji: string; aliases?: stri
   'Self-Portrait': { category: 'Clothing', emoji: '👗', aliases: ['self-portrait', 'self portrait'] },
   'Free People': { category: 'Clothing', emoji: '👗', aliases: ['free people'] },
   'Anthropologie': { category: 'Clothing', emoji: '👗', aliases: ['anthropologie'] },
+
+  // Statement & Going-Out Dresses
+  'Selkie': { category: 'Clothing', emoji: '👗', aliases: ['selkie', 'selkie dress', 'selkie puff'] },
+  'Murci': { category: 'Clothing', emoji: '👗', aliases: ['murci', 'murci dress'] },
+  'Oh Polly': { category: 'Clothing', emoji: '👗', aliases: ['oh polly', 'ohpolly'] },
+  'Jaded London': { category: 'Clothing', emoji: '👗', aliases: ['jaded london', 'jaded'] },
+  '12th Tribe': { category: 'Clothing', emoji: '👗', aliases: ['12th tribe', 'twelfth tribe'] },
+  'Missguided': { category: 'Clothing', emoji: '👗', aliases: ['missguided'] },
+  'Fashion Nova': { category: 'Clothing', emoji: '👗', aliases: ['fashion nova', 'fashionnova'] },
+  'I.AM.GIA': { category: 'Clothing', emoji: '👗', aliases: ['i.am.gia', 'i am gia', 'iamgia'] },
+  'Akira': { category: 'Clothing', emoji: '👗', aliases: ['akira', 'shopakira'] },
+  'House of CB': { category: 'Clothing', emoji: '👗', aliases: ['house of cb', 'houseofcb'] },
+  'Pretty Little Thing': { category: 'Clothing', emoji: '👗', aliases: ['pretty little thing', 'plt', 'prettylittlething'] },
+
+  // Luxury Fashion (additional)
+  'Tom Ford': { category: 'Clothing', emoji: '👔', aliases: ['tom ford'] },
 }
 
 // Flatten for fast lookup: lowercase alias → brand name
@@ -1101,6 +1117,127 @@ const POPULAR_PRODUCTS: { name: string; brand: string; category: string; emoji: 
   { name: 'Free People FP Movement Set', brand: 'Free People', category: 'Clothing', emoji: '👗' },
   { name: 'Miu Miu Ballet Flats', brand: 'Miu Miu', category: 'Shoes', emoji: '👠' },
   { name: 'Miu Miu Micro Mini Skirt', brand: 'Miu Miu', category: 'Clothing', emoji: '👗' },
+
+  // ═══════════════════════════════════════════════════════
+  // SELKIE
+  // ═══════════════════════════════════════════════════════
+  { name: 'Selkie Puff Dress', brand: 'Selkie', category: 'Clothing', emoji: '👗' },
+  { name: 'Selkie French Puff Dress', brand: 'Selkie', category: 'Clothing', emoji: '👗' },
+  { name: 'Selkie Princess Dress', brand: 'Selkie', category: 'Clothing', emoji: '👗' },
+  { name: 'Selkie Marie Dress', brand: 'Selkie', category: 'Clothing', emoji: '👗' },
+  { name: 'Selkie Birthday Puff Dress', brand: 'Selkie', category: 'Clothing', emoji: '👗' },
+  { name: 'Selkie Blossom Puff Dress', brand: 'Selkie', category: 'Clothing', emoji: '👗' },
+
+  // ═══════════════════════════════════════════════════════
+  // MURCI
+  // ═══════════════════════════════════════════════════════
+  { name: 'Murci Jasmine Mini Dress', brand: 'Murci', category: 'Clothing', emoji: '👗' },
+  { name: 'Murci Rose Corset Dress', brand: 'Murci', category: 'Clothing', emoji: '👗' },
+  { name: 'Murci Luna Maxi Dress', brand: 'Murci', category: 'Clothing', emoji: '👗' },
+  { name: 'Murci Dahlia Midi Dress', brand: 'Murci', category: 'Clothing', emoji: '👗' },
+  { name: 'Murci Lace Mini Dress', brand: 'Murci', category: 'Clothing', emoji: '👗' },
+
+  // ═══════════════════════════════════════════════════════
+  // OH POLLY
+  // ═══════════════════════════════════════════════════════
+  { name: 'Oh Polly Corset Mini Dress', brand: 'Oh Polly', category: 'Clothing', emoji: '👗' },
+  { name: 'Oh Polly Ruched Bodycon Dress', brand: 'Oh Polly', category: 'Clothing', emoji: '👗' },
+  { name: 'Oh Polly Cut Out Maxi Dress', brand: 'Oh Polly', category: 'Clothing', emoji: '👗' },
+  { name: 'Oh Polly Satin Slip Dress', brand: 'Oh Polly', category: 'Clothing', emoji: '👗' },
+  { name: 'Oh Polly Mesh Bodysuit', brand: 'Oh Polly', category: 'Clothing', emoji: '👗' },
+
+  // ═══════════════════════════════════════════════════════
+  // JADED LONDON
+  // ═══════════════════════════════════════════════════════
+  { name: 'Jaded London Parachute Cargo Pants', brand: 'Jaded London', category: 'Clothing', emoji: '👗' },
+  { name: 'Jaded London Colossus Jeans', brand: 'Jaded London', category: 'Clothing', emoji: '👗' },
+  { name: 'Jaded London Mesh Top', brand: 'Jaded London', category: 'Clothing', emoji: '👗' },
+  { name: 'Jaded London Patchwork Jacket', brand: 'Jaded London', category: 'Clothing', emoji: '👗' },
+  { name: 'Jaded London Sequin Mini Dress', brand: 'Jaded London', category: 'Clothing', emoji: '👗' },
+  { name: 'Jaded London Distressed Wide Leg Jeans', brand: 'Jaded London', category: 'Clothing', emoji: '👗' },
+
+  // ═══════════════════════════════════════════════════════
+  // 12TH TRIBE
+  // ═══════════════════════════════════════════════════════
+  { name: '12th Tribe Crochet Set', brand: '12th Tribe', category: 'Clothing', emoji: '👗' },
+  { name: '12th Tribe Festival Bodysuit', brand: '12th Tribe', category: 'Clothing', emoji: '👗' },
+  { name: '12th Tribe Fringe Mini Dress', brand: '12th Tribe', category: 'Clothing', emoji: '👗' },
+  { name: '12th Tribe Cowgirl Boots', brand: '12th Tribe', category: 'Shoes', emoji: '👢' },
+  { name: '12th Tribe Chain Bikini Set', brand: '12th Tribe', category: 'Clothing', emoji: '👗' },
+
+  // ═══════════════════════════════════════════════════════
+  // MISSGUIDED
+  // ═══════════════════════════════════════════════════════
+  { name: 'Missguided Satin Wrap Dress', brand: 'Missguided', category: 'Clothing', emoji: '👗' },
+  { name: 'Missguided Cargo Trousers', brand: 'Missguided', category: 'Clothing', emoji: '👗' },
+  { name: 'Missguided Corset Top', brand: 'Missguided', category: 'Clothing', emoji: '👗' },
+  { name: 'Missguided Teddy Coat', brand: 'Missguided', category: 'Clothing', emoji: '👗' },
+
+  // ═══════════════════════════════════════════════════════
+  // FASHION NOVA
+  // ═══════════════════════════════════════════════════════
+  { name: 'Fashion Nova Bodycon Dress', brand: 'Fashion Nova', category: 'Clothing', emoji: '👗' },
+  { name: 'Fashion Nova High Waist Jeans', brand: 'Fashion Nova', category: 'Clothing', emoji: '👗' },
+  { name: 'Fashion Nova Ruched Mini Dress', brand: 'Fashion Nova', category: 'Clothing', emoji: '👗' },
+  { name: 'Fashion Nova Two Piece Set', brand: 'Fashion Nova', category: 'Clothing', emoji: '👗' },
+  { name: 'Fashion Nova Cut Out Jumpsuit', brand: 'Fashion Nova', category: 'Clothing', emoji: '👗' },
+
+  // ═══════════════════════════════════════════════════════
+  // I.AM.GIA
+  // ═══════════════════════════════════════════════════════
+  { name: 'I.AM.GIA Cobain Pants', brand: 'I.AM.GIA', category: 'Clothing', emoji: '👗' },
+  { name: 'I.AM.GIA Pixie Coat', brand: 'I.AM.GIA', category: 'Clothing', emoji: '👗' },
+  { name: 'I.AM.GIA Jupiter Corset', brand: 'I.AM.GIA', category: 'Clothing', emoji: '👗' },
+  { name: 'I.AM.GIA Venus Pant', brand: 'I.AM.GIA', category: 'Clothing', emoji: '👗' },
+  { name: 'I.AM.GIA Halo Mini Dress', brand: 'I.AM.GIA', category: 'Clothing', emoji: '👗' },
+
+  // ═══════════════════════════════════════════════════════
+  // AKIRA
+  // ═══════════════════════════════════════════════════════
+  { name: 'Akira Sequin Mini Dress', brand: 'Akira', category: 'Clothing', emoji: '👗' },
+  { name: 'Akira Rhinestone Bodysuit', brand: 'Akira', category: 'Clothing', emoji: '👗' },
+  { name: 'Akira Feather Trim Dress', brand: 'Akira', category: 'Clothing', emoji: '👗' },
+  { name: 'Akira Cut Out Jumpsuit', brand: 'Akira', category: 'Clothing', emoji: '👗' },
+  { name: 'Akira Mesh Maxi Dress', brand: 'Akira', category: 'Clothing', emoji: '👗' },
+
+  // ═══════════════════════════════════════════════════════
+  // GUCCI (expanded products)
+  // ═══════════════════════════════════════════════════════
+  { name: 'Gucci Ace Sneakers', brand: 'Gucci', category: 'Sneakers', emoji: '👟' },
+  { name: 'Gucci Horsebit Loafers', brand: 'Gucci', category: 'Shoes', emoji: '👞' },
+  { name: 'Gucci Dionysus Bag', brand: 'Gucci', category: 'Bags', emoji: '👜' },
+  { name: 'Gucci Jackie 1961 Bag', brand: 'Gucci', category: 'Bags', emoji: '👜' },
+  { name: 'Gucci Bamboo 1947 Bag', brand: 'Gucci', category: 'Bags', emoji: '👜' },
+  { name: 'Gucci GG Belt', brand: 'Gucci', category: 'Clothing', emoji: '👜' },
+  { name: 'Gucci Rhyton Sneakers', brand: 'Gucci', category: 'Sneakers', emoji: '👟' },
+  { name: 'Gucci Screener Sneakers (Vintage)', brand: 'Gucci', category: 'Sneakers', emoji: '👟' },
+  { name: 'Gucci Flora Silk Scarf (Vintage)', brand: 'Gucci', category: 'Clothing', emoji: '👗' },
+  { name: 'Gucci Tom Ford Era Bamboo Bag (Vintage)', brand: 'Gucci', category: 'Bags', emoji: '👜' },
+  { name: 'Gucci Ophidia GG Tote', brand: 'Gucci', category: 'Bags', emoji: '👜' },
+
+  // ═══════════════════════════════════════════════════════
+  // GIVENCHY
+  // ═══════════════════════════════════════════════════════
+  { name: 'Givenchy Antigona Bag', brand: 'Givenchy', category: 'Bags', emoji: '👜' },
+  { name: 'Givenchy Shark Lock Boots', brand: 'Givenchy', category: 'Shoes', emoji: '👢' },
+  { name: 'Givenchy Rottweiler Tee', brand: 'Givenchy', category: 'Clothing', emoji: '👕' },
+  { name: 'Givenchy 4G Logo Sweater', brand: 'Givenchy', category: 'Clothing', emoji: '👕' },
+  { name: 'Givenchy Kenny Bag', brand: 'Givenchy', category: 'Bags', emoji: '👜' },
+  { name: 'Givenchy Pandora Bag', brand: 'Givenchy', category: 'Bags', emoji: '👜' },
+  { name: 'Givenchy Nightingale Bag (Vintage)', brand: 'Givenchy', category: 'Bags', emoji: '👜' },
+
+  // ═══════════════════════════════════════════════════════
+  // TOM FORD
+  // ═══════════════════════════════════════════════════════
+  { name: 'Tom Ford Sunglasses', brand: 'Tom Ford', category: 'Clothing', emoji: '🕶️' },
+  { name: 'Tom Ford Whitney Sunglasses', brand: 'Tom Ford', category: 'Clothing', emoji: '🕶️' },
+  { name: 'Tom Ford Black Orchid Perfume', brand: 'Tom Ford', category: 'Clothing', emoji: '👔' },
+  { name: 'Tom Ford Lost Cherry Perfume', brand: 'Tom Ford', category: 'Clothing', emoji: '👔' },
+  { name: 'Tom Ford Tobacco Vanille', brand: 'Tom Ford', category: 'Clothing', emoji: '👔' },
+  { name: 'Tom Ford Oud Wood', brand: 'Tom Ford', category: 'Clothing', emoji: '👔' },
+  { name: 'Tom Ford Buckley Suit', brand: 'Tom Ford', category: 'Clothing', emoji: '👔' },
+  { name: 'Tom Ford Slim Fit Dress Shirt', brand: 'Tom Ford', category: 'Clothing', emoji: '👔' },
+  { name: 'Tom Ford Logo Belt', brand: 'Tom Ford', category: 'Clothing', emoji: '👔' },
 ]
 
 /**
