@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
-import { Search, ChevronDown, Plus, X, Edit3, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react'
+import { Search, ChevronDown, Plus, X, Edit3, Loader2 } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
 import { BRAND_DB } from '@/lib/product-db'
 import { fmt } from '@/lib/utils'
@@ -44,13 +44,14 @@ const ALL_CATEGORIES = [
 
 const DEFAULT_BROWSE_TERMS = ['Chanel', 'Gucci', 'Rolex', 'Nike']
 
-// Persistence key for user's custom categories
-const STORAGE_KEY = 'praperty_discover_categories'
+// Persistence keys
+const CATS_KEY = 'praperty_discover_categories'
+const PRODUCTS_KEY = 'praperty_discover_products' // per-category curated product lists
 
 function loadSavedCategories(): string[] {
   if (typeof window === 'undefined') return DEFAULT_BROWSE_TERMS
   try {
-    const saved = localStorage.getItem(STORAGE_KEY)
+    const saved = localStorage.getItem(CATS_KEY)
     if (saved) {
       const parsed = JSON.parse(saved)
       if (Array.isArray(parsed) && parsed.length > 0) return parsed
@@ -60,33 +61,38 @@ function loadSavedCategories(): string[] {
 }
 
 function saveCategories(cats: string[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cats)) } catch {}
+  try { localStorage.setItem(CATS_KEY, JSON.stringify(cats)) } catch {}
 }
 
-// Get color/emoji metadata for a brand or category
+// Load user-curated products per category
+// Format: { "Chanel": [{name, brand, ...}], "Nike": [...] }
+function loadCuratedProducts(): Record<string, LiveProduct[]> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const saved = localStorage.getItem(PRODUCTS_KEY)
+    if (saved) return JSON.parse(saved)
+  } catch {}
+  return {}
+}
+
+function saveCuratedProducts(products: Record<string, LiveProduct[]>) {
+  try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products)) } catch {}
+}
+
 function getTermMeta(term: string) {
-  // Check if it's a brand in our DB
   const brandInfo = BRAND_DB[term]
   if (brandInfo) {
     return {
       color: CATEGORY_COLORS[brandInfo.category] || '#EB9C35',
       emoji: brandInfo.emoji,
-      isBrand: true,
     }
   }
-  // Check if it's a category
   if (CATEGORY_COLORS[term]) {
-    return {
-      color: CATEGORY_COLORS[term],
-      emoji: CATEGORY_EMOJIS[term] || '📦',
-      isBrand: false,
-    }
+    return { color: CATEGORY_COLORS[term], emoji: CATEGORY_EMOJIS[term] || '📦' }
   }
-  // Unknown term, treat as brand search
-  return { color: '#EB9C35', emoji: '🔍', isBrand: true }
+  return { color: '#EB9C35', emoji: '🔍' }
 }
 
-// Product result from eBay search
 interface LiveProduct {
   name: string
   brand: string
@@ -96,9 +102,9 @@ interface LiveProduct {
   source: string
 }
 
-// Cache for fetched products so we don't re-fetch on every expand
+// Cache for fetched products
 const productCache: Record<string, { products: LiveProduct[]; fetchedAt: number }> = {}
-const CACHE_TTL = 5 * 60 * 1000 // 5 min cache
+const CACHE_TTL = 5 * 60 * 1000
 
 export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
   const { items } = useItemsStore()
@@ -109,23 +115,37 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
   const [addQuery, setAddQuery] = useState('')
   const [loadingCats, setLoadingCats] = useState<Set<string>>(new Set())
   const [liveProducts, setLiveProducts] = useState<Record<string, LiveProduct[]>>({})
+  // User-curated products: if a user has curated a category, we show their list instead of the fetched one
+  const [curatedProducts, setCuratedProducts] = useState<Record<string, LiveProduct[]>>({})
+  // Per-category "add product" search
+  const [addingProductTo, setAddingProductTo] = useState<string | null>(null)
+  const [productSearchQuery, setProductSearchQuery] = useState('')
+  const [productSearchResults, setProductSearchResults] = useState<LiveProduct[]>([])
+  const [productSearchLoading, setProductSearchLoading] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const productSearchRef = useRef<HTMLInputElement>(null)
+  const productSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mounted, setMounted] = useState(false)
 
-  // Load saved categories on mount
+  // Load on mount
   useEffect(() => {
     setBrowseCats(loadSavedCategories())
+    setCuratedProducts(loadCuratedProducts())
     setMounted(true)
   }, [])
 
-  // Save categories whenever they change
+  // Save categories
   useEffect(() => {
     if (mounted) saveCategories(browseCats)
   }, [browseCats, mounted])
 
-  // Fetch live products for a term (brand or category)
+  // Save curated products
+  useEffect(() => {
+    if (mounted) saveCuratedProducts(curatedProducts)
+  }, [curatedProducts, mounted])
+
+  // Fetch live products for a term
   const fetchProductsForTerm = useCallback(async (term: string) => {
-    // Check cache
     const cached = productCache[term]
     if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
       setLiveProducts(prev => ({ ...prev, [term]: cached.products }))
@@ -133,7 +153,6 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
     }
 
     setLoadingCats(prev => new Set(prev).add(term))
-
     try {
       const res = await fetch(`/api/ebay-search?q=${encodeURIComponent(term)}&limit=12`, {
         signal: AbortSignal.timeout(10000),
@@ -141,47 +160,93 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
       if (!res.ok) throw new Error('fetch failed')
       const data = await res.json()
       const products: LiveProduct[] = data.results || []
-
-      // Cache it
       productCache[term] = { products, fetchedAt: Date.now() }
       setLiveProducts(prev => ({ ...prev, [term]: products }))
     } catch (e) {
-      console.error(`[discover] Failed to fetch products for "${term}":`, e)
+      console.error(`[discover] Failed to fetch for "${term}":`, e)
       setLiveProducts(prev => ({ ...prev, [term]: [] }))
     } finally {
-      setLoadingCats(prev => {
-        const next = new Set(prev)
-        next.delete(term)
-        return next
-      })
+      setLoadingCats(prev => { const n = new Set(prev); n.delete(term); return n })
     }
   }, [])
 
-  // When a category is expanded, fetch products
   const toggleExpand = useCallback((term: string) => {
     setExpandedCats(prev => {
-      const isCurrentlyExpanded = prev.includes(term)
-      if (!isCurrentlyExpanded) {
-        // Expanding: fetch products if not cached
-        if (!liveProducts[term]) {
-          fetchProductsForTerm(term)
-        }
-        return [...prev, term]
+      if (prev.includes(term)) return prev.filter(t => t !== term)
+      // Fetch if no curated list and no live products
+      if (!curatedProducts[term] && !liveProducts[term]) {
+        fetchProductsForTerm(term)
       }
-      return prev.filter(t => t !== term)
+      return [...prev, term]
     })
-  }, [liveProducts, fetchProductsForTerm])
+  }, [curatedProducts, liveProducts, fetchProductsForTerm])
 
-  // Build brand/category suggestions for edit mode
+  // Get the products to display for a term: curated takes priority over fetched
+  const getDisplayProducts = useCallback((term: string): LiveProduct[] => {
+    if (curatedProducts[term]) return curatedProducts[term]
+    return liveProducts[term] || []
+  }, [curatedProducts, liveProducts])
+
+  // Remove a product from a category (creates a curated list if one doesn't exist)
+  const removeProduct = useCallback((term: string, productName: string) => {
+    setCuratedProducts(prev => {
+      const current = prev[term] || liveProducts[term] || []
+      const updated = current.filter(p => p.name !== productName)
+      return { ...prev, [term]: updated }
+    })
+  }, [liveProducts])
+
+  // Add a product to a category's curated list
+  const addProductToCategory = useCallback((term: string, product: LiveProduct) => {
+    setCuratedProducts(prev => {
+      const current = prev[term] || liveProducts[term] || []
+      // Don't add duplicates
+      if (current.some(p => p.name.toLowerCase() === product.name.toLowerCase())) return prev
+      return { ...prev, [term]: [...current, product] }
+    })
+    setProductSearchQuery('')
+    setProductSearchResults([])
+  }, [liveProducts])
+
+  // Search for products to add to a category
+  const searchProductsForAdd = useCallback(async (query: string, term: string) => {
+    if (!query.trim() || query.trim().length < 2) {
+      setProductSearchResults([])
+      return
+    }
+    setProductSearchLoading(true)
+    try {
+      // Search with the brand/category + specific query
+      const searchTerm = `${term} ${query}`
+      const res = await fetch(`/api/ebay-search?q=${encodeURIComponent(searchTerm)}&limit=8`, {
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!res.ok) throw new Error('search failed')
+      const data = await res.json()
+      setProductSearchResults(data.results || [])
+    } catch {
+      setProductSearchResults([])
+    } finally {
+      setProductSearchLoading(false)
+    }
+  }, [])
+
+  // Debounced product search
+  const handleProductSearchChange = useCallback((query: string, term: string) => {
+    setProductSearchQuery(query)
+    if (productSearchTimer.current) clearTimeout(productSearchTimer.current)
+    productSearchTimer.current = setTimeout(() => searchProductsForAdd(query, term), 400)
+  }, [searchProductsForAdd])
+
+  // Brand/category suggestions for edit mode
   const addSuggestions = useMemo(() => {
     if (!addQuery.trim()) return []
     const lower = addQuery.toLowerCase()
     const seen = new Set<string>()
     const results: { text: string; type: string; emoji: string }[] = []
 
-    // Search brands from BRAND_DB (80+ brands)
     for (const [brand, info] of Object.entries(BRAND_DB)) {
-      if (results.length >= 12) break
+      if (results.length >= 10) break
       const matchesBrand = brand.toLowerCase().includes(lower)
       const matchesAlias = info.aliases?.some(a => a.includes(lower))
       if ((matchesBrand || matchesAlias) && !seen.has(brand) && !browseCats.includes(brand)) {
@@ -190,16 +255,15 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
       }
     }
 
-    // Search categories
     for (const cat of ALL_CATEGORIES) {
-      if (results.length >= 12) break
+      if (results.length >= 10) break
       if (cat.toLowerCase().includes(lower) && !seen.has(cat) && !browseCats.includes(cat)) {
         seen.add(cat)
         results.push({ text: cat, type: 'Category', emoji: CATEGORY_EMOJIS[cat] || '📦' })
       }
     }
 
-    return results.slice(0, 10)
+    return results
   }, [addQuery, browseCats])
 
   const handleSearch = () => {
@@ -258,27 +322,25 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
         <div className="flex justify-between items-center mb-3">
           <p className="text-dim text-[11px] uppercase tracking-wider font-semibold">Your Tracked Brands</p>
           <button
-            onClick={() => { setEditing(!editing); setAddQuery('') }}
+            onClick={() => { setEditing(!editing); setAddQuery(''); setAddingProductTo(null) }}
             className="text-amber-brand text-[11px] font-semibold flex items-center gap-1"
           >
             {editing ? 'Done' : <><Edit3 size={11} /> Edit</>}
           </button>
         </div>
 
-        {/* Edit mode: add/remove brands */}
+        {/* Edit mode: search to add brands */}
         {editing && (
           <div className="glass rounded-xl p-3.5 mb-3 animate-fade-up">
             <p className="text-dim text-[11px] mb-2">Add any brand or category to track:</p>
-            <div className="relative mb-2.5">
+            <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
-                placeholder="e.g. Chanel, Leica, Hermes, Jordan..."
+                placeholder="e.g. Selkie, Leica, Hermes, Jordan..."
                 value={addQuery}
                 onChange={e => setAddQuery(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter' && addQuery.trim()) {
-                    handleAddTerm(addQuery.trim())
-                  }
+                  if (e.key === 'Enter' && addQuery.trim()) handleAddTerm(addQuery.trim())
                 }}
                 className="w-full py-2.5 pl-9 pr-3 rounded-lg border border-white/12 bg-white/6 text-white text-[13px] focus:border-amber-brand/50 focus:outline-none placeholder-slate-500"
                 autoFocus
@@ -297,7 +359,6 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                       <span className="text-[10px] text-dim bg-white/6 px-2 py-0.5 rounded-md font-semibold">{s.type}</span>
                     </button>
                   ))}
-                  {/* Allow custom entry */}
                   {!addSuggestions.some(s => s.text.toLowerCase() === addQuery.toLowerCase()) && (
                     <button
                       onClick={() => handleAddTerm(addQuery.trim())}
@@ -310,61 +371,54 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                 </div>
               )}
             </div>
-            {/* Current tracked brands/categories as removable chips */}
-            <div className="flex flex-wrap gap-1.5">
-              {browseCats.map(term => {
-                const meta = getTermMeta(term)
-                return (
-                  <div
-                    key={term}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold"
-                    style={{ border: `1px solid ${meta.color}44`, background: `${meta.color}15`, color: meta.color }}
-                  >
-                    <span className="text-[11px]">{meta.emoji}</span>
-                    {term}
-                    <button
-                      onClick={() => setBrowseCats(prev => prev.filter(c => c !== term))}
-                      className="ml-0.5 hover:opacity-70"
-                      style={{ color: meta.color }}
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
           </div>
         )}
 
-        {/* Brand/Category sections with live products */}
+        {/* Brand/Category sections */}
         {browseCats.map(term => {
           const meta = getTermMeta(term)
           const isExpanded = expandedCats.includes(term)
           const isLoading = loadingCats.has(term)
-          const products = liveProducts[term] || []
+          const products = getDisplayProducts(term)
           const productCount = products.length
+          const isAddingProduct = addingProductTo === term
 
           return (
             <div key={term} className="mb-2.5">
               {/* Collapsible header */}
-              <button
-                onClick={() => toggleExpand(term)}
-                className="w-full flex items-center justify-between px-2 py-2.5 rounded-lg text-left transition-colors"
+              <div
+                className="w-full flex items-center justify-between px-2 py-2.5 rounded-lg transition-colors"
                 style={{ background: isExpanded ? 'rgba(255,255,255,0.04)' : 'transparent' }}
               >
-                <div className="flex items-center gap-2">
+                <button
+                  onClick={() => toggleExpand(term)}
+                  className="flex items-center gap-2 flex-1 text-left"
+                >
                   <span className="text-sm">{meta.emoji}</span>
                   <p className="text-[13px] font-bold" style={{ color: meta.color }}>{term}</p>
                   {isExpanded && productCount > 0 && (
-                    <span className="text-dim text-[11px]">({productCount} items)</span>
+                    <span className="text-dim text-[11px]">({productCount})</span>
                   )}
                   {isLoading && <Loader2 size={12} className="text-dim animate-spin" />}
+                </button>
+                <div className="flex items-center gap-1.5">
+                  {/* Delete category X: only visible in edit mode */}
+                  {editing && (
+                    <button
+                      onClick={() => setBrowseCats(prev => prev.filter(c => c !== term))}
+                      className="p-1 rounded hover:bg-red-500/20 transition-colors"
+                    >
+                      <X size={14} className="text-red-400" />
+                    </button>
+                  )}
+                  <button onClick={() => toggleExpand(term)}>
+                    <ChevronDown
+                      size={14}
+                      className={`text-dim transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                    />
+                  </button>
                 </div>
-                <ChevronDown
-                  size={14}
-                  className={`text-dim transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                />
-              </button>
+              </div>
 
               {/* Expanded product list */}
               {isExpanded && (
@@ -372,42 +426,43 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                   {isLoading && products.length === 0 ? (
                     <div className="flex items-center justify-center py-6 gap-2">
                       <Loader2 size={16} className="text-amber-brand animate-spin" />
-                      <span className="text-dim text-[12px]">Finding {term} products on the market...</span>
+                      <span className="text-dim text-[12px]">Finding {term} products...</span>
                     </div>
-                  ) : products.length === 0 ? (
+                  ) : products.length === 0 && !isAddingProduct ? (
                     <div className="text-center py-4">
-                      <p className="text-dim text-[12px]">No products found. Try searching directly.</p>
+                      <p className="text-dim text-[12px]">No products yet.</p>
                       <button
-                        onClick={() => {
-                          if (onResearch) onResearch(term)
-                          onNavigate('research')
-                        }}
+                        onClick={() => { setAddingProductTo(term); setTimeout(() => productSearchRef.current?.focus(), 100) }}
                         className="mt-2 text-amber-brand text-[12px] font-semibold"
                       >
-                        Research &quot;{term}&quot;
+                        + Add products
                       </button>
                     </div>
                   ) : (
                     <>
                       {/* Table header */}
-                      <div className="grid grid-cols-[1fr_auto] gap-2 px-2 pb-1.5 border-b border-white/8">
+                      <div className="grid grid-cols-[1fr_auto_auto] gap-1 px-2 pb-1.5 border-b border-white/8">
                         <span className="text-dim text-[9px] uppercase tracking-wider">Item</span>
-                        <span className="text-dim text-[9px] uppercase tracking-wider text-right min-w-[75px]">Market Price</span>
+                        <span className="text-dim text-[9px] uppercase tracking-wider text-right min-w-[70px]">Price</span>
+                        <span className="w-6" />
                       </div>
                       {products.map((p, pi) => {
                         const owned = items.find(it => it.name.toLowerCase() === p.name.toLowerCase())
                         const price = owned ? (owned.value || owned.cost) : p.price
                         return (
-                          <button
+                          <div
                             key={pi}
-                            onClick={() => {
-                              if (onResearch) onResearch(p.name)
-                              onNavigate('research')
-                            }}
-                            className="w-full grid grid-cols-[1fr_auto] gap-2 items-center px-2 py-2.5 hover:bg-white/4 transition-colors rounded-lg text-left"
+                            className="w-full grid grid-cols-[1fr_auto_auto] gap-1 items-center px-2 py-2 hover:bg-white/4 transition-colors rounded-lg"
                             style={{ borderBottom: pi < products.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}
                           >
-                            <div className="flex items-center gap-2 min-w-0">
+                            {/* Tappable product name -> research */}
+                            <button
+                              onClick={() => {
+                                if (onResearch) onResearch(p.name)
+                                onNavigate('research')
+                              }}
+                              className="flex items-center gap-2 min-w-0 text-left"
+                            >
                               <span className="text-sm flex-shrink-0">{p.emoji}</span>
                               <div className="min-w-0">
                                 <p className="text-[12px] font-semibold text-white truncate">{p.name}</p>
@@ -416,23 +471,95 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                               {owned && (
                                 <span className="flex-shrink-0 text-[8px] font-bold text-amber-brand bg-amber-brand/10 px-1.5 py-0.5 rounded">OWNED</span>
                               )}
-                            </div>
-                            <p className="text-[13px] font-bold text-white text-right min-w-[75px]">
-                              {price ? fmt(price) : 'Research'}
+                            </button>
+                            <p className="text-[13px] font-bold text-white text-right min-w-[70px]">
+                              {price ? fmt(price) : '---'}
                             </p>
-                          </button>
+                            {/* Delete individual product */}
+                            <button
+                              onClick={() => removeProduct(term, p.name)}
+                              className="p-1 rounded hover:bg-red-500/20 transition-colors opacity-40 hover:opacity-100"
+                            >
+                              <X size={12} className="text-red-400" />
+                            </button>
+                          </div>
                         )
                       })}
-                      {/* Research all button */}
-                      <button
-                        onClick={() => {
-                          if (onResearch) onResearch(term)
-                          onNavigate('research')
-                        }}
-                        className="w-full text-center py-2.5 text-amber-brand text-[11px] font-semibold hover:bg-white/4 rounded-lg transition-colors"
-                      >
-                        Deep Research &quot;{term}&quot; →
-                      </button>
+
+                      {/* Add product to this category */}
+                      {isAddingProduct ? (
+                        <div className="px-2 pt-2 pb-1">
+                          <div className="relative">
+                            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input
+                              ref={productSearchRef}
+                              placeholder={`Search ${term} products...`}
+                              value={productSearchQuery}
+                              onChange={e => handleProductSearchChange(e.target.value, term)}
+                              onKeyDown={e => {
+                                if (e.key === 'Escape') {
+                                  setAddingProductTo(null)
+                                  setProductSearchQuery('')
+                                  setProductSearchResults([])
+                                }
+                              }}
+                              className="w-full py-2 pl-8 pr-8 rounded-lg border border-white/12 bg-white/6 text-white text-[12px] focus:border-amber-brand/50 focus:outline-none placeholder-slate-500"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => { setAddingProductTo(null); setProductSearchQuery(''); setProductSearchResults([]) }}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                            >
+                              <X size={13} className="text-slate-500 hover:text-white" />
+                            </button>
+                          </div>
+                          {/* Search results */}
+                          {productSearchLoading && (
+                            <div className="flex items-center gap-2 py-2 px-1">
+                              <Loader2 size={12} className="text-amber-brand animate-spin" />
+                              <span className="text-dim text-[11px]">Searching...</span>
+                            </div>
+                          )}
+                          {!productSearchLoading && productSearchResults.length > 0 && (
+                            <div className="mt-1 rounded-lg border border-white/8 overflow-hidden" style={{ background: '#1a1a2e' }}>
+                              {productSearchResults.map((r, ri) => {
+                                const alreadyAdded = products.some(p => p.name.toLowerCase() === r.name.toLowerCase())
+                                return (
+                                  <button
+                                    key={ri}
+                                    onClick={() => { if (!alreadyAdded) addProductToCategory(term, r) }}
+                                    disabled={alreadyAdded}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${alreadyAdded ? 'opacity-40' : 'hover:bg-white/6'}`}
+                                    style={{ borderBottom: ri < productSearchResults.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+                                  >
+                                    <span className="text-sm">{r.emoji}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[12px] text-white font-medium truncate">{r.name}</p>
+                                      {r.price ? <p className="text-dim text-[10px]">{fmt(r.price)}</p> : null}
+                                    </div>
+                                    {alreadyAdded ? (
+                                      <span className="text-[10px] text-dim">Added</span>
+                                    ) : (
+                                      <Plus size={14} className="text-amber-brand flex-shrink-0" />
+                                    )}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                          {!productSearchLoading && productSearchQuery.trim().length >= 2 && productSearchResults.length === 0 && (
+                            <p className="text-dim text-[11px] py-2 px-1">No results. Try a different search.</p>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setAddingProductTo(term); setProductSearchQuery(''); setProductSearchResults([]) }}
+                          className="w-full flex items-center justify-center gap-1.5 py-2 text-amber-brand/60 hover:text-amber-brand text-[11px] font-semibold hover:bg-white/4 rounded-lg transition-colors mt-0.5"
+                        >
+                          <Plus size={12} />
+                          Add item
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
