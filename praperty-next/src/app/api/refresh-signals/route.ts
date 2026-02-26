@@ -84,9 +84,14 @@ export async function POST(req: NextRequest) {
     }
 
     const successCount = results.filter(r => r.success).length
+
+    // Also refresh watchlist items with real market prices
+    const watchlistResults = await refreshWatchlist(userId, supabase)
+
     return NextResponse.json({
       refreshed: successCount,
       total: items.length,
+      watchlistRefreshed: watchlistResults.refreshed,
       errors: results.filter(r => !r.success),
     })
   } catch (err: any) {
@@ -266,4 +271,73 @@ function computeConvictionServer(
   }
 
   return { score: finalScore, level, headline }
+}
+
+/**
+ * Refresh watchlist items with real eBay market prices.
+ * Updates last_known_price and price_history in the watchlist table.
+ */
+async function refreshWatchlist(
+  userId: string,
+  supabase: any
+): Promise<{ refreshed: number }> {
+  const { data: watchItems, error } = await supabase
+    .from('watchlist')
+    .select('id, name, brand, category, last_known_price, price_history')
+    .eq('user_id', userId)
+
+  if (error || !watchItems || watchItems.length === 0) {
+    return { refreshed: 0 }
+  }
+
+  const BATCH_SIZE = 3
+  let refreshed = 0
+
+  for (let i = 0; i < watchItems.length; i += BATCH_SIZE) {
+    const batch = watchItems.slice(i, i + BATCH_SIZE)
+
+    await Promise.allSettled(
+      batch.map(async (w: any) => {
+        try {
+          const query = [w.name, w.brand].filter(Boolean).join(' ').trim()
+          if (!query) return
+
+          const signalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/market-signal?q=${encodeURIComponent(query)}&category=${encodeURIComponent(w.category || '')}`
+          const res = await fetch(signalUrl, { signal: AbortSignal.timeout(12000) })
+          if (!res.ok) return
+
+          const signal = await res.json()
+          const ebayAvg = signal.ebayAvgSold || 0
+          if (ebayAvg === 0) return
+
+          const today = new Date().toISOString().split('T')[0]
+          const existingHistory = Array.isArray(w.price_history) ? w.price_history : []
+          const alreadyHasToday = existingHistory.some((p: any) => p.date === today)
+
+          const updatedHistory = alreadyHasToday
+            ? existingHistory
+            : [...existingHistory, { date: today, value: ebayAvg }].slice(-90)
+
+          await supabase
+            .from('watchlist')
+            .update({
+              last_known_price: ebayAvg,
+              price_history: updatedHistory,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', w.id)
+
+          refreshed++
+        } catch (e) {
+          // Silently skip failed watchlist items
+        }
+      })
+    )
+
+    if (i + BATCH_SIZE < watchItems.length) {
+      await new Promise(r => setTimeout(r, 500))
+    }
+  }
+
+  return { refreshed }
 }
