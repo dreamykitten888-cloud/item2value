@@ -48,12 +48,19 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
   }, [])
 
   // Smart auto-fill when user types item name
-  const handleNameChange = useCallback((value: string) => {
+  const handleNameChange = useCallback((value: string, skipSuggestions = false) => {
     setItemName(value)
 
-    // Instant local suggestions while typing
-    const localSuggs = getSuggestions(value).map(s => s.name)
-    setSuggestions(localSuggs)
+    // Kill any pending Supabase search
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+
+    if (skipSuggestions) {
+      setSuggestions([])
+    } else {
+      // Instant local suggestions while typing
+      const localSuggs = getSuggestions(value).map(s => s.name)
+      setSuggestions(localSuggs)
+    }
 
     // Auto-fill from local match immediately
     const match = matchProduct(value)
@@ -66,9 +73,8 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
       setTimeout(() => setAutoFilled(false), 2000)
     }
 
-    // Debounced Supabase search for richer results
-    if (searchTimer.current) clearTimeout(searchTimer.current)
-    if (value.trim().length >= 2) {
+    // Debounced Supabase search for richer results (only if not skipping)
+    if (!skipSuggestions && value.trim().length >= 2) {
       searchTimer.current = setTimeout(async () => {
         const results = await searchProducts(value)
         if (results.length > 0) {
@@ -88,16 +94,10 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
     }
   }, [])
 
-  const applySuggestion = (brandName: string) => {
-    const lower = itemName.toLowerCase()
-    if (!lower.includes(brandName.toLowerCase())) {
-      const newName = `${brandName} ${itemName}`.trim()
-      setItemName(newName)
-      handleNameChange(newName)
-    } else {
-      handleNameChange(itemName)
-    }
+  const applySuggestion = (selectedName: string) => {
+    setItemName(selectedName)
     setSuggestions([])
+    handleNameChange(selectedName, true)
   }
 
   const handleAddPhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
