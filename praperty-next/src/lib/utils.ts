@@ -29,3 +29,12 @@ export const CATEGORY_EMOJIS: Record<string, string> = {
 export const CATEGORIES = Object.keys(CATEGORY_EMOJIS)
 
 export const CONDITIONS = ['New', 'Like New', 'Excellent', 'Very Good', 'Good', 'Fair', 'Poor']
+
+// Generate a stable product key for price snapshots
+export function makeProductKey(name: string, brand?: string): string {
+  const key = (brand ? `${brand} ${name}` : name)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  return key
+}

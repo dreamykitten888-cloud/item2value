@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
-import { Search, ChevronDown, Plus, X, Edit3, Loader2 } from 'lucide-react'
+import { Search, ChevronDown, Plus, X, Edit3, Loader2, TrendingUp, TrendingDown } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
 import { BRAND_DB } from '@/lib/product-db'
-import { fmt } from '@/lib/utils'
+import { fmt, makeProductKey } from '@/lib/utils'
 import type { Screen } from '@/types'
 
 interface Props {
@@ -122,6 +122,9 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
   const [productSearchQuery, setProductSearchQuery] = useState('')
   const [productSearchResults, setProductSearchResults] = useState<LiveProduct[]>([])
   const [productSearchLoading, setProductSearchLoading] = useState(false)
+  // Daily price changes from snapshots
+  const [priceChanges, setPriceChanges] = useState<Record<string, { price: number; change: number | null; changePct: number | null }>>({})
+  const snapshotTriggered = useRef<Set<string>>(new Set())
   const searchInputRef = useRef<HTMLInputElement>(null)
   const productSearchRef = useRef<HTMLInputElement>(null)
   const productSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -144,6 +147,41 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
     if (mounted) saveCuratedProducts(curatedProducts)
   }, [curatedProducts, mounted])
 
+  // Trigger a price snapshot for products (background, non-blocking)
+  const triggerSnapshot = useCallback(async (products: LiveProduct[]) => {
+    if (products.length === 0) return
+    // Only snapshot products we haven't already snapshotted this session
+    const toSnapshot = products.filter(p => {
+      const key = makeProductKey(p.name, p.brand)
+      if (snapshotTriggered.current.has(key)) return false
+      snapshotTriggered.current.add(key)
+      return true
+    })
+    if (toSnapshot.length === 0) return
+
+    try {
+      await fetch('/api/price-snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          products: toSnapshot.map(p => ({ name: p.name, brand: p.brand, category: p.category })),
+        }),
+      })
+    } catch {} // silent fail, it's background work
+
+    // Fetch latest daily changes for these products
+    const keys = toSnapshot.map(p => makeProductKey(p.name, p.brand)).join(',')
+    try {
+      const res = await fetch(`/api/price-snapshot?keys=${encodeURIComponent(keys)}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.results) {
+          setPriceChanges(prev => ({ ...prev, ...data.results }))
+        }
+      }
+    } catch {} // silent fail
+  }, [])
+
   // Fetch live products for a term
   const fetchProductsForTerm = useCallback(async (term: string) => {
     const cached = productCache[term]
@@ -162,13 +200,15 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
       const products: LiveProduct[] = data.results || []
       productCache[term] = { products, fetchedAt: Date.now() }
       setLiveProducts(prev => ({ ...prev, [term]: products }))
+      // Trigger background snapshot for price tracking
+      triggerSnapshot(products)
     } catch (e) {
       console.error(`[discover] Failed to fetch for "${term}":`, e)
       setLiveProducts(prev => ({ ...prev, [term]: [] }))
     } finally {
       setLoadingCats(prev => { const n = new Set(prev); n.delete(term); return n })
     }
-  }, [])
+  }, [triggerSnapshot])
 
   const toggleExpand = useCallback((term: string) => {
     setExpandedCats(prev => {
@@ -176,10 +216,13 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
       // Fetch if no curated list and no live products
       if (!curatedProducts[term] && !liveProducts[term]) {
         fetchProductsForTerm(term)
+      } else if (curatedProducts[term]) {
+        // Still trigger snapshots for curated products
+        triggerSnapshot(curatedProducts[term])
       }
       return [...prev, term]
     })
-  }, [curatedProducts, liveProducts, fetchProductsForTerm])
+  }, [curatedProducts, liveProducts, fetchProductsForTerm, triggerSnapshot])
 
   // Get the products to display for a term: curated takes priority over fetched
   const getDisplayProducts = useCallback((term: string): LiveProduct[] => {
@@ -449,6 +492,8 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                       {products.map((p, pi) => {
                         const owned = items.find(it => it.name.toLowerCase() === p.name.toLowerCase())
                         const price = owned ? (owned.value || owned.cost) : p.price
+                        const pKey = makeProductKey(p.name, p.brand)
+                        const changeData = priceChanges[pKey]
                         return (
                           <div
                             key={pi}
@@ -472,9 +517,23 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                                 <span className="flex-shrink-0 text-[8px] font-bold text-amber-brand bg-amber-brand/10 px-1.5 py-0.5 rounded">OWNED</span>
                               )}
                             </button>
-                            <p className="text-[13px] font-bold text-white text-right min-w-[70px]">
-                              {price ? fmt(price) : '---'}
-                            </p>
+                            <div className="text-right min-w-[80px]">
+                              <p className="text-[13px] font-bold text-white">
+                                {price ? fmt(price) : '---'}
+                              </p>
+                              {changeData?.changePct !== null && changeData?.changePct !== undefined && (
+                                <div className="flex items-center justify-end gap-0.5">
+                                  {changeData.changePct >= 0 ? (
+                                    <TrendingUp size={9} className="text-emerald-400" />
+                                  ) : (
+                                    <TrendingDown size={9} className="text-red-400" />
+                                  )}
+                                  <span className={`text-[10px] font-semibold ${changeData.changePct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {changeData.changePct >= 0 ? '+' : ''}{changeData.changePct.toFixed(1)}%
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                             {/* Delete individual product */}
                             <button
                               onClick={() => removeProduct(term, p.name)}

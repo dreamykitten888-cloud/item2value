@@ -3,9 +3,18 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
-import { fmt } from '@/lib/utils'
+import { fmt, makeProductKey } from '@/lib/utils'
 import { getMarketplacesForCategory, getSocialLinks, getTrendLinks } from '@/lib/marketplaces'
+import PriceHistoryChart from '@/components/price-history-chart'
 import type { Screen, ResearchData } from '@/types'
+
+interface PricePoint {
+  avg_price: number
+  low_price: number
+  high_price: number
+  sample_size: number
+  snapshot_date: string
+}
 
 interface Props {
   onNavigate: (screen: Screen) => void
@@ -20,6 +29,8 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
     soldCount: 0, avgSold: 0, totalComps: 0, avgCompPrice: 0, recentComps: [], categories: [],
   })
   const [loading, setLoading] = useState(!initialData)
+  const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
     if (!initialData && query) {
@@ -30,6 +41,29 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
       })
     }
   }, [query, initialData, searchCommunityItems])
+
+  // Fetch price history + trigger a snapshot for this product
+  useEffect(() => {
+    if (!query) return
+    const productKey = makeProductKey(query)
+
+    // Trigger a snapshot for this product (background)
+    fetch('/api/price-snapshot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ products: [{ name: query }] }),
+    }).catch(() => {})
+
+    // Fetch existing price history
+    setHistoryLoading(true)
+    fetch(`/api/price-history?key=${encodeURIComponent(productKey)}&days=365`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.history) setPriceHistory(data.history)
+      })
+      .catch(() => {})
+      .finally(() => setHistoryLoading(false))
+  }, [query])
 
   // Buy/Sell Signal calculation (exact port from original)
   const signal = (() => {
@@ -153,6 +187,23 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
               <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{data.soldCount || 0} sold</span>
             </div>
           </div>
+
+          {/* Price History Chart */}
+          {!historyLoading && (
+            <PriceHistoryChart history={priceHistory} productName={query} />
+          )}
+          {historyLoading && (
+            <div className="glass rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">📈</span>
+                <h3 className="text-base font-bold text-white">Price History</h3>
+              </div>
+              <div className="flex items-center justify-center py-6 gap-2">
+                <div className="w-4 h-4 border-2 border-amber-brand/20 border-t-amber-brand rounded-full animate-spin" />
+                <span className="text-dim text-xs">Loading price data...</span>
+              </div>
+            </div>
+          )}
 
           {/* Live Market Prices (category-aware marketplaces) */}
           <div className="glass rounded-2xl p-5">
