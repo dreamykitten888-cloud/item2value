@@ -275,66 +275,81 @@ function calcHoldDuration(item: Item): ConvictionSignal {
 //  BROWSE-ONLY SIGNALS (replace ROI + Hold Duration)
 // =========================================================================
 
-// --- Flip Speed: how fast does this item sell? (sell-through rate) ---
+// --- Flip Speed: how easy is this to flip? ---
+// Combines: market depth (supply), search demand (Google Trends), price consistency
+// More listings + high demand + tight pricing = easy flip
 function calcFlipSpeed(item: Item, marketSignal?: MarketSignalData): ConvictionSignal {
-  const soldCount = marketSignal?.ebaySoldCount || 0
-  const activeListings = (marketSignal?.ebayPrices || []).length + (item.comps || []).filter(c => c.price > 0).length
-  const totalSupply = soldCount + activeListings
+  const ebayPrices = marketSignal?.ebayPrices || []
+  const compCount = (item.comps || []).filter(c => c.price > 0).length
+  const listingCount = ebayPrices.length + compCount
 
-  if (totalSupply === 0) {
+  if (listingCount === 0) {
     return {
       key: 'flipSpeed', label: 'Flip Speed', emoji: '⚡',
-      score: 50, weight: 0.25, reason: 'No sell-through data available',
+      score: 50, weight: 0.25, reason: 'No market data to assess',
       available: false,
     }
   }
 
-  // Sell-through rate: what % of total inventory actually sold?
-  // Higher = items move fast, lower = they sit
-  const sellThrough = totalSupply > 0 ? soldCount / totalSupply : 0
+  // --- Signal 1: Market Depth (40% of score) ---
+  // More active listings = more buyers + sellers = faster turnover
+  let depthScore: number
+  if (listingCount >= 10) depthScore = 90       // Deep market
+  else if (listingCount >= 6) depthScore = 70    // Healthy market
+  else if (listingCount >= 3) depthScore = 50    // Moderate
+  else depthScore = 25                           // Thin, may sit
 
-  // Trend boost: trending items sell faster
-  const trendBoost = marketSignal?.trendDirection === 'rising' ? 8 :
-                     marketSignal?.trendDirection === 'declining' ? -5 : 0
+  // --- Signal 2: Search Demand via Google Trends (35% of score) ---
+  const trendScore = marketSignal?.trendScore ?? 50  // 0-100 from Google
+  const trendDirection = marketSignal?.trendDirection
+  let demandScore = trendScore  // Direct mapping: higher trend = more buyers
+  if (trendDirection === 'rising') demandScore = Math.min(100, demandScore + 10)
+  if (trendDirection === 'declining') demandScore = Math.max(0, demandScore - 10)
 
-  // Volume multiplier: more data points = more confidence in the rate
-  const volumeBonus = soldCount >= 20 ? 10 : soldCount >= 10 ? 5 : 0
-
-  let score: number
-  if (sellThrough >= 0.7) {
-    // 70%+ sold: flies off shelves
-    score = 85 + volumeBonus
-  } else if (sellThrough >= 0.5) {
-    // 50-70%: solid mover
-    score = 70 + (sellThrough - 0.5) * 60 + volumeBonus
-  } else if (sellThrough >= 0.3) {
-    // 30-50%: average, takes some time
-    score = 50 + (sellThrough - 0.3) * 80
-  } else if (sellThrough >= 0.1) {
-    // 10-30%: slow mover
-    score = 30 + (sellThrough - 0.1) * 100
-  } else {
-    // Under 10%: mostly sitting unsold
-    score = 15 + sellThrough * 150
+  // --- Signal 3: Price Consistency (25% of score) ---
+  // Tight price spread = competitive market = predictable sale price = easier to flip
+  // Wide spread = uncertain market = harder to price = may sit
+  let consistencyScore = 50
+  if (ebayPrices.length >= 3) {
+    const sorted = [...ebayPrices].sort((a, b) => a - b)
+    const median = sorted[Math.floor(sorted.length / 2)]
+    if (median > 0) {
+      // Coefficient of variation: std dev / mean (lower = tighter prices)
+      const mean = sorted.reduce((s, p) => s + p, 0) / sorted.length
+      const variance = sorted.reduce((s, p) => s + (p - mean) ** 2, 0) / sorted.length
+      const cv = Math.sqrt(variance) / mean  // 0 = identical prices, 1+ = wild spread
+      if (cv < 0.15) consistencyScore = 90       // Very tight: <15% variation
+      else if (cv < 0.3) consistencyScore = 70    // Reasonable: 15-30%
+      else if (cv < 0.5) consistencyScore = 50    // Moderate: 30-50%
+      else consistencyScore = 25                   // Wild spread: >50% variation
+    }
   }
 
-  score = Math.max(10, Math.min(95, score + trendBoost))
+  // Weighted combination
+  const score = Math.max(10, Math.min(95, Math.round(
+    depthScore * 0.4 + demandScore * 0.35 + consistencyScore * 0.25
+  )))
 
-  const pct = Math.round(sellThrough * 100)
   const label =
-    score >= 80 ? 'Sells fast' :
-    score >= 60 ? 'Steady seller' :
-    score >= 40 ? 'Average pace' :
-    score >= 25 ? 'Slow mover' :
-    'Sits on shelf'
+    score >= 80 ? 'Easy flip' :
+    score >= 65 ? 'Solid flip' :
+    score >= 45 ? 'Doable' :
+    score >= 30 ? 'Slow flip' :
+    'Hard to move'
 
-  const reason = `${pct}% sell-through (${soldCount} sold, ${activeListings} active)${
-    trendBoost > 0 ? ' + demand rising' : trendBoost < 0 ? ' + demand declining' : ''
-  }`
+  // Build transparent reason
+  const parts: string[] = []
+  parts.push(`${listingCount} listings`)
+  if (marketSignal?.trendScore != null) {
+    parts.push(`${Math.round(demandScore)}% search interest`)
+  }
+  if (ebayPrices.length >= 3) {
+    parts.push(consistencyScore >= 70 ? 'tight pricing' : consistencyScore >= 50 ? 'moderate spread' : 'wide price spread')
+  }
 
   return {
     key: 'flipSpeed', label: 'Flip Speed', emoji: '⚡',
-    score: Math.round(score), weight: 0.25, reason,
+    score, weight: 0.25, reason: parts.join(', '),
     available: true,
   }
 }

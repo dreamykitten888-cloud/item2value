@@ -42,29 +42,32 @@ export async function GET(req: NextRequest) {
   }
   const ebayCondition = conditionMap[condition] || ''
 
+  // Exclude common accessories/junk from eBay queries
+  const cleanQuery = `${query} -case -cover -protector -adapter -charger -cable -mount -holder -skin -film`
+
   try {
     // Fire all 4 calls in parallel for speed
     const [fullResult, lowResult, highResult, conditionResult] = await Promise.allSettled([
       // 1. Full refinements + top items (gives us distributions)
-      fetchProxy(proxyBase, query, {
+      fetchProxy(proxyBase, cleanQuery, {
         limit: '12',
         fieldgroups: 'FULL',
       }),
       // 2. Cheapest listings (market floor)
-      fetchProxy(proxyBase, query, {
+      fetchProxy(proxyBase, cleanQuery, {
         limit: '5',
         sort: 'price',
         filter: 'buyingOptions:{FIXED_PRICE}',
       }),
       // 3. Most expensive listings (market ceiling)
-      fetchProxy(proxyBase, query, {
+      fetchProxy(proxyBase, cleanQuery, {
         limit: '5',
         sort: '-price',
         filter: 'buyingOptions:{FIXED_PRICE}',
       }),
       // 4. Condition-specific search (if condition provided)
       ebayCondition
-        ? fetchProxy(proxyBase, query, {
+        ? fetchProxy(proxyBase, cleanQuery, {
             limit: '8',
             filter: `conditions:{${ebayCondition}},buyingOptions:{FIXED_PRICE}`,
           })

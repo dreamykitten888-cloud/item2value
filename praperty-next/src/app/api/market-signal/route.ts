@@ -43,8 +43,11 @@ async function fetchEbayPrices(query: string): Promise<{ prices: number[]; avg: 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) throw new Error('No Supabase URL')
 
+  // Exclude common accessories/junk via negative keywords
+  const cleanQuery = `${query} -case -cover -protector -adapter -charger -cable -mount -holder -skin -film`
+
   const res = await fetch(
-    `${supabaseUrl}/functions/v1/ebay-proxy?q=${encodeURIComponent(query)}&limit=12`,
+    `${supabaseUrl}/functions/v1/ebay-proxy?q=${encodeURIComponent(cleanQuery)}&limit=12`,
     { signal: AbortSignal.timeout(10000) }
   )
 

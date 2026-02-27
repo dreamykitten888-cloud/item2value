@@ -99,16 +99,53 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
       .finally(() => setTrendLoading(false))
   }, [query, data.categories])
 
-  // Filter eBay results for relevance: listing title must contain at least 2 key words from query
+  // Filter eBay results for relevance: exclude accessories, cases, adapters, etc.
   const relevantEbayComps = useMemo(() => {
     if (ebayComps.length === 0) return []
+
+    // Common accessory/junk words that indicate it's NOT the actual product
+    const junkPatterns = [
+      /\bfor\s+(iphone|samsung|pixel|galaxy|ipad|macbook|airpod)/i,
+      /\bcase\b/i, /\bcover\b/i, /\bprotector\b/i, /\bscreen\s*guard/i,
+      /\badapter\b/i, /\bcharger\b/i, /\bcable\b/i, /\bcord\b/i,
+      /\bstand\b/i, /\bholder\b/i, /\bmount\b/i, /\bbracket\b/i,
+      /\bskin\b/i, /\bdecal\b/i, /\bsticker\b/i, /\bwrap\b/i,
+      /\btempered\s*glass/i, /\bfilm\b/i, /\bfolio\b/i,
+      /\breplacement\s*(part|screen|battery|back)/i,
+      /\bcompatible\s+with\b/i, /\bfits\b/i,
+      /\blot\s+of\s+\d/i, /\bbundle\s+of\s+\d/i,
+    ]
+
     const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 3)
-    if (queryWords.length === 0) return ebayComps
+
+    // Get all prices to calculate median for outlier detection
+    const allPrices = ebayComps
+      .map(c => c.price?.value)
+      .filter((p): p is number => !!p && p > 0)
+      .sort((a, b) => a - b)
+    const median = allPrices.length > 0
+      ? allPrices[Math.floor(allPrices.length / 2)]
+      : 0
+
     return ebayComps.filter(listing => {
       const title = (listing.title || '').toLowerCase()
-      const matchCount = queryWords.filter(w => title.includes(w)).length
-      // Require at least 2 keyword matches, or 1 if query is very short
-      return matchCount >= Math.min(2, queryWords.length)
+      const price = listing.price?.value || 0
+
+      // 1. Exclude junk: if title matches accessory patterns, skip it
+      const isJunk = junkPatterns.some(p => p.test(title))
+      if (isJunk) return false
+
+      // 2. Keyword match: require at least 2 keywords (or all if query is short)
+      if (queryWords.length > 0) {
+        const matchCount = queryWords.filter(w => title.includes(w)).length
+        if (matchCount < Math.min(2, queryWords.length)) return false
+      }
+
+      // 3. Price outlier check: if median is known, exclude items < 20% of median
+      //    (a $7 listing when median is $800 is obviously not the product)
+      if (median > 50 && price > 0 && price < median * 0.2) return false
+
+      return true
     })
   }, [ebayComps, query])
 
