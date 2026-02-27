@@ -275,50 +275,66 @@ function calcHoldDuration(item: Item): ConvictionSignal {
 //  BROWSE-ONLY SIGNALS (replace ROI + Hold Duration)
 // =========================================================================
 
-// --- Market Liquidity: how easy is it to resell? ---
-function calcMarketLiquidity(item: Item, marketSignal?: MarketSignalData): ConvictionSignal {
-  const ebayCount = marketSignal?.ebaySoldCount || 0
-  const ebayPrices = marketSignal?.ebayPrices || []
-  const compCount = (item.comps || []).filter(c => c.price > 0).length
+// --- Flip Speed: how fast does this item sell? (sell-through rate) ---
+function calcFlipSpeed(item: Item, marketSignal?: MarketSignalData): ConvictionSignal {
+  const soldCount = marketSignal?.ebaySoldCount || 0
+  const activeListings = (marketSignal?.ebayPrices || []).length + (item.comps || []).filter(c => c.price > 0).length
+  const totalSupply = soldCount + activeListings
 
-  const totalDataPoints = ebayPrices.length + compCount
-
-  if (totalDataPoints === 0 && ebayCount === 0) {
+  if (totalSupply === 0) {
     return {
-      key: 'liquidity', label: 'Liquidity', emoji: '💧',
-      score: 50, weight: 0.25, reason: 'No market data available',
+      key: 'flipSpeed', label: 'Flip Speed', emoji: '⚡',
+      score: 50, weight: 0.25, reason: 'No sell-through data available',
       available: false,
     }
   }
 
-  // More listings + more sold = easier to flip
+  // Sell-through rate: what % of total inventory actually sold?
+  // Higher = items move fast, lower = they sit
+  const sellThrough = totalSupply > 0 ? soldCount / totalSupply : 0
+
+  // Trend boost: trending items sell faster
+  const trendBoost = marketSignal?.trendDirection === 'rising' ? 8 :
+                     marketSignal?.trendDirection === 'declining' ? -5 : 0
+
+  // Volume multiplier: more data points = more confidence in the rate
+  const volumeBonus = soldCount >= 20 ? 10 : soldCount >= 10 ? 5 : 0
+
   let score: number
-  if (ebayCount >= 20 || totalDataPoints >= 10) {
-    score = 80 + Math.min(20, (ebayCount - 20) / 5) // Very liquid
-  } else if (ebayCount >= 8 || totalDataPoints >= 5) {
-    score = 60 + (ebayCount / 2)                      // Good liquidity
-  } else if (ebayCount >= 3 || totalDataPoints >= 2) {
-    score = 40 + (ebayCount * 3)                       // Moderate
+  if (sellThrough >= 0.7) {
+    // 70%+ sold: flies off shelves
+    score = 85 + volumeBonus
+  } else if (sellThrough >= 0.5) {
+    // 50-70%: solid mover
+    score = 70 + (sellThrough - 0.5) * 60 + volumeBonus
+  } else if (sellThrough >= 0.3) {
+    // 30-50%: average, takes some time
+    score = 50 + (sellThrough - 0.3) * 80
+  } else if (sellThrough >= 0.1) {
+    // 10-30%: slow mover
+    score = 30 + (sellThrough - 0.1) * 100
   } else {
-    score = 20 + (totalDataPoints * 10)                // Thin market
+    // Under 10%: mostly sitting unsold
+    score = 15 + sellThrough * 150
   }
 
-  score = Math.max(10, Math.min(95, score))
+  score = Math.max(10, Math.min(95, score + trendBoost))
 
+  const pct = Math.round(sellThrough * 100)
   const label =
-    score >= 75 ? 'Easy to sell' :
-    score >= 50 ? 'Moderate demand' :
-    score >= 30 ? 'Niche market' :
-    'Hard to find buyers'
+    score >= 80 ? 'Sells fast' :
+    score >= 60 ? 'Steady seller' :
+    score >= 40 ? 'Average pace' :
+    score >= 25 ? 'Slow mover' :
+    'Sits on shelf'
 
-  const reason = `${ebayCount > 0 ? `${ebayCount} sold` : ''}${
-    ebayCount > 0 && totalDataPoints > 0 ? ', ' : ''}${
-    totalDataPoints > 0 ? `${totalDataPoints} active listings` : ''
-  } (${label.toLowerCase()})`
+  const reason = `${pct}% sell-through (${soldCount} sold, ${activeListings} active)${
+    trendBoost > 0 ? ' + demand rising' : trendBoost < 0 ? ' + demand declining' : ''
+  }`
 
   return {
-    key: 'liquidity', label: 'Liquidity', emoji: '💧',
-    score: Math.round(score), weight: 0.25, reason: reason || label,
+    key: 'flipSpeed', label: 'Flip Speed', emoji: '⚡',
+    score: Math.round(score), weight: 0.25, reason,
     available: true,
   }
 }
@@ -411,7 +427,7 @@ export function calculateConviction(
     // Weights: Deal Quality 30%, Liquidity 25%, Price Trend 25%, Search Interest 20%
     signals = [
       calcDealQuality(item, marketSignal),
-      calcMarketLiquidity(item, marketSignal),
+      calcFlipSpeed(item, marketSignal),
       calcPriceVelocity(item, mode),
       calcSocialTrend(item, marketSignal, mode),
     ]

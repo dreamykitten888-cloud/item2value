@@ -51,10 +51,10 @@ function getSignalConfidence(signal: ConvictionSignal): { label: string; color: 
       if (signal.reason.includes('below avg')) return { label: 'HIGH', color: '#4ade80', reason: 'Price compared against active market listings' }
       if (signal.reason.includes('above avg')) return { label: 'HIGH', color: '#4ade80', reason: 'Price compared against active market listings' }
       return { label: 'MEDIUM', color: '#EB9C35', reason: 'Market price range available' }
-    case 'liquidity':
-      if (signal.score >= 75) return { label: 'HIGH', color: '#4ade80', reason: 'Strong buyer activity in this market' }
-      if (signal.score >= 50) return { label: 'MEDIUM', color: '#EB9C35', reason: 'Moderate market activity' }
-      return { label: 'LOW', color: '#f87171', reason: 'Limited buyer pool' }
+    case 'flipSpeed':
+      if (signal.score >= 75) return { label: 'HIGH', color: '#4ade80', reason: 'High sell-through rate, items move fast' }
+      if (signal.score >= 50) return { label: 'MEDIUM', color: '#EB9C35', reason: 'Average sell-through, takes some time' }
+      return { label: 'LOW', color: '#f87171', reason: 'Low sell-through, items sit on shelf' }
     default:
       return { label: 'MEDIUM', color: '#EB9C35', reason: 'Data available' }
   }
@@ -68,7 +68,7 @@ function getDataSourceLabel(signal: ConvictionSignal): string {
     case 'holdDuration': return 'Purchase Date + Category'
     case 'socialTrend': return 'Google Trends'
     case 'dealQuality': return 'eBay Active Listings'
-    case 'liquidity': return 'eBay Sold + Active Listings'
+    case 'flipSpeed': return 'eBay Sell-Through Rate'
     default: return 'Market Data'
   }
 }
