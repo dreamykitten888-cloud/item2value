@@ -120,6 +120,8 @@ export function getTrendLinks(query: string) {
   const webQ = encodeURIComponent(dedupeQuery(query))
   return [
     { name:'Google Trends', color:'#4285f4', url:`https://trends.google.com/trends/explore?q=${webQ}`, desc:'Search interest over 12 months' },
+    { name:'CamelCamelCamel', color:'#880088', url:`https://camelcamelcamel.com/search?sq=${webQ}`, desc:'Amazon price history charts' },
+    { name:'PriceCharting', color:'#38a169', url:`https://www.pricecharting.com/search-products?q=${webQ}`, desc:'Game, card & collectible values' },
     { name:'Google News', color:'#4285f4', url:`https://news.google.com/search?q=${webQ}`, desc:'Latest news and articles' },
     { name:'eBay Trending', color:'#e53238', url:`https://www.ebay.com/sch/i.html?_nkw=${webQ}&_sop=1`, desc:'Most watched listings' },
     { name:'Lyst (Fashion)', color:'#e7e9ea', url:`https://www.lyst.com/search/?q=${webQ}`, desc:'Fashion trend data' },

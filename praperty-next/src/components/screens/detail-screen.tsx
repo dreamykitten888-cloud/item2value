@@ -5,7 +5,7 @@ import { ArrowLeft, Edit3, Trash2, Plus, ExternalLink, X, ChevronDown, ChevronUp
 import { useItemsStore } from '@/stores/items-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { fmt, fmtFull } from '@/lib/utils'
-import { getMarketplacesForCategory, buildSearchTerms, COMP_SOURCES } from '@/lib/marketplaces'
+import { getMarketplacesForCategory, buildSearchTerms, getTrendLinks, COMP_SOURCES } from '@/lib/marketplaces'
 import { calculateConviction } from '@/lib/conviction'
 import SignalBreakdown from '@/components/signal-breakdown'
 import MarketIntel from '@/components/market-intel'
@@ -365,6 +365,24 @@ export default function DetailScreen({ itemId, onBack, onNavigate, onResearch }:
         {/* ─── Search Trends (Google Trends) ─── */}
         <div className="mt-4">
           <TrendIndicator />
+        </div>
+
+        {/* ─── Price Tools (external links) ─── */}
+        <div className="mt-4 space-y-2">
+          <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider">Price Tools</h4>
+          <div className="flex flex-col gap-1.5">
+            {getTrendLinks(buildSearchTerms(item.name, item.brand, item.model)).slice(0, 3).map(t => (
+              <a key={t.name} href={t.url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-between bg-white/[0.04] border border-white/[0.08] rounded-xl px-3.5 py-2.5 no-underline hover:border-white/20 transition-colors">
+                <div>
+                  <span className="text-sm font-semibold text-white">{t.name}</span>
+                  <br />
+                  <span className="text-[10px] text-white/40">{t.desc}</span>
+                </div>
+                <ExternalLink size={14} className="text-white/30" />
+              </a>
+            ))}
+          </div>
         </div>
       </div>
 
