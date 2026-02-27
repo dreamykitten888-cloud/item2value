@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, makeProductKey } from '@/lib/utils'
 import { getMarketplacesForCategory, getSocialLinks, getTrendLinks } from '@/lib/marketplaces'
+import { calculateConviction } from '@/lib/conviction'
+import SignalBreakdown from '@/components/signal-breakdown'
 import PriceHistoryChart from '@/components/price-history-chart'
-import type { Screen, ResearchData } from '@/types'
+import type { Screen, ResearchData, Item, MarketSignalData } from '@/types'
 
 interface PricePoint {
   avg_price: number
@@ -65,30 +67,48 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
       .finally(() => setHistoryLoading(false))
   }, [query])
 
-  // Buy/Sell Signal calculation (exact port from original)
-  const signal = (() => {
-    let score = 50
-    const reasons: string[] = []
-    const d = data
+  // Build a synthetic Item + MarketSignalData from ResearchData so we can use the conviction engine
+  const syntheticItem: Item = useMemo(() => ({
+    id: 'research-' + query,
+    name: query,
+    brand: '',
+    model: '',
+    category: data.categories?.[0] || 'Other',
+    condition: 'Used',
+    cost: data.avgCost || 0,
+    asking: 0,
+    value: data.avgValue || 0,
+    earnings: null,
+    emoji: '',
+    notes: '',
+    datePurchased: null,
+    dateSold: null,
+    soldPlatform: null,
+    photos: [],
+    comps: data.recentComps.map(c => ({
+      title: c.title,
+      price: c.price,
+      source: c.source,
+      condition: c.condition,
+    })),
+    priceHistory: priceHistory.map(p => ({
+      date: p.snapshot_date,
+      value: p.avg_price,
+    })),
+    createdAt: new Date().toISOString(),
+  }), [query, data, priceHistory])
 
-    if (d.avgValue > 0 && d.avgCost > 0) {
-      const margin = ((d.avgValue - d.avgCost) / d.avgCost) * 100
-      if (margin > 30) { score += 20; reasons.push(`High profit margin (${Math.round(margin)}%)`) }
-      else if (margin > 10) { score += 10; reasons.push(`Decent margin (${Math.round(margin)}%)`) }
-      else if (margin < 0) { score -= 15; reasons.push('Selling below cost') }
-    }
-    if (d.soldCount > 3) { score += 10; reasons.push('Active resale market') }
-    else if (d.soldCount > 0) { score += 5; reasons.push('Some resale activity') }
-    if (d.totalComps > 5) { score += 10; reasons.push(`Strong comp data (${d.totalComps} comps)`) }
-    else if (d.totalComps > 0) { score += 5; reasons.push(`${d.totalComps} comp(s) available`) }
-    if (d.avgSold > d.avgValue && d.avgSold > 0) { score += 10; reasons.push('Selling above market value') }
-    if (d.listings > 5) { score -= 5; reasons.push(`High supply (${d.listings} listings)`) }
-    if (d.listings === 0) { reasons.push('No community data yet'); score = 50 }
-    score = Math.max(0, Math.min(100, score))
-    const label = score >= 70 ? 'BUY' : score >= 45 ? 'HOLD' : 'SELL'
-    const color = score >= 70 ? '#22c55e' : score >= 45 ? '#EB9C35' : '#ef4444'
-    return { score, label, color, reasons }
-  })()
+  const marketSignalData: MarketSignalData = useMemo(() => ({
+    ebayPrices: data.recentComps.filter(c => c.price > 0).map(c => c.price),
+    ebayAvgSold: data.avgSold || undefined,
+    ebaySoldCount: data.soldCount || undefined,
+    fetchedAt: new Date().toISOString(),
+  }), [data])
+
+  const conviction = useMemo(
+    () => calculateConviction(syntheticItem, marketSignalData),
+    [syntheticItem, marketSignalData]
+  )
 
   const category = data.categories?.[0] || 'All'
   const marketplaces = getMarketplacesForCategory(category, query)
@@ -128,37 +148,8 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
       ) : (
         <div className="px-6 space-y-4">
 
-          {/* Buy/Sell Signal */}
-          <div className="glass rounded-2xl p-5" style={{ border: `1px solid ${signal.color}33` }}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-dim text-[11px] uppercase tracking-widest">Market Signal</p>
-                <div className="flex items-center gap-2.5 mt-1.5">
-                  <span className="text-3xl font-extrabold font-heading" style={{ color: signal.color }}>{signal.label}</span>
-                  <span className="text-slate-500 text-sm">{signal.score}/100</span>
-                </div>
-              </div>
-              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ border: `3px solid ${signal.color}` }}>
-                <span className="text-lg font-bold" style={{ color: signal.color }}>{signal.score}</span>
-              </div>
-            </div>
-            {/* Signal meter */}
-            <div className="h-2 rounded-full mb-3 relative" style={{
-              background: 'linear-gradient(90deg, #ef4444, #f59e0b, #EB9C35, #22c55e)',
-            }}>
-              <div className="absolute -top-1 w-4 h-4 rounded-full bg-white" style={{
-                left: `${signal.score}%`, transform: 'translateX(-50%)',
-                border: `3px solid ${signal.color}`,
-                boxShadow: `0 0 12px ${signal.color}66`,
-              }} />
-            </div>
-            <div className="space-y-1">
-              {signal.reasons.map((r, i) => (
-                <p key={i} className="text-slate-400 text-xs">• {r}</p>
-              ))}
-              {signal.reasons.length === 0 && <p className="text-dim text-xs">Search for an item to see buy/sell signals</p>}
-            </div>
-          </div>
+          {/* Buy/Sell Signal with Full Transparency */}
+          <SignalBreakdown result={conviction} fetchedAt={marketSignalData.fetchedAt} />
 
           {/* Price Intelligence */}
           <div className="glass rounded-2xl p-5">

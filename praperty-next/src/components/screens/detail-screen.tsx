@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { fmt, fmtFull } from '@/lib/utils'
 import { getMarketplacesForCategory, buildSearchTerms, COMP_SOURCES } from '@/lib/marketplaces'
 import { calculateConviction } from '@/lib/conviction'
-import ConvictionGauge from '@/components/conviction-gauge'
+import SignalBreakdown from '@/components/signal-breakdown'
 import type { Screen, Comp } from '@/types'
 
 interface Props {
@@ -248,7 +248,7 @@ export default function DetailScreen({ itemId, onBack, onNavigate, onResearch }:
 
       {/* ─── Conviction Gauge ─── */}
       <div className="px-6 pb-4">
-        {conviction && <ConvictionGauge result={conviction} />}
+        {conviction && <SignalBreakdown result={conviction} fetchedAt={marketSignal?.fetchedAt} />}
       </div>
 
       {/* ─── Action Buttons ─── */}
