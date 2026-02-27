@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
-import type { Item, WatchlistItem, EbayListing, Comp, ResearchData, MarketSignalData } from '@/types'
+import type { Item, WatchlistItem, EbayListing, Comp, ResearchData, MarketSignalData, MarketIntelData } from '@/types'
 import type { Database } from '@/types/database'
 
 // Helpers to parse JSON fields from DB
@@ -84,6 +84,10 @@ interface ItemsState {
   marketSignal: MarketSignalData | null
   marketSignalLoading: boolean
 
+  // Market intelligence (enriched eBay data)
+  marketIntel: MarketIntelData | null
+  marketIntelLoading: boolean
+
   // Stored signals (background-refreshed, for home screen + alerts)
   storedSignals: Map<string, StoredSignal>
   signalsLoading: boolean
@@ -106,6 +110,10 @@ interface ItemsState {
   // Market signal (conviction engine data)
   fetchMarketSignal: (item: Item) => Promise<void>
   clearMarketSignal: () => void
+
+  // Market intelligence (enriched eBay analytics)
+  fetchMarketIntel: (item: Item) => Promise<void>
+  clearMarketIntel: () => void
 
   // Stored signals (background batch)
   loadStoredSignals: (profileId: string) => Promise<void>
@@ -135,6 +143,8 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
   communityComps: [],
   marketSignal: null,
   marketSignalLoading: false,
+  marketIntel: null,
+  marketIntelLoading: false,
   storedSignals: new Map(),
   signalsLoading: false,
   signalsLastRefresh: null,
@@ -301,6 +311,27 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
   },
 
   clearMarketSignal: () => set({ marketSignal: null, marketSignalLoading: false }),
+
+  // Market intelligence (enriched eBay analytics)
+  fetchMarketIntel: async (item) => {
+    if (!item) return
+    set({ marketIntelLoading: true })
+    try {
+      const query = [item.name, item.brand, item.model].filter(Boolean).join(' ')
+      const params = new URLSearchParams({ q: query })
+      if (item.condition) params.set('condition', item.condition)
+      const res = await fetch(`/api/ebay-intelligence?${params}`, { signal: AbortSignal.timeout(20000) })
+      if (!res.ok) throw new Error(`Intel fetch failed: ${res.status}`)
+      const data = await res.json()
+      set({ marketIntel: data })
+    } catch (e) {
+      console.error('[market-intel] Error:', e)
+      set({ marketIntel: null })
+    }
+    set({ marketIntelLoading: false })
+  },
+
+  clearMarketIntel: () => set({ marketIntel: null, marketIntelLoading: false }),
 
   // Load stored signals from Supabase (fast, cached data)
   loadStoredSignals: async (profileId) => {

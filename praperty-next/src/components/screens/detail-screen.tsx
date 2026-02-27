@@ -8,6 +8,8 @@ import { fmt, fmtFull } from '@/lib/utils'
 import { getMarketplacesForCategory, buildSearchTerms, COMP_SOURCES } from '@/lib/marketplaces'
 import { calculateConviction } from '@/lib/conviction'
 import SignalBreakdown from '@/components/signal-breakdown'
+import MarketIntel from '@/components/market-intel'
+import TrendIndicator from '@/components/trend-indicator'
 import type { Screen, Comp } from '@/types'
 
 interface Props {
@@ -355,6 +357,14 @@ export default function DetailScreen({ itemId, onBack, onNavigate, onResearch }:
               ))}
             </div>
           )}
+        </div>
+
+        {/* ─── Market Intelligence (enriched eBay analytics) ─── */}
+        <MarketIntel item={item} />
+
+        {/* ─── Search Trends (Google Trends) ─── */}
+        <div className="mt-4">
+          <TrendIndicator />
         </div>
       </div>
 

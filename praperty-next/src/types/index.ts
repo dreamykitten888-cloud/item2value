@@ -132,4 +132,37 @@ export interface MarketSignalData {
   fetchedAt?: string
 }
 
+// eBay market intelligence (from /api/ebay-intelligence)
+export interface MarketIntelData {
+  market: {
+    totalListings: number
+    depth: { label: string; level: 'saturated' | 'healthy' | 'limited' | 'rare'; score: number }
+    avgPrice: number | null
+    medianPrice: number | null
+    sampleSize: number
+  }
+  priceRange: {
+    floor: number | null
+    ceiling: number | null
+    floorItems: EbayListing[]
+    ceilingItems: EbayListing[]
+  }
+  conditionPricing: {
+    userCondition: string
+    ebayCondition: string
+    conditionAvg: number | null
+    conditionMedian: number | null
+    conditionCount: number
+    allConditionAvg: number | null
+    premium: number | null
+    breakdown: { condition: string; count: number; percent: number }[]
+  }
+  aspects: {
+    topBrands: { value: string; count: number }[]
+    all: { name: string; values: { value: string; count: number }[] }[]
+  }
+  categories: { name: string; id: string; count: number }[]
+  fetchedAt: string
+}
+
 export type AuthMode = 'signin' | 'signup' | 'forgot'

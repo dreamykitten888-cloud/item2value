@@ -7,6 +7,8 @@ import { fmt, fmtFull, makeProductKey } from '@/lib/utils'
 import { getMarketplacesForCategory, getSocialLinks, getTrendLinks } from '@/lib/marketplaces'
 import { calculateConviction } from '@/lib/conviction'
 import SignalBreakdown from '@/components/signal-breakdown'
+import MarketIntel from '@/components/market-intel'
+import TrendIndicator from '@/components/trend-indicator'
 import PriceHistoryChart from '@/components/price-history-chart'
 import type { Screen, ResearchData, Item, MarketSignalData } from '@/types'
 
@@ -40,6 +42,8 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
   const [historyLoading, setHistoryLoading] = useState(false)
   const [showComps, setShowComps] = useState(false)
   const [showEbayListings, setShowEbayListings] = useState(true)
+  const [trendData, setTrendData] = useState<MarketSignalData | null>(null)
+  const [trendLoading, setTrendLoading] = useState(false)
 
   // Clear eBay comps when query changes
   useEffect(() => {
@@ -79,6 +83,22 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
       .finally(() => setHistoryLoading(false))
   }, [query])
 
+  // Fetch Google Trends data for research query
+  useEffect(() => {
+    if (!query) return
+    setTrendLoading(true)
+    const category = data.categories?.[0] || ''
+    fetch(`/api/market-signal?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}`, {
+      signal: AbortSignal.timeout(12000),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(result => {
+        if (result) setTrendData(result)
+      })
+      .catch(() => {})
+      .finally(() => setTrendLoading(false))
+  }, [query, data.categories])
+
   // Build a synthetic Item + MarketSignalData from ResearchData so we can use the conviction engine
   const syntheticItem: Item = useMemo(() => ({
     id: 'research-' + query,
@@ -114,8 +134,10 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
     ebayPrices: data.recentComps.filter(c => c.price > 0).map(c => c.price),
     ebayAvgSold: data.avgSold || undefined,
     ebaySoldCount: data.soldCount || undefined,
-    fetchedAt: new Date().toISOString(),
-  }), [data])
+    trendScore: trendData?.trendScore ?? undefined,
+    trendDirection: trendData?.trendDirection ?? undefined,
+    fetchedAt: trendData?.fetchedAt || new Date().toISOString(),
+  }), [data, trendData])
 
   const conviction = useMemo(
     () => calculateConviction(syntheticItem, marketSignalData),
@@ -348,6 +370,12 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
               </div>
             </div>
           )}
+
+          {/* ─── Market Intelligence (enriched eBay analytics) ─── */}
+          <MarketIntel item={syntheticItem} />
+
+          {/* ─── Search Trends (Google Trends) ─── */}
+          <TrendIndicator signal={trendData} loading={trendLoading} />
 
           {/* ─── Comps (collapsible, matching detail screen) ─── */}
           {data.recentComps.length > 0 && (
