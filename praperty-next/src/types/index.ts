@@ -80,6 +80,7 @@ export interface WatchlistItem {
   priceHistory: PriceSnapshot[]
   addedAt: string
   linkedItemId: string | null
+  notes: string
 }
 
 export type AlertType =

@@ -178,6 +178,7 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
       priceHistory: [],
       addedAt: new Date().toISOString(),
       linkedItemId: null,
+      notes: '',
     }
     setWatchlist([newItem, ...watchlist])
     if (profileId) syncWatchlistItem(newItem, profileId)

@@ -49,6 +49,7 @@ const mapRowToWatchlist = (row: Record<string, unknown>): WatchlistItem => ({
   priceHistory: parseJson(row.price_history) as WatchlistItem['priceHistory'],
   addedAt: (row.added_at as string) || '',
   linkedItemId: (row.linked_item_id as string) || null,
+  notes: (row.notes as string) || '',
 })
 
 // Stored market signal from Supabase (background-refreshed)
@@ -94,6 +95,7 @@ interface ItemsState {
   syncAllItems: (items: Item[], profileId: string) => Promise<void>
   deleteItem: (itemId: string) => Promise<void>
   syncWatchlistItem: (item: WatchlistItem, profileId: string) => Promise<void>
+  updateWatchlistItem: (id: string, updates: Partial<WatchlistItem>) => void
   deleteWatchlistItem: (itemId: string) => Promise<void>
   setItems: (items: Item[]) => void
   setWatchlist: (watchlist: WatchlistItem[]) => void
@@ -243,6 +245,7 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
         price_history: JSON.stringify(item.priceHistory || []),
         added_at: item.addedAt || new Date().toISOString(),
         linked_item_id: item.linkedItemId || null,
+        notes: item.notes || '',
       }
       // @ts-ignore - Supabase type inference issue
       await supabase.from('watchlist').upsert(row, { onConflict: 'id' })
@@ -259,6 +262,9 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
       console.error('Delete watchlist error:', e)
     }
   },
+
+  updateWatchlistItem: (id, updates) =>
+    set({ watchlist: get().watchlist.map(w => (w.id === id ? { ...w, ...updates } : w)) }),
 
   setItems: (items) => set({ items }),
   setWatchlist: (watchlist) => set({ watchlist }),

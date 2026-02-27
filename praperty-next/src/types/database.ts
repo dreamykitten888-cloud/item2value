@@ -94,6 +94,7 @@ export interface Database {
           price_history: string // JSON string
           added_at: string
           linked_item_id: string | null
+          notes: string
           created_at: string
           updated_at: string | null
         }
@@ -110,6 +111,7 @@ export interface Database {
           price_history?: string
           added_at?: string
           linked_item_id?: string | null
+          notes?: string
         }
         Update: Partial<Database['public']['Tables']['watchlist']['Insert']>
       }
