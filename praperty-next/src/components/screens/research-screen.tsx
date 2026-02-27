@@ -99,6 +99,76 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
       .finally(() => setTrendLoading(false))
   }, [query, data.categories])
 
+  // Filter eBay results for relevance: listing title must contain at least 2 key words from query
+  const relevantEbayComps = useMemo(() => {
+    if (ebayComps.length === 0) return []
+    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 3)
+    if (queryWords.length === 0) return ebayComps
+    return ebayComps.filter(listing => {
+      const title = (listing.title || '').toLowerCase()
+      const matchCount = queryWords.filter(w => title.includes(w)).length
+      // Require at least 2 keyword matches, or 1 if query is very short
+      return matchCount >= Math.min(2, queryWords.length)
+    })
+  }, [ebayComps, query])
+
+  // eBay summary stats (using filtered comps)
+  const ebayStats = useMemo(() => {
+    const prices = relevantEbayComps.map(c => c.price?.value).filter((p): p is number => !!p && p > 0)
+    if (prices.length === 0) return null
+    const avg = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length)
+    const low = Math.round(Math.min(...prices))
+    const high = Math.round(Math.max(...prices))
+    const diff = data.avgValue > 0 ? ((avg - data.avgValue) / data.avgValue) * 100 : 0
+    return { avg, low, high, count: prices.length, diff }
+  }, [relevantEbayComps, data.avgValue])
+
+  // Merge live eBay data into Price Intelligence when community data is empty
+  const priceIntel = useMemo(() => {
+    const hasComm = data.avgValue > 0 || data.avgCost > 0 || data.avgSold > 0
+    if (hasComm) {
+      return {
+        avgValue: data.avgValue,
+        avgCost: data.avgCost,
+        lowValue: data.lowValue,
+        highValue: data.highValue,
+        avgSold: data.avgSold,
+        listings: data.listings,
+        totalComps: data.totalComps,
+        soldCount: data.soldCount,
+      }
+    }
+    // Fallback: use live eBay data
+    if (ebayStats) {
+      return {
+        avgValue: ebayStats.avg,
+        avgCost: 0,
+        lowValue: ebayStats.low,
+        highValue: ebayStats.high,
+        avgSold: trendData?.ebayAvgSold || 0,
+        listings: ebayStats.count,
+        totalComps: 0,
+        soldCount: trendData?.ebaySoldCount || 0,
+      }
+    }
+    // Also try market signal data
+    if (trendData?.ebayPrices && trendData.ebayPrices.length > 0) {
+      const prices = trendData.ebayPrices
+      const avg = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length)
+      return {
+        avgValue: avg,
+        avgCost: 0,
+        lowValue: Math.round(Math.min(...prices)),
+        highValue: Math.round(Math.max(...prices)),
+        avgSold: trendData.ebayAvgSold || 0,
+        listings: prices.length,
+        totalComps: 0,
+        soldCount: trendData.ebaySoldCount || 0,
+      }
+    }
+    return { avgValue: 0, avgCost: 0, lowValue: 0, highValue: 0, avgSold: 0, listings: 0, totalComps: 0, soldCount: 0 }
+  }, [data, ebayStats, trendData])
+
   // Build a synthetic Item + MarketSignalData from ResearchData so we can use the conviction engine
   const syntheticItem: Item = useMemo(() => ({
     id: 'research-' + query,
@@ -107,9 +177,9 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
     model: '',
     category: data.categories?.[0] || 'Other',
     condition: 'Used',
-    cost: data.avgCost || 0,
+    cost: priceIntel.avgCost || 0,
     asking: 0,
-    value: data.avgValue || 0,
+    value: priceIntel.avgValue || 0,
     earnings: null,
     emoji: '',
     notes: '',
@@ -128,16 +198,27 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
       value: p.avg_price,
     })),
     createdAt: new Date().toISOString(),
-  }), [query, data, priceHistory])
+  }), [query, data, priceHistory, priceIntel])
 
-  const marketSignalData: MarketSignalData = useMemo(() => ({
-    ebayPrices: data.recentComps.filter(c => c.price > 0).map(c => c.price),
-    ebayAvgSold: data.avgSold || undefined,
-    ebaySoldCount: data.soldCount || undefined,
-    trendScore: trendData?.trendScore ?? undefined,
-    trendDirection: trendData?.trendDirection ?? undefined,
-    fetchedAt: trendData?.fetchedAt || new Date().toISOString(),
-  }), [data, trendData])
+  const marketSignalData: MarketSignalData = useMemo(() => {
+    // Prefer filtered eBay comp prices over community-only data
+    const ebayPrices = relevantEbayComps.length > 0
+      ? relevantEbayComps.map(c => c.price?.value).filter((p): p is number => !!p && p > 0)
+      : data.recentComps.filter(c => c.price > 0).map(c => c.price)
+    // Also merge in market-signal eBay prices if we have them
+    const allPrices = ebayPrices.length > 0
+      ? ebayPrices
+      : (trendData?.ebayPrices || [])
+
+    return {
+      ebayPrices: allPrices,
+      ebayAvgSold: priceIntel.avgSold || undefined,
+      ebaySoldCount: priceIntel.soldCount || undefined,
+      trendScore: trendData?.trendScore ?? undefined,
+      trendDirection: trendData?.trendDirection ?? undefined,
+      fetchedAt: trendData?.fetchedAt || new Date().toISOString(),
+    }
+  }, [data, trendData, relevantEbayComps, priceIntel])
 
   const conviction = useMemo(
     () => calculateConviction(syntheticItem, marketSignalData, 'browse'),
@@ -148,17 +229,6 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
   const marketplaces = getMarketplacesForCategory(category, query)
   const socialLinks = getSocialLinks(query)
   const trendLinks = getTrendLinks(query)
-
-  // eBay summary stats
-  const ebayStats = useMemo(() => {
-    const prices = ebayComps.map(c => c.price?.value).filter((p): p is number => !!p && p > 0)
-    if (prices.length === 0) return null
-    const avg = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length)
-    const low = Math.round(Math.min(...prices))
-    const high = Math.round(Math.max(...prices))
-    const diff = data.avgValue > 0 ? ((avg - data.avgValue) / data.avgValue) * 100 : 0
-    return { avg, low, high, count: prices.length, diff }
-  }, [ebayComps, data.avgValue])
 
   return (
     <div className="h-full overflow-y-auto scroll-hide pb-24">
@@ -204,10 +274,10 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
             </div>
             <div className="grid grid-cols-2 gap-2 mb-3">
               {[
-                { l: 'Market Value', v: data.avgValue, c: '#EB9C35' },
-                { l: 'Avg Cost', v: data.avgCost, c: '#3b82f6' },
-                { l: 'Price Range', v: data.lowValue > 0 ? `${fmt(data.lowValue)} - ${fmt(data.highValue)}` : null, c: '#a855f7', raw: true },
-                { l: 'Avg Sold Price', v: data.avgSold, c: '#22c55e' },
+                { l: 'Market Value', v: priceIntel.avgValue, c: '#EB9C35' },
+                { l: 'Avg Cost', v: priceIntel.avgCost, c: '#3b82f6' },
+                { l: 'Price Range', v: priceIntel.lowValue > 0 ? `${fmt(priceIntel.lowValue)} - ${fmt(priceIntel.highValue)}` : null, c: '#a855f7', raw: true },
+                { l: 'Avg Sold Price', v: priceIntel.avgSold, c: '#22c55e' },
               ].map((stat, i) => (
                 <div key={i} className="bg-white/[0.04] rounded-xl p-3 text-center">
                   <p className="text-dim text-[10px] uppercase tracking-wider">{stat.l}</p>
@@ -218,9 +288,9 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
               ))}
             </div>
             <div className="flex gap-2 flex-wrap">
-              <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{data.listings || 0} community listings</span>
-              <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{data.totalComps || 0} comps</span>
-              <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{data.soldCount || 0} sold</span>
+              <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{priceIntel.listings || 0} {data.listings > 0 ? 'community' : 'eBay'} listings</span>
+              <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{priceIntel.totalComps || 0} comps</span>
+              <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{priceIntel.soldCount || 0} sold</span>
             </div>
           </div>
 
@@ -254,9 +324,22 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
             )}
 
             {/* Empty state */}
-            {!ebayLoading && !ebayError && ebayComps.length === 0 && (
+            {!ebayLoading && !ebayError && relevantEbayComps.length === 0 && ebayComps.length === 0 && (
               <div className="text-center py-4">
                 <p className="text-dim text-xs">Tap &quot;Search eBay&quot; to see what this item is selling for right now.</p>
+              </div>
+            )}
+
+            {/* All results filtered out */}
+            {!ebayLoading && !ebayError && ebayComps.length > 0 && relevantEbayComps.length === 0 && (
+              <div className="text-center py-4">
+                <p className="text-dim text-xs">{ebayComps.length} results found but none matched &quot;{query}&quot; closely enough.</p>
+                <button
+                  onClick={() => fetchEbayComps(syntheticItem)}
+                  className="text-[11px] font-semibold text-blue-400 mt-2"
+                >
+                  Try again
+                </button>
               </div>
             )}
 
@@ -271,7 +354,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
                   <span className="text-dim text-xs">Range</span>
                   <span className="text-xs text-white/70">{fmtFull(ebayStats.low)} - {fmtFull(ebayStats.high)}</span>
                 </div>
-                {data.avgValue > 0 && (
+                {priceIntel.avgValue > 0 && data.avgValue > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-dim text-xs">vs. community value</span>
                     <span className={`text-xs font-bold ${ebayStats.diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -283,19 +366,22 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
             )}
 
             {/* eBay listings with images */}
-            {!ebayLoading && ebayComps.length > 0 && (
+            {!ebayLoading && relevantEbayComps.length > 0 && (
               <>
                 <button
                   onClick={() => setShowEbayListings(!showEbayListings)}
                   className="w-full flex items-center justify-center gap-1.5 text-[11px] font-semibold py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-blue-400 mb-2"
                 >
-                  {showEbayListings ? 'Hide' : 'Show'} {ebayComps.length} Listings
+                  {showEbayListings ? 'Hide' : 'Show'} {relevantEbayComps.length} Listings
+                  {ebayComps.length !== relevantEbayComps.length && (
+                    <span className="text-dim font-normal ml-1">({ebayComps.length - relevantEbayComps.length} filtered)</span>
+                  )}
                   {showEbayListings ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
 
                 {showEbayListings && (
                   <div className="space-y-2">
-                    {ebayComps.map((listing, idx) => (
+                    {relevantEbayComps.map((listing, idx) => (
                       <div key={listing.id || idx} className="flex gap-3 p-3 bg-white/[0.03] rounded-xl border border-white/[0.06]">
                         {listing.image && (
                           <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-white/5">
