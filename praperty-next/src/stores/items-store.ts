@@ -4,6 +4,25 @@ import type { Item, WatchlistItem, EbayListing, Comp, ResearchData, MarketSignal
 import type { Database } from '@/types/database'
 
 // Helpers to parse JSON fields from DB
+// Build a smart eBay search query: dedupe words, cap at 6 words max
+// Overly specific queries return zero results on eBay
+function buildSmartQuery(item: { name?: string; brand?: string; model?: string }): string {
+  const seen = new Set<string>()
+  const words = [item.name, item.brand, item.model]
+    .filter(Boolean)
+    .join(' ')
+    .split(/\s+/)
+    .filter(w => {
+      const l = w.toLowerCase()
+      if (seen.has(l) || l.length < 2) return false
+      seen.add(l)
+      return true
+    })
+  // Cap at 6 words: eBay search works best with concise queries
+  return words.slice(0, 6).join(' ')
+}
+
+// Helpers to parse JSON fields from DB
 const parseJson = (val: unknown): any[] => {
   if (typeof val === 'string') {
     try {
@@ -288,20 +307,32 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     if (!item) return
     set({ marketSignalLoading: true })
     try {
-      const seen = new Set<string>()
-      const query = [item.name, item.brand, item.model].filter(Boolean).join(' ')
-        .split(/\s+/).filter(w => {
-          const l = w.toLowerCase()
-          if (seen.has(l)) return false
-          seen.add(l)
-          return true
-        }).join(' ')
-
+      const query = buildSmartQuery(item)
       const res = await fetch(
         `/api/market-signal?q=${encodeURIComponent(query)}&category=${encodeURIComponent(item.category || '')}`
       )
       if (!res.ok) throw new Error(`Market signal error: ${res.status}`)
       const data: MarketSignalData = await res.json()
+
+      // If eBay returned no prices, retry with a shorter query (just item name)
+      if ((data.ebayPrices?.length || 0) === 0 && item.name) {
+        const shortQuery = item.name.split(/\s+/).slice(0, 4).join(' ')
+        if (shortQuery !== query) {
+          console.log('[market-signal] Retrying with shorter query:', shortQuery)
+          const retry = await fetch(
+            `/api/market-signal?q=${encodeURIComponent(shortQuery)}&category=${encodeURIComponent(item.category || '')}`
+          )
+          if (retry.ok) {
+            const retryData: MarketSignalData = await retry.json()
+            if ((retryData.ebayPrices?.length || 0) > 0) {
+              set({ marketSignal: retryData })
+              set({ marketSignalLoading: false })
+              return
+            }
+          }
+        }
+      }
+
       set({ marketSignal: data })
     } catch (e) {
       console.error('[market-signal] fetch error:', e)
@@ -317,12 +348,32 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     if (!item) return
     set({ marketIntelLoading: true })
     try {
-      const query = [item.name, item.brand, item.model].filter(Boolean).join(' ')
+      const query = buildSmartQuery(item)
       const params = new URLSearchParams({ q: query })
       if (item.condition) params.set('condition', item.condition)
       const res = await fetch(`/api/ebay-intelligence?${params}`, { signal: AbortSignal.timeout(20000) })
       if (!res.ok) throw new Error(`Intel fetch failed: ${res.status}`)
       const data = await res.json()
+
+      // If we got zero results, retry with shorter query
+      if ((!data.market || data.market.totalListings === 0) && item.name) {
+        const shortQuery = item.name.split(/\s+/).slice(0, 4).join(' ')
+        if (shortQuery !== query) {
+          console.log('[market-intel] Retrying with shorter query:', shortQuery)
+          const retryParams = new URLSearchParams({ q: shortQuery })
+          if (item.condition) retryParams.set('condition', item.condition)
+          const retry = await fetch(`/api/ebay-intelligence?${retryParams}`, { signal: AbortSignal.timeout(20000) })
+          if (retry.ok) {
+            const retryData = await retry.json()
+            if (retryData.market?.totalListings > 0) {
+              set({ marketIntel: retryData })
+              set({ marketIntelLoading: false })
+              return
+            }
+          }
+        }
+      }
+
       set({ marketIntel: data })
     } catch (e) {
       console.error('[market-intel] Error:', e)

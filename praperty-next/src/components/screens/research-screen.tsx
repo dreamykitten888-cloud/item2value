@@ -140,7 +140,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
   }), [data, trendData])
 
   const conviction = useMemo(
-    () => calculateConviction(syntheticItem, marketSignalData),
+    () => calculateConviction(syntheticItem, marketSignalData, 'browse'),
     [syntheticItem, marketSignalData]
   )
 

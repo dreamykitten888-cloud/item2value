@@ -47,6 +47,14 @@ function getSignalConfidence(signal: ConvictionSignal): { label: string; color: 
     case 'socialTrend':
       if (signal.reason.includes('Loading')) return { label: 'N/A', color: 'rgba(255,255,255,0.3)', reason: 'Loading...' }
       return { label: 'MEDIUM', color: '#EB9C35', reason: 'Google Trends search interest' }
+    case 'dealQuality':
+      if (signal.reason.includes('below avg')) return { label: 'HIGH', color: '#4ade80', reason: 'Price compared against active market listings' }
+      if (signal.reason.includes('above avg')) return { label: 'HIGH', color: '#4ade80', reason: 'Price compared against active market listings' }
+      return { label: 'MEDIUM', color: '#EB9C35', reason: 'Market price range available' }
+    case 'liquidity':
+      if (signal.score >= 75) return { label: 'HIGH', color: '#4ade80', reason: 'Strong buyer activity in this market' }
+      if (signal.score >= 50) return { label: 'MEDIUM', color: '#EB9C35', reason: 'Moderate market activity' }
+      return { label: 'LOW', color: '#f87171', reason: 'Limited buyer pool' }
     default:
       return { label: 'MEDIUM', color: '#EB9C35', reason: 'Data available' }
   }
@@ -59,6 +67,8 @@ function getDataSourceLabel(signal: ConvictionSignal): string {
     case 'roiPosition': return 'Your Cost Records'
     case 'holdDuration': return 'Purchase Date + Category'
     case 'socialTrend': return 'Google Trends'
+    case 'dealQuality': return 'eBay Active Listings'
+    case 'liquidity': return 'eBay Sold + Active Listings'
     default: return 'Market Data'
   }
 }
@@ -151,10 +161,11 @@ function SignalRow({ signal, expanded }: { signal: ConvictionSignal; expanded: b
 
 export default function SignalBreakdown({ result, fetchedAt, compact = false }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const { score, level, confidence, headline, signals, dataPoints } = result
+  const { score, level, confidence, headline, signals, dataPoints, mode } = result
   const color = getConvictionColor(level)
   const confLabel = getConfidenceLabel(confidence)
   const needlePercent = Math.max(2, Math.min(98, score))
+  const isBrowse = mode === 'browse'
 
   // Sort: available first, then by weight descending
   const sortedSignals = [...signals].sort((a, b) => {
@@ -169,9 +180,11 @@ export default function SignalBreakdown({ result, fetchedAt, compact = false }: 
       {/* Header: Score + Label */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <p className="text-dim text-[11px] uppercase tracking-widest">Market Signal</p>
+          <p className="text-dim text-[11px] uppercase tracking-widest">{isBrowse ? 'Buy Signal' : 'Market Signal'}</p>
           <div className="flex items-center gap-2.5 mt-1">
-            <span className="text-3xl font-extrabold font-heading" style={{ color }}>{level}</span>
+            <span className="text-3xl font-extrabold font-heading" style={{ color }}>
+              {isBrowse ? (level === 'SELL' ? 'SKIP' : level === 'HOLD' ? 'MAYBE' : 'BUY') : level}
+            </span>
             <span className="text-slate-500 text-sm">{score}/100</span>
           </div>
         </div>
@@ -195,8 +208,8 @@ export default function SignalBreakdown({ result, fetchedAt, compact = false }: 
 
       {/* Labels */}
       <div className="flex justify-between mb-3">
-        <span className="text-[9px] font-semibold text-red-400/60">SELL</span>
-        <span className="text-[9px] font-semibold text-amber-brand/60">HOLD</span>
+        <span className="text-[9px] font-semibold text-red-400/60">{isBrowse ? 'SKIP' : 'SELL'}</span>
+        <span className="text-[9px] font-semibold text-amber-brand/60">{isBrowse ? 'MAYBE' : 'HOLD'}</span>
         <span className="text-[9px] font-semibold text-green-400/60">BUY</span>
       </div>
 
