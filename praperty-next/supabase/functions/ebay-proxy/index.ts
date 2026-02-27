@@ -1,3 +1,4 @@
+// @ts-nocheck — This file runs in Supabase's Deno runtime, not Next.js
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // eBay credentials from Supabase secrets
