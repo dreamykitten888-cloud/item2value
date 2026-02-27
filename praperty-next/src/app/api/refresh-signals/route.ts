@@ -123,7 +123,7 @@ async function processItem(
   const convictionResult = computeConvictionServer(item, signal)
 
   // Calculate price change vs previous signal
-  const currentAvg = signal.ebayAvgSold || 0
+  const currentAvg = signal.ebayAvgPrice || 0
   const previousAvg = prevPriceMap.get(item.id) || 0
   const priceChangeAbs = previousAvg > 0 ? currentAvg - previousAvg : 0
   const priceChangePct = previousAvg > 0 ? ((currentAvg - previousAvg) / previousAvg) * 100 : 0
@@ -136,7 +136,7 @@ async function processItem(
       user_id: userId,
       ebay_prices: signal.ebayPrices || [],
       ebay_avg_price: currentAvg,
-      ebay_listing_count: signal.ebaySoldCount || 0,
+      ebay_listing_count: signal.ebayActiveCount || 0,
       trend_score: signal.trendScore ?? 0,
       trend_direction: signal.trendDirection || 'stable',
       conviction_score: convictionResult.score,
@@ -204,7 +204,7 @@ function computeConvictionServer(
   // 2. Market Delta (weight 0.30) - eBay avg vs item value/cost
   let marketDeltaScore = 50
   if (signal.ebayPrices?.length > 0) {
-    const ebayAvg = signal.ebayAvgSold || 0
+    const ebayAvg = signal.ebayAvgPrice || 0
     const itemRef = item.value || item.cost || 0
     if (itemRef > 0 && ebayAvg > 0) {
       const ratio = ebayAvg / itemRef
@@ -219,7 +219,7 @@ function computeConvictionServer(
   // 3. ROI Position (weight 0.15)
   let roiScore = 50
   const cost = item.cost || 0
-  const value = item.value || signal.ebayAvgSold || 0
+  const value = item.value || signal.ebayAvgPrice || 0
   if (cost > 0 && value > 0) {
     const roi = ((value - cost) / cost) * 100
     roiScore = Math.max(0, Math.min(100, 50 + roi / 2))
@@ -258,8 +258,8 @@ function computeConvictionServer(
 
   // Generate headline
   let headline = ''
-  if (level === 'SELL' && signal.ebayAvgSold > 0) {
-    headline = `Market avg $${signal.ebayAvgSold} - strong sell signal`
+  if (level === 'SELL' && signal.ebayAvgPrice > 0) {
+    headline = `Market avg $${signal.ebayAvgPrice} - strong sell signal`
   } else if (level === 'BUY' && signal.trendDirection === 'rising') {
     headline = `Trending up - good time to buy more`
   } else if (level === 'SELL') {
@@ -307,7 +307,7 @@ async function refreshWatchlist(
           if (!res.ok) return
 
           const signal = await res.json()
-          const ebayAvg = signal.ebayAvgSold || 0
+          const ebayAvg = signal.ebayAvgPrice || 0
           if (ebayAvg === 0) return
 
           const today = new Date().toISOString().split('T')[0]

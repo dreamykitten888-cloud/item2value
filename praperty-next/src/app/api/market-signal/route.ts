@@ -9,7 +9,7 @@ export const maxDuration = 15
  * 1. eBay active listing prices (via existing Supabase edge function)
  * 2. Google Trends interest score (via unofficial trends endpoint)
  *
- * Returns: { ebayPrices, ebayAvgSold, ebaySoldCount, trendScore, trendDirection, fetchedAt }
+ * Returns: { ebayPrices, ebayAvgPrice, ebayActiveCount, trendScore, trendDirection, fetchedAt }
  */
 export async function GET(req: NextRequest) {
   const query = req.nextUrl.searchParams.get('q')
@@ -30,8 +30,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ebayPrices: ebayData?.prices || [],
-    ebayAvgSold: ebayData?.avg || 0,
-    ebaySoldCount: ebayData?.count || 0,
+    ebayAvgPrice: ebayData?.avg || 0,
+    ebayActiveCount: ebayData?.count || 0,
     trendScore: trendData?.score ?? null,
     trendDirection: trendData?.direction || null,
     fetchedAt: new Date().toISOString(),

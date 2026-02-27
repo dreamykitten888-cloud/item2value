@@ -31,6 +31,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
     searchCommunityItems,
     ebayComps, ebayLoading, ebayError,
     fetchEbayComps, clearEbayComps,
+    marketIntel,
   } = useItemsStore()
 
   const [data, setData] = useState<ResearchData>(initialData || {
@@ -173,19 +174,21 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
         listings: data.listings,
         totalComps: data.totalComps,
         soldCount: data.soldCount,
+        isEbayFallback: false,
       }
     }
-    // Fallback: use live eBay data
+    // Fallback: use live eBay data (these are ACTIVE listings, not sold)
     if (ebayStats) {
       return {
         avgValue: ebayStats.avg,
         avgCost: 0,
         lowValue: ebayStats.low,
         highValue: ebayStats.high,
-        avgSold: trendData?.ebayAvgSold || 0,
+        avgSold: 0, // No sold data from eBay Browse API
         listings: ebayStats.count,
         totalComps: 0,
-        soldCount: trendData?.ebaySoldCount || 0,
+        soldCount: 0,
+        isEbayFallback: true,
       }
     }
     // Also try market signal data
@@ -197,13 +200,14 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
         avgCost: 0,
         lowValue: Math.round(Math.min(...prices)),
         highValue: Math.round(Math.max(...prices)),
-        avgSold: trendData.ebayAvgSold || 0,
+        avgSold: 0, // No sold data from eBay Browse API
         listings: prices.length,
         totalComps: 0,
-        soldCount: trendData.ebaySoldCount || 0,
+        soldCount: 0,
+        isEbayFallback: true,
       }
     }
-    return { avgValue: 0, avgCost: 0, lowValue: 0, highValue: 0, avgSold: 0, listings: 0, totalComps: 0, soldCount: 0 }
+    return { avgValue: 0, avgCost: 0, lowValue: 0, highValue: 0, avgSold: 0, listings: 0, totalComps: 0, soldCount: 0, isEbayFallback: false }
   }, [data, ebayStats, trendData])
 
   // Build a synthetic Item + MarketSignalData from ResearchData so we can use the conviction engine
@@ -247,15 +251,17 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
       ? ebayPrices
       : (trendData?.ebayPrices || [])
 
+    // Use the REAL total from ebay-intelligence (not capped at 12)
+    const realTotal = marketIntel?.market?.totalListings ?? undefined
+
     return {
       ebayPrices: allPrices,
-      ebayAvgSold: priceIntel.avgSold || undefined,
-      ebaySoldCount: priceIntel.soldCount || undefined,
+      ebayTotalListings: realTotal,
       trendScore: trendData?.trendScore ?? undefined,
       trendDirection: trendData?.trendDirection ?? undefined,
       fetchedAt: trendData?.fetchedAt || new Date().toISOString(),
     }
-  }, [data, trendData, relevantEbayComps, priceIntel])
+  }, [data, trendData, relevantEbayComps, marketIntel])
 
   const conviction = useMemo(
     () => calculateConviction(syntheticItem, marketSignalData, 'browse'),
@@ -314,7 +320,10 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
                 { l: 'Market Value', v: priceIntel.avgValue, c: '#EB9C35' },
                 { l: 'Avg Cost', v: priceIntel.avgCost, c: '#3b82f6' },
                 { l: 'Price Range', v: priceIntel.lowValue > 0 ? `${fmt(priceIntel.lowValue)} - ${fmt(priceIntel.highValue)}` : null, c: '#a855f7', raw: true },
-                { l: 'Avg Sold Price', v: priceIntel.avgSold, c: '#22c55e' },
+                // Only show "Avg Sold" if we have real sold data (community), not eBay fallback
+                ...(!priceIntel.isEbayFallback && priceIntel.avgSold > 0
+                  ? [{ l: 'Avg Sold Price', v: priceIntel.avgSold, c: '#22c55e' }]
+                  : [{ l: 'eBay Avg Ask', v: priceIntel.isEbayFallback ? priceIntel.avgValue : 0, c: '#22c55e' }]),
               ].map((stat, i) => (
                 <div key={i} className="bg-white/[0.04] rounded-xl p-3 text-center">
                   <p className="text-dim text-[10px] uppercase tracking-wider">{stat.l}</p>
@@ -325,9 +334,18 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
               ))}
             </div>
             <div className="flex gap-2 flex-wrap">
-              <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{priceIntel.listings || 0} {data.listings > 0 ? 'community' : 'eBay'} listings</span>
-              <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{priceIntel.totalComps || 0} comps</span>
-              <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{priceIntel.soldCount || 0} sold</span>
+              <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">
+                {priceIntel.isEbayFallback
+                  ? `${marketIntel?.market?.totalListings?.toLocaleString() || priceIntel.listings || 0} active on eBay`
+                  : `${priceIntel.listings || 0} community listings`
+                }
+              </span>
+              {priceIntel.totalComps > 0 && (
+                <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{priceIntel.totalComps} comps</span>
+              )}
+              {priceIntel.soldCount > 0 && (
+                <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{priceIntel.soldCount} sold</span>
+              )}
             </div>
           </div>
 

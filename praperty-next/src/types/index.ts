@@ -121,10 +121,10 @@ export type Screen =
 
 // Live market signal data from APIs (fed into conviction engine)
 export interface MarketSignalData {
-  // eBay sold/active listing prices for this item
+  // eBay active listing prices (sample, capped by API limit)
   ebayPrices?: number[]
-  ebayAvgSold?: number
-  ebaySoldCount?: number
+  // Total active listings on eBay (real count from API, not capped)
+  ebayTotalListings?: number
   // Google Trends interest score (0-100)
   trendScore?: number
   trendDirection?: 'rising' | 'stable' | 'declining'

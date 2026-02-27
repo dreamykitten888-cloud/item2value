@@ -276,14 +276,19 @@ function calcHoldDuration(item: Item): ConvictionSignal {
 // =========================================================================
 
 // --- Flip Speed: how easy is this to flip? ---
-// Combines: market depth (supply), search demand (Google Trends), price consistency
+// Combines: market depth (real supply count), search demand (Google Trends), price consistency
 // More listings + high demand + tight pricing = easy flip
 function calcFlipSpeed(item: Item, marketSignal?: MarketSignalData): ConvictionSignal {
   const ebayPrices = marketSignal?.ebayPrices || []
   const compCount = (item.comps || []).filter(c => c.price > 0).length
-  const listingCount = ebayPrices.length + compCount
 
-  if (listingCount === 0) {
+  // Use the REAL total from eBay API (not capped at 12 sample items)
+  // ebayTotalListings = actual total matching listings on eBay (could be thousands)
+  // ebayPrices.length = just our price sample (capped by API limit)
+  const realListingCount = marketSignal?.ebayTotalListings ?? 0
+  const sampleCount = ebayPrices.length + compCount
+
+  if (sampleCount === 0 && realListingCount === 0) {
     return {
       key: 'flipSpeed', label: 'Flip Speed', emoji: '⚡',
       score: 50, weight: 0.25, reason: 'No market data to assess',
@@ -291,13 +296,19 @@ function calcFlipSpeed(item: Item, marketSignal?: MarketSignalData): ConvictionS
     }
   }
 
+  // Use real total if available, otherwise fall back to sample count
+  const listingCount = realListingCount > 0 ? realListingCount : sampleCount
+
   // --- Signal 1: Market Depth (40% of score) ---
-  // More active listings = more buyers + sellers = faster turnover
+  // Based on REAL total active listings, not our tiny sample
   let depthScore: number
-  if (listingCount >= 10) depthScore = 90       // Deep market
-  else if (listingCount >= 6) depthScore = 70    // Healthy market
-  else if (listingCount >= 3) depthScore = 50    // Moderate
-  else depthScore = 25                           // Thin, may sit
+  let depthLabel: string
+  if (listingCount >= 500) { depthScore = 95; depthLabel = 'saturated' }
+  else if (listingCount >= 100) { depthScore = 85; depthLabel = 'deep' }
+  else if (listingCount >= 30) { depthScore = 70; depthLabel = 'healthy' }
+  else if (listingCount >= 10) { depthScore = 55; depthLabel = 'moderate' }
+  else if (listingCount >= 3) { depthScore = 35; depthLabel = 'thin' }
+  else { depthScore = 15; depthLabel = 'rare' }
 
   // --- Signal 2: Search Demand via Google Trends (35% of score) ---
   const trendScore = marketSignal?.trendScore ?? 50  // 0-100 from Google
@@ -308,20 +319,18 @@ function calcFlipSpeed(item: Item, marketSignal?: MarketSignalData): ConvictionS
 
   // --- Signal 3: Price Consistency (25% of score) ---
   // Tight price spread = competitive market = predictable sale price = easier to flip
-  // Wide spread = uncertain market = harder to price = may sit
   let consistencyScore = 50
   if (ebayPrices.length >= 3) {
     const sorted = [...ebayPrices].sort((a, b) => a - b)
     const median = sorted[Math.floor(sorted.length / 2)]
     if (median > 0) {
-      // Coefficient of variation: std dev / mean (lower = tighter prices)
       const mean = sorted.reduce((s, p) => s + p, 0) / sorted.length
       const variance = sorted.reduce((s, p) => s + (p - mean) ** 2, 0) / sorted.length
-      const cv = Math.sqrt(variance) / mean  // 0 = identical prices, 1+ = wild spread
-      if (cv < 0.15) consistencyScore = 90       // Very tight: <15% variation
-      else if (cv < 0.3) consistencyScore = 70    // Reasonable: 15-30%
-      else if (cv < 0.5) consistencyScore = 50    // Moderate: 30-50%
-      else consistencyScore = 25                   // Wild spread: >50% variation
+      const cv = Math.sqrt(variance) / mean
+      if (cv < 0.15) consistencyScore = 90
+      else if (cv < 0.3) consistencyScore = 70
+      else if (cv < 0.5) consistencyScore = 50
+      else consistencyScore = 25
     }
   }
 
@@ -337,9 +346,13 @@ function calcFlipSpeed(item: Item, marketSignal?: MarketSignalData): ConvictionS
     score >= 30 ? 'Slow flip' :
     'Hard to move'
 
-  // Build transparent reason
+  // Build transparent reason with real numbers
   const parts: string[] = []
-  parts.push(`${listingCount} listings`)
+  if (realListingCount > 0) {
+    parts.push(`${realListingCount.toLocaleString()} active on eBay`)
+  } else {
+    parts.push(`${sampleCount} listings found`)
+  }
   if (marketSignal?.trendScore != null) {
     parts.push(`${Math.round(demandScore)}% search interest`)
   }
@@ -508,19 +521,19 @@ function generateBrowseHeadline(
   score: number
 ): string {
   const deal = signals.find(s => s.key === 'dealQuality')
-  const liquidity = signals.find(s => s.key === 'liquidity')
+  const flipSpeed = signals.find(s => s.key === 'flipSpeed')
   const trend = signals.find(s => s.key === 'socialTrend')
 
   if (level === 'BUY') {
     if (deal?.available && deal.score >= 75) return 'Good deal. Market prices support this buy.'
     if (trend?.available && trend.score >= 75) return 'Trending up. High demand right now.'
-    if (liquidity?.available && liquidity.score >= 75) return 'Easy flip. Lots of buyers in this market.'
+    if (flipSpeed?.available && flipSpeed.score >= 75) return 'Easy flip. Lots of buyers in this market.'
     return 'Signals look good for buying.'
   }
 
   if (level === 'SELL') {
     if (deal?.available && deal.score < 35) return 'Overpriced vs market. Wait for a better deal.'
-    if (liquidity?.available && liquidity.score < 35) return 'Thin market. Could be hard to resell.'
+    if (flipSpeed?.available && flipSpeed.score < 35) return 'Thin market. Could be hard to resell.'
     return 'Not a great buy at current prices.'
   }
 
