@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useRef, useState } from 'react'
-import { Camera, X, ArrowLeft } from 'lucide-react'
+import { Camera, X, ArrowLeft, DollarSign } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
+import { useAuthStore } from '@/stores/auth-store'
 import { CATEGORIES, CONDITIONS } from '@/lib/utils'
 import type { Screen, Item } from '@/types'
 
@@ -14,11 +15,16 @@ interface Props {
 const EMOJI_OPTIONS = ['📦', '👜', '👟', '🪑', '📷', '⌚', '🍲', '📱', '🎒', '🎮', '💻', '🖼️', '🎸', '💎', '🧥']
 
 export default function EditItemScreen({ onNavigate, item }: Props) {
-  const { updateItem } = useItemsStore()
+  const { updateItem, syncItem } = useItemsStore()
+  const profileId = useAuthStore(s => s.profileId)
   const [emoji, setEmoji] = useState(item.emoji)
   const [photos, setPhotos] = useState<string[]>(item.photos || [])
   const [category, setCategory] = useState(item.category)
   const [condition, setCondition] = useState(item.condition)
+  const [cost, setCost] = useState(item.cost > 0 ? item.cost.toString() : '')
+  const [asking, setAsking] = useState(item.asking > 0 ? item.asking.toString() : '')
+  const [marketValue, setMarketValue] = useState(item.value > 0 ? item.value.toString() : '')
+  const [saving, setSaving] = useState(false)
 
   const nameRef = useRef<HTMLInputElement>(null)
   const brandRef = useRef<HTMLInputElement>(null)
@@ -60,7 +66,13 @@ export default function EditItemScreen({ onNavigate, item }: Props) {
       return
     }
 
-    updateItem(item.id, {
+    setSaving(true)
+
+    const costNum = parseFloat(cost) || 0
+    const askNum = parseFloat(asking) || 0
+    const mktNum = parseFloat(marketValue) || item.value || askNum || costNum || 0
+
+    const updates: Partial<Item> = {
       name,
       brand: brandRef.current?.value?.trim() || '',
       model: modelRef.current?.value?.trim() || '',
@@ -69,7 +81,19 @@ export default function EditItemScreen({ onNavigate, item }: Props) {
       emoji,
       notes: notesRef.current?.value?.trim() || '',
       photos,
-    })
+      cost: costNum,
+      asking: askNum,
+      value: mktNum,
+    }
+
+    // Update local state
+    updateItem(item.id, updates)
+
+    // Sync to Supabase so edits persist across sessions
+    const updatedItem: Item = { ...item, ...updates }
+    if (profileId) {
+      syncItem(updatedItem, profileId).catch(e => console.error('Failed to sync edit:', e))
+    }
 
     onNavigate('detail')
   }
@@ -82,7 +106,13 @@ export default function EditItemScreen({ onNavigate, item }: Props) {
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-lg font-bold text-white">Edit Item</h1>
-        <div className="w-6" />
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className={`text-sm font-bold transition-colors ${saving ? 'text-dim' : 'text-amber-brand'}`}
+        >
+          {saving ? 'Saving...' : 'Save'}
+        </button>
       </div>
 
       <div className="px-6 space-y-6">
@@ -195,6 +225,63 @@ export default function EditItemScreen({ onNavigate, item }: Props) {
           </div>
         </div>
 
+        {/* Price Fields */}
+        <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <DollarSign size={16} className="text-amber-brand" />
+            <span className="text-sm font-semibold text-white">Pricing</span>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">What I Paid</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold text-sm">$</span>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={cost}
+                  onChange={e => setCost(e.target.value)}
+                  className="w-full pl-7 pr-2 py-2.5 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Asking</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold text-sm">$</span>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={asking}
+                  onChange={e => setAsking(e.target.value)}
+                  className="w-full pl-7 pr-2 py-2.5 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Mkt Value</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold text-sm">$</span>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={marketValue}
+                  onChange={e => setMarketValue(e.target.value)}
+                  className="w-full pl-7 pr-2 py-2.5 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors text-sm"
+                />
+              </div>
+            </div>
+          </div>
+          {item.cost > 0 && parseFloat(marketValue || '0') > 0 && (
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-xs text-slate-400">Potential ROI:</span>
+              <span className={`text-xs font-bold ${((parseFloat(marketValue) - item.cost) / item.cost) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {(((parseFloat(marketValue) - parseFloat(cost || '0')) / (parseFloat(cost || '1'))) * 100).toFixed(0)}%
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* Category & Condition */}
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -244,9 +331,10 @@ export default function EditItemScreen({ onNavigate, item }: Props) {
         {/* Buttons */}
         <button
           onClick={handleSave}
-          className="w-full gradient-amber rounded-xl py-4 font-semibold text-black text-[15px] hover:shadow-lg transition-shadow"
+          disabled={saving}
+          className={`w-full gradient-amber rounded-xl py-4 font-semibold text-black text-[15px] transition-shadow ${saving ? 'opacity-40' : 'hover:shadow-lg'}`}
         >
-          Save Changes
+          {saving ? 'Saving...' : 'Save Changes'}
         </button>
         <button
           onClick={() => onNavigate('detail')}

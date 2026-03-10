@@ -178,9 +178,20 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
       ])
       console.log('[items] loadAll: items result:', itemsRes.data?.length || 0, 'items, error:', itemsRes.error?.message || 'none')
       console.log('[items] loadAll: watchlist result:', watchlistRes.data?.length || 0, 'items, error:', watchlistRes.error?.message || 'none')
-      const items = (itemsRes.data || []).map(mapRowToItem)
-      const watchlist = (watchlistRes.data || []).map(mapRowToWatchlist)
-      set({ items, watchlist })
+      // CRITICAL: Don't wipe local state if Supabase returns an error
+      // Only update items if we got a successful response (data is not null)
+      if (itemsRes.data) {
+        const items = itemsRes.data.map(mapRowToItem)
+        set({ items })
+      } else if (itemsRes.error) {
+        console.error('[items] loadAll: Supabase items error, keeping local state:', itemsRes.error.message)
+      }
+      if (watchlistRes.data) {
+        const watchlist = watchlistRes.data.map(mapRowToWatchlist)
+        set({ watchlist })
+      } else if (watchlistRes.error) {
+        console.error('[items] loadAll: Supabase watchlist error, keeping local state:', watchlistRes.error.message)
+      }
     } catch (e) {
       console.error('[items] loadAll error:', e)
     }
@@ -464,7 +475,7 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
             )
             if (!res.ok) return
             const signal = await res.json()
-            const ebayAvg = signal.ebayAvgSold || 0
+            const ebayAvg = signal.ebayAvgPrice || 0
             if (ebayAvg === 0) return
 
             const today = new Date().toISOString().split('T')[0]
@@ -510,15 +521,17 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     set({ ebayLoading: true, ebayError: null })
     try {
       const seen = new Set<string>()
-      const query = [item.name, item.brand, item.model].filter(Boolean).join(' ')
+      const baseQuery = [item.name, item.brand, item.model].filter(Boolean).join(' ')
         .split(/\s+/).filter(w => {
           const l = w.toLowerCase()
           if (seen.has(l)) return false
           seen.add(l)
           return true
         }).join(' ')
+      // Exclude common accessories/junk via negative keywords
+      const query = `${baseQuery} -case -cover -protector -adapter -charger -cable -mount -holder -skin -film -sticker`
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ebay-proxy?q=${encodeURIComponent(query)}&limit=6`
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ebay-proxy?q=${encodeURIComponent(query)}&limit=12`
       )
       if (!res.ok) throw new Error('eBay search failed')
       const data = await res.json()
