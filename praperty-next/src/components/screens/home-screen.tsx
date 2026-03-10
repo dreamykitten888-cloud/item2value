@@ -130,15 +130,27 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
   const totalEarnings = soldItems.reduce((sum, i) => sum + (i.earnings || i.value || 0), 0)
 
   // Load stored signals on mount, trigger background refresh if stale
+  // CRITICAL: Throttle to prevent race conditions when navigating back from add/edit
+  // Without this, loadAll fires before syncItem finishes and wipes new items
   useEffect(() => {
     if (!profileId) return
     if (items.length > 0) {
       loadStoredSignals(profileId)
-      refreshAllSignals(profileId)
+
+      // Only refresh if last refresh was > 30s ago (prevents race with syncItem)
+      const lastRefresh = useItemsStore.getState().signalsLastRefresh
+      const stale = !lastRefresh || (Date.now() - new Date(lastRefresh).getTime() > 30_000)
+      if (stale) {
+        refreshAllSignals(profileId)
+      }
     }
     // Also refresh watchlist prices client-side (no service key needed)
     if (watchlist.length > 0) {
-      refreshWatchlistPrices(profileId)
+      const lastRefresh = useItemsStore.getState().signalsLastRefresh
+      const stale = !lastRefresh || (Date.now() - new Date(lastRefresh).getTime() > 30_000)
+      if (stale) {
+        refreshWatchlistPrices(profileId)
+      }
     }
   }, [profileId, items.length, watchlist.length]) // eslint-disable-line react-hooks/exhaustive-deps
 

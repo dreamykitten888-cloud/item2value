@@ -59,7 +59,7 @@ export default function EditItemScreen({ onNavigate, item }: Props) {
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const name = nameRef.current?.value?.trim() || ''
     if (!name) {
       alert('Item name is required.')
@@ -89,10 +89,15 @@ export default function EditItemScreen({ onNavigate, item }: Props) {
     // Update local state
     updateItem(item.id, updates)
 
-    // Sync to Supabase so edits persist across sessions
+    // CRITICAL: Await Supabase sync BEFORE navigating away
+    // Otherwise loadAll on the next screen fetches stale data and wipes edits
     const updatedItem: Item = { ...item, ...updates }
     if (profileId) {
-      syncItem(updatedItem, profileId).catch(e => console.error('Failed to sync edit:', e))
+      try {
+        await syncItem(updatedItem, profileId)
+      } catch (e) {
+        console.error('Failed to sync edit:', e)
+      }
     }
 
     onNavigate('detail')
