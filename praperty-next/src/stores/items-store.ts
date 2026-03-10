@@ -145,8 +145,8 @@ interface ItemsState {
   fetchEbayComps: (item: Item) => Promise<void>
   fetchCommunityComps: (itemName: string, itemBrand: string) => Promise<void>
   searchCommunityItems: (query: string, category?: string) => Promise<ResearchData>
-  addCompToItem: (itemId: string, comp: Comp) => void
-  deleteCompFromItem: (itemId: string, compId: number) => void
+  addCompToItem: (itemId: string, comp: Comp) => Item | undefined
+  deleteCompFromItem: (itemId: string, compId: number) => Item | undefined
   recalcMarketFromComps: (itemId: string) => void
   clearEbayComps: () => void
   clearCommunityComps: () => void
@@ -636,20 +636,21 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     }
   },
 
-  // Comp CRUD
+  // Comp CRUD — returns the updated item so callers can sync in the same tick (no setTimeout race)
   addCompToItem: (itemId, comp) => {
     set({ items: get().items.map(it =>
       it.id === itemId ? { ...it, comps: [...(it.comps || []), comp] } : it
     )})
-    // Auto-recalc market value
-    setTimeout(() => get().recalcMarketFromComps(itemId), 50)
+    get().recalcMarketFromComps(itemId)
+    return get().items.find(it => it.id === itemId)
   },
 
   deleteCompFromItem: (itemId, compId) => {
     set({ items: get().items.map(it =>
       it.id === itemId ? { ...it, comps: (it.comps || []).filter(c => c.id !== compId) } : it
     )})
-    setTimeout(() => get().recalcMarketFromComps(itemId), 50)
+    get().recalcMarketFromComps(itemId)
+    return get().items.find(it => it.id === itemId)
   },
 
   recalcMarketFromComps: (itemId) => {

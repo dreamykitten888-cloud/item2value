@@ -92,13 +92,10 @@ export default function DetailScreen({ itemId, onBack, onNavigate, onResearch }:
       date: 'just now',
       url: compForm.url,
     }
-    addCompToItem(item.id, newComp)
+    const updated = addCompToItem(item.id, newComp)
     setCompForm({ title: '', url: '', price: '', source: 'eBay', condition: 'Good' })
     setAddingComp(false)
-    if (profileId) {
-      const updated = useItemsStore.getState().items.find(i => i.id === item.id)
-      if (updated) syncItem(updated, profileId)
-    }
+    if (profileId && updated) syncItem(updated, profileId)
   }
 
   const handleAddEbayAsComp = (listing: typeof ebayComps[0], idx: number) => {
@@ -111,13 +108,8 @@ export default function DetailScreen({ itemId, onBack, onNavigate, onResearch }:
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       url: listing.itemUrl,
     }
-    addCompToItem(item.id, newComp)
-    if (profileId) {
-      setTimeout(() => {
-        const updated = useItemsStore.getState().items.find(i => i.id === item.id)
-        if (updated) syncItem(updated, profileId)
-      }, 100)
-    }
+    const updated = addCompToItem(item.id, newComp)
+    if (profileId && updated) syncItem(updated, profileId)
   }
 
   const handleAddCommunityComp = (c: Comp, ci: number) => {
@@ -130,25 +122,15 @@ export default function DetailScreen({ itemId, onBack, onNavigate, onResearch }:
       date: 'community',
       url: c.url || '',
     }
-    addCompToItem(item.id, newComp)
+    const updated = addCompToItem(item.id, newComp)
     clearCommunityComps()
-    if (profileId) {
-      setTimeout(() => {
-        const updated = useItemsStore.getState().items.find(i => i.id === item.id)
-        if (updated) syncItem(updated, profileId)
-      }, 100)
-    }
+    if (profileId && updated) syncItem(updated, profileId)
   }
 
   const handleDeleteComp = (compId: number) => {
     if (window.confirm('Delete this comparable?')) {
-      deleteCompFromItem(item.id, compId)
-      if (profileId) {
-        setTimeout(() => {
-          const updated = useItemsStore.getState().items.find(i => i.id === item.id)
-          if (updated) syncItem(updated, profileId)
-        }, 100)
-      }
+      const updated = deleteCompFromItem(item.id, compId)
+      if (profileId && updated) syncItem(updated, profileId)
     }
   }
 
