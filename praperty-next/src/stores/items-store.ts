@@ -442,11 +442,9 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
       console.log('[signals] refresh complete:', result)
       set({ signalsLastRefresh: new Date().toISOString() })
 
-      // Reload stored signals + items (prices may have updated)
-      await Promise.all([
-        get().loadStoredSignals(profileId),
-        get().loadAll(profileId),
-      ])
+      // Reload stored signals only — do NOT call loadAll here or we overwrite local items
+      // when user just added something and the server isn't updated yet
+      await get().loadStoredSignals(profileId)
     } catch (e) {
       console.error('[signals] refresh error:', e)
     }
@@ -509,9 +507,14 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     }
 
     console.log('[watchlist] refreshed prices for', updated, 'items')
-    // Reload watchlist from DB to pick up new prices
+    // Reload only watchlist from DB — do NOT call loadAll or we overwrite inventory items
     if (updated > 0) {
-      await get().loadAll(profileId)
+      const { data } = await supabase
+        .from('watchlist')
+        .select('*')
+        .eq('user_id', profileId)
+        .order('created_at', { ascending: false })
+      if (data) set({ watchlist: data.map((row: Record<string, unknown>) => mapRowToWatchlist(row)) })
     }
   },
 
