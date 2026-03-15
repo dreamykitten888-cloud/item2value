@@ -117,7 +117,7 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
     setPhotos(prev => prev.filter((_, i) => i !== idx))
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const name = itemName.trim()
     if (!name) {
       alert('Give your item a name')
@@ -153,8 +153,14 @@ export default function AddItemScreen({ onNavigate, scanData }: Props) {
     }
 
     addItem(newItem)
+    // CRITICAL: Await Supabase sync BEFORE navigating away
+    // Otherwise loadAll on the next screen fetches stale data and wipes the new item
     if (profileId) {
-      syncItem(newItem, profileId).catch(e => console.error('Failed to save item:', e))
+      try {
+        await syncItem(newItem, profileId)
+      } catch (e) {
+        console.error('Failed to save item:', e)
+      }
     }
 
     // Fire-and-forget: contribute this product to the catalog
