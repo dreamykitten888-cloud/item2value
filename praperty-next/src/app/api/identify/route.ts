@@ -61,6 +61,29 @@ AUTOMOTIVE EXPERTISE (AFTERMARKET & OEM PARTS):
 - TIRES: Yokohama (Advan Neova AD09, A052), Toyo (R888R, Proxes Sport), Nitto (NT555/NT05), Federal (595RS-RR), Michelin (Pilot Sport 4S/Cup 2). Identify by tread pattern, sidewall markings.
 - OEM PERFORMANCE: Nismo (S-Tune, R-Tune, aero), TRD, Mugen (intake, exhaust, hardtop), STI (flexible tower bar, short shifter), Ralliart. Know that these command premium prices.
 - estimatedValue for parts = typical eBay/marketplace/vendor price. Rare JDM parts (discontinued Nismo, Mugen, etc.) can be worth significantly more.
+- If you cannot identify the exact part: still return part type (e.g. turbocharger, coilover, wheel), any visible brand logos, part numbers, or casting marks, and fitment if visible. Use description to list what you see. Lower confidence accordingly.
+
+CAMERAS & LENSES:
+- Read ALL text on the body and lens: model name is often engraved on the front (camera) or around the barrel (lens). Look for badge, dial engravings, and baseplate.
+- BODIES: Canon (EOS R/R5/R6/R3, 5D/5Ds, 6D, 90D, Rebel/SL series; PowerShot G1 X Mark II/III), Nikon (Z8/Z9/Z6/Z7, D850/D780/D750, D3xxx/D5xxx), Sony (A7/A9 series: A7 IV, A7R V, A1; A6xxx), Fujifilm (X-T5/X-T4, X-H2/X-H2S, X-S10, GFX), Olympus/OM System (OM-1/OM-5, E-M1/E-M5), Panasonic (S5/S1, GH5/GH6, G9), Leica (M10/M11, Q2/Q3, SL2/SL3), Pentax (K-3 III, K-1).
+- LENSES: Identify mount (RF, EF, Z, E, X, M43, L), focal length and aperture on barrel (e.g. 24-70mm 1:2.8), and line (Canon L red ring, Nikon gold ring, Sony G Master, Sigma Art, Tamron G2). Kit lens vs premium. Example: "Canon RF 24-70mm F2.8 L IS USM".
+- name should include body + lens if both visible (e.g. "Canon EOS R5 with RF 24-70mm F2.8 L"). For lens-only shots, name is the full lens name with focal length and aperture.
+- estimatedValue: bodies and lenses have strong resale; check generation (Mark I vs II) and condition.
+
+CLOTHING & APPAREL:
+- Read tags and labels: size, material, style code, country of manufacture. Neck tags, wash/care labels, and (for sneakers) box label, size tag, and style code (e.g. Nike DM0035-001).
+- BRANDS: Streetwear (Supreme, Bape, Stüssy, Palace, Kith, Off-White, Fear of God), luxury (Gucci, Louis Vuitton, Balenciaga, Prada, Dior, Burberry), vintage (Levi's 501, Carhartt, Champion), athletic (Nike, Adidas, Jordan, Yeezy). Identify collabs and limited drops when possible.
+- SNEAKERS: Model name + colorway + year/variant (e.g. "Nike Air Jordan 4 Retro Bred 2019", "Adidas Yeezy Boost 350 V2 Zebra"). Look for style code on size tag. Condition: deadstock, VNDS, used.
+- APPAREL: "Brand + Type + key detail" (e.g. "Supreme Box Logo Hoodie FW21 Grey", "Levi's 501 Original Fit Jeans"). Note vintage vs reissue, condition (NWT, pre-owned, fading, holes).
+- category: use "Sneakers" for shoes, "Clothing" for tops/bottoms/outerwear/accessories. condition reflects wear (New, Like New, Good, Fair, Poor).
+- estimatedValue: resale for hype/limited; vintage and luxury hold value. Use description for style code or identifying details if visible.
+
+ART & COLLECTIBLES:
+- Identify medium: oil, acrylic, watercolor, print (giclée, screen print, lithograph), photograph, sculpture, mixed media, poster.
+- Look for signature (signature, monogram, stamp), edition info (e.g. "12/100", "AP", "artist proof"), title, and date if visible. Frame style (gallery, ornate) can help with era.
+- If artist is known: "Artist Name, Title, medium, year if visible" (e.g. "Banksy, Girl with Balloon, screen print"). If unknown: describe subject and style; use "Unknown artist" or "Attributed to [style]". estimatedValue 0 if unknown; for known artists or limited editions give a range.
+- category: "Art" for paintings, prints, sculptures, photographs; "Collectibles" for figurines, limited merch, etc.
+- Be conservative with attribution: only name an artist if clearly signed or unmistakable. Otherwise describe and lower confidence.
 
 GENERAL RULES:
 - Be obsessively specific. "Owala FreeSip 24oz Lilac" beats "water bottle". "Pokemon Cubone Plush 8in" beats "stuffed animal"
@@ -69,13 +92,26 @@ GENERAL RULES:
 - If multiple generations look similar, mention which ones in description and lower confidence
 - ALWAYS return valid JSON. Nothing else.`
 
+const CATEGORY_HINT_LABELS: Record<string, string> = {
+  camera: 'Camera or camera lens',
+  clothing: 'Clothing, sneakers, or apparel',
+  art: 'Art piece (painting, print, sculpture, photograph)',
+  car_parts: 'Vehicle or automotive part',
+  other: 'Other / general item',
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { image } = await req.json()
+    const { image, categoryHint } = await req.json() as { image?: string; categoryHint?: string }
 
     if (!image) {
       return NextResponse.json({ error: 'No image provided' }, { status: 400 })
     }
+
+    const hintLabel = categoryHint && CATEGORY_HINT_LABELS[categoryHint]
+    const categoryHintInstruction = hintLabel
+      ? ` The user indicated this item is likely: ${hintLabel}. Prioritize identification rules for that category and read any visible text (model numbers, tags, signatures, part numbers) accordingly.`
+      : ''
 
     // Try OpenAI first, fall back to Gemini
     const openaiKey = process.env.OPENAI_API_KEY
@@ -114,14 +150,14 @@ export async function POST(req: NextRequest) {
                     type: 'image_url',
                     image_url: {
                       url: `data:${mimeType};base64,${base64}`,
-                      detail: 'auto',
+                      detail: 'high',
                     },
                   },
-                  { type: 'text', text: 'Examine every detail: logos, text, labels, serial numbers, body shape, button layout, generation-specific design cues, badges, trim levels. Identify the EXACT product with version/mark/generation/year. If it is a vehicle or vehicle part, include year, make, model, trim, and generation code. Return only JSON.' },
+                  { type: 'text', text: 'Examine every detail and return only JSON. Read all visible text: logos, labels, tags, serial numbers, model names, style codes. For cameras/lenses: read engravings on body and lens barrel (model, focal length, aperture). For clothing: read neck tags, wash labels, size tags, style codes. For art: look for signature, edition (e.g. x/100), medium, title. For car parts: part numbers, casting marks, brand logos, fitment. Identify EXACT product with version/mark/generation/year where applicable. If uncertain, describe what you see and lower confidence.' + categoryHintInstruction },
                 ],
               },
             ],
-            max_tokens: 600,
+            max_tokens: 800,
             temperature: 0.1,
           }),
         })
@@ -155,10 +191,10 @@ export async function POST(req: NextRequest) {
             contents: [{
               parts: [
                 { inlineData: { mimeType, data: base64 } },
-                { text: SYSTEM_PROMPT + '\n\nIdentify this item. Return only JSON.' },
+                { text: SYSTEM_PROMPT + '\n\nIdentify this item. Return only JSON.' + categoryHintInstruction },
               ],
             }],
-            generationConfig: { temperature: 0.2, maxOutputTokens: 600 },
+            generationConfig: { temperature: 0.2, maxOutputTokens: 800 },
           }),
         })
 

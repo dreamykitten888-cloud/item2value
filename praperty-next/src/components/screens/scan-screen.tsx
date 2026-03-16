@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { ArrowLeft, Camera, Upload, Sparkles, RefreshCw, ScanBarcode, Car } from 'lucide-react'
+import { ArrowLeft, Camera, Upload, Sparkles, RefreshCw, ScanBarcode, Car, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import type { Screen } from '@/types'
 
@@ -52,6 +52,16 @@ function inferCategory(category: string): string {
   return 'Other'
 }
 
+// Optional category hint for better AI accuracy (cameras, clothing, art, car parts)
+const CATEGORY_HINT_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'Auto' },
+  { value: 'camera', label: 'Camera / Lens' },
+  { value: 'clothing', label: 'Clothing / Sneakers' },
+  { value: 'art', label: 'Art' },
+  { value: 'car_parts', label: 'Car / Parts' },
+  { value: 'other', label: 'Other' },
+]
+
 // ─── VIN Detection ─────────────────
 // VINs are exactly 17 chars, alphanumeric, no I/O/Q
 function isVIN(text: string): boolean {
@@ -70,6 +80,8 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
   const [identifying, setIdentifying] = useState(false)
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
   const [manualVin, setManualVin] = useState('')
+  const [categoryHint, setCategoryHint] = useState('')
+  const [showPhotoTips, setShowPhotoTips] = useState(false)
   const hasScannedRef = useRef(false)
 
   // Reset scanned flag when switching modes or starting new scan
@@ -88,7 +100,10 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
       const resp = await fetch('/api/identify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: dataUrl }),
+        body: JSON.stringify({
+          image: dataUrl,
+          ...(categoryHint && { categoryHint }),
+        }),
       })
 
       const data = await resp.json()
@@ -126,7 +141,7 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
       setScanStatus('')
     }
     setIdentifying(false)
-  }, [onScanData])
+  }, [onScanData, categoryHint])
 
   // ─── VIN Lookup (NHTSA free API) ─────────────────
   const lookupVIN = useCallback(async (vin: string) => {
@@ -296,6 +311,7 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
     setAiError(null)
     setScanStatus('')
     setManualVin('')
+    setCategoryHint('')
     hasScannedRef.current = false
   }
 
@@ -507,6 +523,52 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
             {/* Initial state: no photo yet */}
             {!capturedPhoto && (
               <>
+                {/* Optional: category hint for better accuracy */}
+                <div className="w-full mb-4 text-left">
+                  <p className="text-white/60 text-[11px] font-semibold uppercase tracking-wider mb-2">Item type (optional, for accuracy)</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CATEGORY_HINT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value || 'auto'}
+                        type="button"
+                        onClick={() => setCategoryHint(opt.value)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          categoryHint === opt.value
+                            ? 'bg-amber-brand/25 border border-amber-brand/50 text-amber-brand'
+                            : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Optional: photo tips (collapsible) */}
+                <div className="w-full mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowPhotoTips((v) => !v)}
+                    className="flex items-center justify-center gap-1.5 text-white/50 hover:text-amber-brand/80 text-xs font-medium transition-colors mx-auto"
+                  >
+                    <HelpCircle size={14} />
+                    Tips for best results
+                    {showPhotoTips ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+                  {showPhotoTips && (
+                    <div className="mt-2 glass rounded-xl p-3 text-left">
+                      <ul className="text-dim text-[11px] space-y-1.5 list-disc list-inside">
+                        <li>Include labels, tags, or model numbers in the frame when possible</li>
+                        <li>Cameras & lenses: capture text on the body or lens barrel</li>
+                        <li>Clothing: show neck tag, wash label, or style code</li>
+                        <li>Art: include signature or edition info if visible</li>
+                        <li>Car parts: part numbers, casting marks, or brand logos</li>
+                        <li>Good lighting and a clear, in-focus shot help a lot</li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
                 <div className="w-52 h-52 rounded-3xl border-2 border-dashed border-white/15 flex flex-col items-center justify-center mx-auto mb-6 bg-white/3">
                   <Sparkles size={40} className="text-amber-brand/60 mb-2" />
                   <p className="text-dim text-xs px-4">Snap a photo and AI identifies your item instantly</p>
