@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, Plus, SlidersHorizontal, LayoutList, LayoutGrid, Download } from 'lucide-react'
+import { Search, Plus, SlidersHorizontal, LayoutList, LayoutGrid } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, CATEGORIES } from '@/lib/utils'
 import type { Screen } from '@/types'
@@ -69,62 +69,6 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
 
   const totalValue = activeItems.reduce((sum, i) => sum + (i.value || 0), 0)
 
-  const handleExportCsv = () => {
-    if (!items.length) return
-
-    const header = [
-      'Name',
-      'Brand',
-      'Model',
-      'Category',
-      'Condition',
-      'Cost',
-      'Asking',
-      'Value',
-      'Earnings',
-      'Date Purchased',
-      'Date Sold',
-      'Sold Platform',
-      'Notes',
-    ]
-
-    const rows = items.map(i => [
-      i.name || '',
-      i.brand || '',
-      i.model || '',
-      i.category || '',
-      i.condition || '',
-      i.cost ?? '',
-      i.asking ?? '',
-      i.value ?? '',
-      i.earnings ?? '',
-      i.datePurchased || '',
-      i.dateSold || '',
-      i.soldPlatform || '',
-      i.notes || '',
-    ])
-
-    const toCsvLine = (cols: unknown[]) =>
-      cols
-        .map(col => {
-          const str = col === null || col === undefined ? '' : String(col)
-          const escaped = str.replace(/"/g, '""')
-          return `"${escaped}"`
-        })
-        .join(',')
-
-    const csv = [toCsvLine(header), ...rows.map(toCsvLine)].join('\r\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'praperty-inventory.csv'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
   return (
     <div className="h-full overflow-y-auto scroll-hide pb-24">
       {/* Header */}
@@ -137,13 +81,6 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleExportCsv}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] font-semibold glass text-dim hover:text-white"
-            >
-              <Download size={14} />
-              Export
-            </button>
             <button
               onClick={() => setViewMode(viewMode === 'list' ? 'grid' : 'list')}
               className="w-10 h-10 rounded-full glass flex items-center justify-center text-dim hover:text-white transition-colors"
