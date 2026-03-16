@@ -52,13 +52,32 @@ function inferCategory(category: string): string {
   return 'Other'
 }
 
-// Optional category hint for better AI accuracy (cameras, clothing, art, car parts)
-const CATEGORY_HINT_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'Auto' },
+// Item type dropdown for better AI accuracy (sent as categoryHint to /api/identify)
+const ITEM_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'Auto-detect' },
   { value: 'camera', label: 'Camera / Lens' },
   { value: 'clothing', label: 'Clothing / Sneakers' },
   { value: 'art', label: 'Art' },
   { value: 'car_parts', label: 'Car / Parts' },
+  { value: 'headphones', label: 'Headphones' },
+  { value: 'vinyl', label: 'Vinyl / Records' },
+  { value: 'radios', label: 'Radios / Vintage Audio' },
+  { value: 'electronics', label: 'Electronics' },
+  { value: 'jewelry', label: 'Jewelry' },
+  { value: 'perfume', label: 'Perfume / Fragrance' },
+  { value: 'comic_books', label: 'Comic Books' },
+  { value: 'trading_cards', label: 'Trading Cards (Pokémon, etc.)' },
+  { value: 'home_goods', label: 'Home Goods' },
+  { value: 'furniture', label: 'Furniture' },
+  { value: 'watches', label: 'Watches' },
+  { value: 'bags', label: 'Bags' },
+  { value: 'books', label: 'Books' },
+  { value: 'instruments', label: 'Instruments' },
+  { value: 'gaming', label: 'Gaming' },
+  { value: 'sports', label: 'Sports' },
+  { value: 'toys', label: 'Toys' },
+  { value: 'tools', label: 'Tools' },
+  { value: 'collectibles', label: 'Collectibles' },
   { value: 'other', label: 'Other' },
 ]
 
@@ -523,25 +542,24 @@ export default function ScanScreen({ onNavigate, onScanData }: Props) {
             {/* Initial state: no photo yet */}
             {!capturedPhoto && (
               <>
-                {/* Optional: category hint for better accuracy */}
+                {/* Optional: item type dropdown for better AI accuracy */}
                 <div className="w-full mb-4 text-left">
-                  <p className="text-white/60 text-[11px] font-semibold uppercase tracking-wider mb-2">Item type (optional, for accuracy)</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {CATEGORY_HINT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value || 'auto'}
-                        type="button"
-                        onClick={() => setCategoryHint(opt.value)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                          categoryHint === opt.value
-                            ? 'bg-amber-brand/25 border border-amber-brand/50 text-amber-brand'
-                            : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
-                        }`}
-                      >
+                  <label htmlFor="item-type" className="block text-white/60 text-[11px] font-semibold uppercase tracking-wider mb-2">
+                    Item type (optional, for accuracy)
+                  </label>
+                  <select
+                    id="item-type"
+                    value={categoryHint}
+                    onChange={(e) => setCategoryHint(e.target.value)}
+                    className="w-full py-3 pl-4 pr-10 rounded-xl bg-white/5 border border-white/10 text-white text-sm font-medium focus:border-amber-brand/50 focus:outline-none appearance-none cursor-pointer"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+                  >
+                    {ITEM_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value || 'auto'} value={opt.value} className="bg-[#1a1a2e] text-white">
                         {opt.label}
-                      </button>
+                      </option>
                     ))}
-                  </div>
+                  </select>
                 </div>
 
                 {/* Optional: photo tips (collapsible) */}
