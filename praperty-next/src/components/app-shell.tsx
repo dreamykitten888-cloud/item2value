@@ -37,6 +37,7 @@ export default function AppShell() {
   const [screen, setScreen] = useState<Screen>('home')
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [researchQuery, setResearchQuery] = useState('')
+  const [researchImageUrl, setResearchImageUrl] = useState<string | undefined>(undefined)
   const [scanData, setScanData] = useState<any>(null)
   const [showAddSheet, setShowAddSheet] = useState(false)
 
@@ -60,8 +61,9 @@ export default function AppShell() {
     setScreen('detail')
   }
 
-  const handleResearch = (query: string) => {
+  const handleResearch = (query: string, imageUrl?: string) => {
     setResearchQuery(query)
+    setResearchImageUrl(imageUrl)
     setScreen('research')
   }
 
@@ -96,7 +98,7 @@ export default function AppShell() {
       case 'discover':
         return <DiscoverScreen onNavigate={setScreen} onResearch={handleResearch} />
       case 'research':
-        return <ResearchScreen onNavigate={setScreen} query={researchQuery} />
+        return <ResearchScreen onNavigate={setScreen} query={researchQuery} imageUrl={researchImageUrl} />
       case 'pricing':
         return <PricingScreen onNavigate={setScreen} item={selectedItem || undefined} />
       case 'sold-items':

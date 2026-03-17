@@ -9,7 +9,7 @@ import type { Screen } from '@/types'
 
 interface Props {
   onNavigate: (screen: Screen) => void
-  onResearch?: (query: string) => void
+  onResearch?: (query: string, imageUrl?: string) => void
 }
 
 // Category metadata
@@ -445,7 +445,7 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                     {topicOpportunities.sell.map((p, i) => (
                       <button
                         key={i}
-                        onClick={() => { if (onResearch) onResearch(p.name); onNavigate('research') }}
+                        onClick={() => { if (onResearch) onResearch(p.name, p.image); onNavigate('research') }}
                         className="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:bg-white/8 transition-colors"
                       >
                         {p.image ? (
@@ -488,7 +488,7 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                     {topicOpportunities.buy.map((p, i) => (
                       <button
                         key={i}
-                        onClick={() => { if (onResearch) onResearch(p.name); onNavigate('research') }}
+                        onClick={() => { if (onResearch) onResearch(p.name, p.image); onNavigate('research') }}
                         className="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:bg-white/8 transition-colors"
                       >
                         {p.image ? (

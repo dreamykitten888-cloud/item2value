@@ -23,10 +23,11 @@ interface PricePoint {
 interface Props {
   onNavigate: (screen: Screen) => void
   query?: string
+  imageUrl?: string
   initialData?: ResearchData | null
 }
 
-export default function ResearchScreen({ onNavigate, query = 'Item', initialData = null }: Props) {
+export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, initialData = null }: Props) {
   const {
     searchCommunityItems,
     ebayComps, ebayLoading, ebayError,
@@ -290,7 +291,15 @@ export default function ResearchScreen({ onNavigate, query = 'Item', initialData
           background: 'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(59,130,246,0.12))',
           border: '1px solid rgba(168,85,247,0.2)',
         }}>
-          <div className="text-4xl mb-2">📊</div>
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={query}
+              className="w-24 h-24 rounded-xl object-cover mx-auto mb-3 border border-white/10"
+            />
+          ) : (
+            <div className="text-4xl mb-2">📊</div>
+          )}
           <h2 className="text-xl font-bold text-white mb-1">{query}</h2>
           <p className="text-dim text-xs">
             {data.categories.length > 0 ? data.categories.join(', ') : 'Search any item to see market intelligence'}
