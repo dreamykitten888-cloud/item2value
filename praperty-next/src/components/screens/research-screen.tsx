@@ -33,7 +33,8 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
     searchCommunityItems,
     ebayComps, ebayLoading, ebayError,
     fetchEbayComps, clearEbayComps,
-    marketIntel,
+    marketIntel, marketIntelLoading,
+    fetchMarketIntel, clearMarketIntel,
   } = useItemsStore()
 
   const [data, setData] = useState<ResearchData>(initialData || {
@@ -48,7 +49,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
   const [trendData, setTrendData] = useState<MarketSignalData | null>(null)
   const [trendLoading, setTrendLoading] = useState(false)
 
-  // Clear eBay comps when query changes
+  // Clear eBay comps when query changes; market intel is cleared by MarketIntel when item changes
   useEffect(() => {
     clearEbayComps()
   }, [query]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -152,18 +153,26 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
     })
   }, [ebayComps, query])
 
-  // eBay summary stats (using filtered comps)
+  // Single source of truth for research: use marketIntel.liveListings when available (same sample as avg/range)
+  const liveListingsToShow = useMemo(() => {
+    const fromIntel = marketIntel?.liveListings
+    if (fromIntel && fromIntel.length > 0) return fromIntel
+    return relevantEbayComps
+  }, [marketIntel?.liveListings, relevantEbayComps])
+
+  // eBay summary stats — from the same list we show, so count and avg/range always match
   const ebayStats = useMemo(() => {
-    const prices = relevantEbayComps.map(c => c.price?.value).filter((p): p is number => !!p && p > 0)
+    const prices = liveListingsToShow.map(c => c.price?.value).filter((p): p is number => !!p && p > 0)
     if (prices.length === 0) return null
     const avg = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length)
     const low = Math.round(Math.min(...prices))
     const high = Math.round(Math.max(...prices))
     const diff = data.avgValue > 0 ? ((avg - data.avgValue) / data.avgValue) * 100 : 0
     return { avg, low, high, count: prices.length, diff }
-  }, [relevantEbayComps, data.avgValue])
+  }, [liveListingsToShow, data.avgValue])
 
-  // Merge live eBay data into Price Intelligence when community data is empty
+  // Merge live eBay data into Price Intelligence when community data is empty.
+  // Prefer marketIntel so total, avg, and sample size are from one source and accurate.
   const priceIntel = useMemo(() => {
     const hasComm = data.avgValue > 0 || data.avgCost > 0 || data.avgSold > 0
     if (hasComm) {
@@ -177,23 +186,45 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
         totalComps: data.totalComps,
         soldCount: data.soldCount,
         isEbayFallback: false,
+        ebayTotalListings: undefined as number | undefined,
+        ebaySampleSize: undefined as number | undefined,
       }
     }
-    // Fallback: use live eBay data (these are ACTIVE listings, not sold)
+    // Prefer market intel: same API call gives total, avg, floor/ceiling, and the sample we show
+    if (marketIntel?.market && marketIntel.market.totalListings > 0) {
+      const floor = marketIntel.priceRange.floor ?? marketIntel.market.avgPrice ?? 0
+      const ceiling = marketIntel.priceRange.ceiling ?? marketIntel.market.avgPrice ?? 0
+      const avg = marketIntel.market.avgPrice ?? 0
+      return {
+        avgValue: avg,
+        avgCost: 0,
+        lowValue: floor,
+        highValue: ceiling,
+        avgSold: 0,
+        listings: marketIntel.market.sampleSize,
+        totalComps: 0,
+        soldCount: 0,
+        isEbayFallback: true,
+        ebayTotalListings: marketIntel.market.totalListings,
+        ebaySampleSize: marketIntel.market.sampleSize,
+      }
+    }
+    // Fallback: legacy live eBay comps (when market intel not loaded yet or zero results)
     if (ebayStats) {
       return {
         avgValue: ebayStats.avg,
         avgCost: 0,
         lowValue: ebayStats.low,
         highValue: ebayStats.high,
-        avgSold: 0, // No sold data from eBay Browse API
+        avgSold: 0,
         listings: ebayStats.count,
         totalComps: 0,
         soldCount: 0,
         isEbayFallback: true,
+        ebayTotalListings: ebayStats.count,
+        ebaySampleSize: ebayStats.count,
       }
     }
-    // Also try market signal data
     if (trendData?.ebayPrices && trendData.ebayPrices.length > 0) {
       const prices = trendData.ebayPrices
       const avg = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length)
@@ -202,15 +233,22 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
         avgCost: 0,
         lowValue: Math.round(Math.min(...prices)),
         highValue: Math.round(Math.max(...prices)),
-        avgSold: 0, // No sold data from eBay Browse API
+        avgSold: 0,
         listings: prices.length,
         totalComps: 0,
         soldCount: 0,
         isEbayFallback: true,
+        ebayTotalListings: prices.length,
+        ebaySampleSize: prices.length,
       }
     }
-    return { avgValue: 0, avgCost: 0, lowValue: 0, highValue: 0, avgSold: 0, listings: 0, totalComps: 0, soldCount: 0, isEbayFallback: false }
-  }, [data, ebayStats, trendData])
+    return {
+      avgValue: 0, avgCost: 0, lowValue: 0, highValue: 0, avgSold: 0, listings: 0, totalComps: 0, soldCount: 0,
+      isEbayFallback: false,
+      ebayTotalListings: undefined as number | undefined,
+      ebaySampleSize: undefined as number | undefined,
+    }
+  }, [data, marketIntel, ebayStats, trendData])
 
   // Build a synthetic Item + MarketSignalData from ResearchData so we can use the conviction engine
   const syntheticItem: Item = useMemo(() => ({
@@ -244,26 +282,20 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
   }), [query, data, priceHistory, priceIntel])
 
   const marketSignalData: MarketSignalData = useMemo(() => {
-    // Prefer filtered eBay comp prices over community-only data
-    const ebayPrices = relevantEbayComps.length > 0
-      ? relevantEbayComps.map(c => c.price?.value).filter((p): p is number => !!p && p > 0)
+    // Use same sample as Live eBay Prices (marketIntel.liveListings or legacy comps)
+    const ebayPrices = liveListingsToShow.length > 0
+      ? liveListingsToShow.map(c => c.price?.value).filter((p): p is number => !!p && p > 0)
       : data.recentComps.filter(c => c.price > 0).map(c => c.price)
-    // Also merge in market-signal eBay prices if we have them
-    const allPrices = ebayPrices.length > 0
-      ? ebayPrices
-      : (trendData?.ebayPrices || [])
-
-    // Use the REAL total from ebay-intelligence (not capped at 12)
+    const allPrices = ebayPrices.length > 0 ? ebayPrices : (trendData?.ebayPrices || [])
     const realTotal = marketIntel?.market?.totalListings ?? undefined
-
     return {
       ebayPrices: allPrices,
       ebayTotalListings: realTotal,
       trendScore: trendData?.trendScore ?? undefined,
       trendDirection: trendData?.trendDirection ?? undefined,
-      fetchedAt: trendData?.fetchedAt || new Date().toISOString(),
+      fetchedAt: trendData?.fetchedAt || marketIntel?.fetchedAt || new Date().toISOString(),
     }
-  }, [data, trendData, relevantEbayComps, marketIntel])
+  }, [data, trendData, liveListingsToShow, marketIntel])
 
   const conviction = useMemo(
     () => calculateConviction(syntheticItem, marketSignalData, 'browse'),
@@ -349,10 +381,12 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
             <div className="flex gap-2 flex-wrap items-center">
               <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">
                 {priceIntel.isEbayFallback
-                  ? `${marketIntel?.market?.totalListings?.toLocaleString() || priceIntel.listings || 0} active on eBay`
+                  ? priceIntel.ebayTotalListings != null && priceIntel.ebaySampleSize != null && priceIntel.ebayTotalListings > priceIntel.ebaySampleSize
+                    ? `${priceIntel.ebayTotalListings.toLocaleString()} total on eBay · avg from ${priceIntel.ebaySampleSize} sampled`
+                    : `${priceIntel.listings || 0} active on eBay`
                   : `${priceIntel.listings || 0} community listings`
                 }
-                <InfoTooltip size="sm" content="Number of current listings we used to compute market value. More listings usually means more reliable averages." ariaLabel="What are active listings?" />
+                <InfoTooltip size="sm" content="eBay total is the full count from search; avg and range are from the sampled listings we show below, so numbers match." ariaLabel="What are active listings?" />
               </span>
               {priceIntel.totalComps > 0 && (
                 <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">

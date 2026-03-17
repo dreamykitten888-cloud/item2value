@@ -117,6 +117,18 @@ export async function GET(req: NextRequest) {
       percent: totalCondCount > 0 ? Math.round(((c.count || 0) / totalCondCount) * 100) : 0,
     }))
 
+    // Same sample of listings we use for avg/median — so UI can show count and stats that match
+    const liveListings = (allItems as any[]).map((item: any) => ({
+      id: item.id,
+      title: item.title || '',
+      price: item.price?.value != null ? { value: Number(item.price.value), currency: item.price.currency } : { value: 0 },
+      image: item.image ?? undefined,
+      itemUrl: item.itemUrl ?? undefined,
+      condition: item.condition ?? undefined,
+      shippingCost: item.shippingCost != null ? Number(item.shippingCost) : undefined,
+      seller: item.seller ?? undefined,
+    })).filter((item: { price: { value: number } }) => item.price.value > 0)
+
     // Build response
     return NextResponse.json({
       market: {
@@ -154,6 +166,7 @@ export async function GET(req: NextRequest) {
         id: c.categoryId,
         count: c.count,
       })),
+      liveListings,
       fetchedAt: new Date().toISOString(),
     })
   } catch (e) {

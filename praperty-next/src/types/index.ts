@@ -162,6 +162,8 @@ export interface MarketIntelData {
     all: { name: string; values: { value: string; count: number }[] }[]
   }
   categories: { name: string; id: string; count: number }[]
+  /** Same sample of listings used for avg/median/range — so UI count and stats match. */
+  liveListings: EbayListing[]
   fetchedAt: string
 }
 

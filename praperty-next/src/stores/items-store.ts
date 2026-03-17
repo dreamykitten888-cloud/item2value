@@ -451,12 +451,14 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     set({ signalsLoading: false })
   },
 
-  // Client-side watchlist price refresh (no service key needed)
+  // Client-side watchlist price refresh: same Market Value pipeline as Market Research
+  // (community data first, then eBay market-signal fallback) so numbers match when you tap into Research
   refreshWatchlistPrices: async (profileId) => {
     const watchlist = get().watchlist
+    const searchCommunityItems = get().searchCommunityItems
     if (!watchlist.length) return
 
-    console.log('[watchlist] refreshing prices for', watchlist.length, 'items')
+    console.log('[watchlist] refreshing prices for', watchlist.length, 'items (community first, then eBay)')
     const BATCH_SIZE = 3
     let updated = 0
 
@@ -468,27 +470,35 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
             const query = [w.name, w.brand].filter(Boolean).join(' ').trim()
             if (!query) return
 
-            const res = await fetch(
-              `/api/market-signal?q=${encodeURIComponent(query)}&category=${encodeURIComponent(w.category || '')}`
-            )
-            if (!res.ok) return
-            const signal = await res.json()
-            const ebayAvg = signal.ebayAvgPrice || 0
-            if (ebayAvg === 0) return
+            // Same pipeline as Research Price Intelligence: community first, then eBay
+            // Use 'All' so we match Research screen (it also uses category 'All' for initial load)
+            let marketValue = 0
+            const community = await searchCommunityItems(query, 'All')
+            if (community.avgValue > 0) {
+              marketValue = community.avgValue
+            }
+            if (marketValue === 0) {
+              const res = await fetch(
+                `/api/market-signal?q=${encodeURIComponent(query)}&category=${encodeURIComponent(w.category || '')}`
+              )
+              if (!res.ok) return
+              const signal = await res.json()
+              marketValue = signal.ebayAvgPrice || 0
+            }
+            if (marketValue === 0) return
 
             const today = new Date().toISOString().split('T')[0]
             const existing = Array.isArray(w.priceHistory) ? w.priceHistory : []
-            const alreadyHasToday = existing.some(p => p.date === today)
+            const alreadyHasToday = existing.some((p: { date: string }) => p.date === today)
 
             const updatedHistory = alreadyHasToday
               ? existing
-              : [...existing, { date: today, value: ebayAvg }].slice(-90)
+              : [...existing, { date: today, value: marketValue }].slice(-90)
 
-            // Update in Supabase
             const watchTable = supabase.from('watchlist') as any
             await watchTable
               .update({
-                last_known_price: ebayAvg,
+                last_known_price: marketValue,
                 price_history: JSON.stringify(updatedHistory),
                 updated_at: new Date().toISOString(),
               })
@@ -507,7 +517,6 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     }
 
     console.log('[watchlist] refreshed prices for', updated, 'items')
-    // Reload only watchlist from DB — do NOT call loadAll or we overwrite inventory items
     if (updated > 0) {
       const { data } = await supabase
         .from('watchlist')
