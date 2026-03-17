@@ -48,9 +48,9 @@ export async function GET(req: NextRequest) {
   try {
     // Fire all 4 calls in parallel for speed
     const [fullResult, lowResult, highResult, conditionResult] = await Promise.allSettled([
-      // 1. Full refinements + top items (gives us distributions)
+      // 1. Full refinements + top items (gives us distributions; larger sample = more accurate avg/range)
       fetchProxy(proxyBase, cleanQuery, {
-        limit: '12',
+        limit: '25',
         fieldgroups: 'FULL',
       }),
       // 2. Cheapest listings (market floor)

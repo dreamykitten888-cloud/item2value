@@ -403,49 +403,49 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
             </div>
           </div>
 
-          {/* ─── Live eBay Market Intel ─── */}
+          {/* ─── Live eBay Prices (same sample as Price Intelligence so count and avg match) ─── */}
           <div className="glass rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="text-lg">🔍</span>
                 <h3 className="text-base font-bold text-white">Live eBay Prices</h3>
-                <InfoTooltip size="sm" content="Current eBay listings for this search. Tap Search eBay to load; we filter out accessories and unrelated items when possible." ariaLabel="What are Live eBay Prices?" />
+                <InfoTooltip size="sm" content="Same sample of listings used for the avg and range above, so the numbers you see match." ariaLabel="What are Live eBay Prices?" />
               </div>
               <button
-                onClick={() => fetchEbayComps(syntheticItem)}
-                disabled={ebayLoading}
-                className="text-[11px] font-semibold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg hover:bg-blue-500/20 transition-colors"
+                onClick={() => fetchMarketIntel(syntheticItem)}
+                disabled={marketIntelLoading}
+                className="text-[11px] font-semibold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg hover:bg-blue-500/20 transition-colors disabled:opacity-50"
               >
-                {ebayLoading ? 'Searching...' : ebayComps.length > 0 ? '↻ Refresh' : 'Search eBay'}
+                {marketIntelLoading ? 'Loading...' : liveListingsToShow.length > 0 ? '↻ Refresh' : 'Load eBay prices'}
               </button>
             </div>
 
             {/* Loading state */}
-            {ebayLoading && (
+            {marketIntelLoading && liveListingsToShow.length === 0 && (
               <div className="py-6 text-center">
                 <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin mx-auto" />
-                <p className="text-dim text-[10px] mt-2">Searching eBay for &quot;{query}&quot;...</p>
+                <p className="text-dim text-[10px] mt-2">Loading eBay data for &quot;{query}&quot;...</p>
               </div>
             )}
 
-            {/* Error state */}
-            {ebayError && !ebayLoading && (
+            {/* Error state (legacy path) */}
+            {ebayError && !marketIntelLoading && (
               <p className="text-red-400 text-xs text-center py-2">{ebayError}</p>
             )}
 
-            {/* Empty state */}
-            {!ebayLoading && !ebayError && relevantEbayComps.length === 0 && ebayComps.length === 0 && (
+            {/* Empty: no intel yet and user hasn't triggered load */}
+            {!marketIntelLoading && liveListingsToShow.length === 0 && !marketIntel && (
               <div className="text-center py-4">
-                <p className="text-dim text-xs">Tap &quot;Search eBay&quot; to see what this item is selling for right now.</p>
+                <p className="text-dim text-xs">Tap &quot;Load eBay prices&quot; to see current listings and averages.</p>
               </div>
             )}
 
-            {/* All results filtered out */}
-            {!ebayLoading && !ebayError && ebayComps.length > 0 && relevantEbayComps.length === 0 && (
+            {/* Intel loaded but zero listings */}
+            {!marketIntelLoading && marketIntel && liveListingsToShow.length === 0 && (
               <div className="text-center py-4">
-                <p className="text-dim text-xs">{ebayComps.length} results found but none matched &quot;{query}&quot; closely enough.</p>
+                <p className="text-dim text-xs">No listings found for this search on eBay.</p>
                 <button
-                  onClick={() => fetchEbayComps(syntheticItem)}
+                  onClick={() => fetchMarketIntel(syntheticItem)}
                   className="text-[11px] font-semibold text-blue-400 mt-2"
                 >
                   Try again
@@ -453,8 +453,8 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
               </div>
             )}
 
-            {/* eBay summary stats */}
-            {!ebayLoading && ebayStats && (
+            {/* eBay summary stats (from same list we show) */}
+            {!marketIntelLoading && ebayStats && (
               <div className="space-y-1.5 mb-3">
                 <div className="flex justify-between items-center">
                   <span className="text-dim text-xs">eBay avg ({ebayStats.count} listings)</span>
@@ -475,23 +475,23 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
               </div>
             )}
 
-            {/* eBay listings with images */}
-            {!ebayLoading && relevantEbayComps.length > 0 && (
+            {/* eBay listings (same sample as avg/range above) */}
+            {!marketIntelLoading && liveListingsToShow.length > 0 && (
               <>
                 <button
                   onClick={() => setShowEbayListings(!showEbayListings)}
                   className="w-full flex items-center justify-center gap-1.5 text-[11px] font-semibold py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-blue-400 mb-2"
                 >
-                  {showEbayListings ? 'Hide' : 'Show'} {relevantEbayComps.length} Listings
-                  {ebayComps.length !== relevantEbayComps.length && (
-                    <span className="text-dim font-normal ml-1">({ebayComps.length - relevantEbayComps.length} filtered)</span>
+                  {showEbayListings ? 'Hide' : 'Show'} {liveListingsToShow.length} Listings
+                  {priceIntel.ebayTotalListings != null && priceIntel.ebayTotalListings > liveListingsToShow.length && (
+                    <span className="text-dim font-normal ml-1">(of {priceIntel.ebayTotalListings.toLocaleString()} on eBay)</span>
                   )}
                   {showEbayListings ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
 
                 {showEbayListings && (
                   <div className="space-y-2">
-                    {relevantEbayComps.map((listing, idx) => (
+                    {liveListingsToShow.map((listing, idx) => (
                       <div key={listing.id || idx} className="flex gap-3 p-3 bg-white/[0.03] rounded-xl border border-white/[0.06]">
                         {listing.image && (
                           <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-white/5">

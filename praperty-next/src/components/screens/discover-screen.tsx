@@ -44,6 +44,22 @@ const ALL_CATEGORIES = [
 
 const DEFAULT_BROWSE_TERMS = ['Chanel', 'Gucci', 'Rolex', 'Nike']
 
+// Sub-category filter for Discover [brand]: label shown in UI, searchTerm appended to query (e.g. "Chanel" + " perfume")
+const SUB_CATEGORY_OPTIONS: { label: string; searchTerm: string }[] = [
+  { label: 'Bags', searchTerm: 'bags' },
+  { label: 'Perfume', searchTerm: 'perfume' },
+  { label: 'Shoes', searchTerm: 'shoes' },
+  { label: 'Sneakers', searchTerm: 'sneakers' },
+  { label: 'Clothing', searchTerm: 'clothing' },
+  { label: 'Watches', searchTerm: 'watches' },
+  { label: 'Trading Cards', searchTerm: 'trading cards' },
+  { label: 'Plushies', searchTerm: 'plush' },
+  { label: 'Collectibles', searchTerm: 'collectibles' },
+  { label: 'Electronics', searchTerm: 'electronics' },
+  { label: 'Jewelry', searchTerm: 'jewelry' },
+  { label: 'Accessories', searchTerm: 'accessories' },
+]
+
 // Persistence keys
 const CATS_KEY = 'praperty_discover_categories'
 const PRODUCTS_KEY = 'praperty_discover_products' // per-category curated product lists
@@ -141,6 +157,7 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
 
   // Discover [topic] view: Buy / Sell opportunities (no "your list" — discovery only)
   const [discoverTopic, setDiscoverTopic] = useState<string | null>(null)
+  const [topicSubCategory, setTopicSubCategory] = useState<string | null>(null) // searchTerm or null = All
   const [topicLoading, setTopicLoading] = useState(false)
   const [topicOpportunities, setTopicOpportunities] = useState<{
     buy: DiscoveryOpportunity[]
@@ -165,13 +182,16 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
     if (mounted) saveCuratedProducts(curatedProducts)
   }, [curatedProducts, mounted])
 
-  // Fetch Buy/Sell opportunities when user opens Discover [topic]
+  // Fetch Buy/Sell opportunities when user opens Discover [topic] (with optional sub-category)
+  const topicEffectiveQuery = discoverTopic?.trim()
+    ? discoverTopic.trim() + (topicSubCategory ? ` ${topicSubCategory}` : '')
+    : ''
   useEffect(() => {
     if (!discoverTopic?.trim()) {
       setTopicOpportunities(null)
       return
     }
-    const q = discoverTopic.trim()
+    const q = topicEffectiveQuery
     setTopicLoading(true)
     setTopicOpportunities(null)
     Promise.all([
@@ -216,7 +236,7 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
       })
       .catch(() => setTopicOpportunities({ buy: [], sell: [], marketAvg: 0 }))
       .finally(() => setTopicLoading(false))
-  }, [discoverTopic])
+  }, [discoverTopic, topicSubCategory])
 
   // Trigger a price snapshot for products (background, non-blocking)
   const triggerSnapshot = useCallback(async (products: LiveProduct[]) => {
@@ -381,7 +401,10 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
   }, [addQuery, browseCats])
 
   const handleSearchMarket = () => {
-    if (searchQuery.trim()) setDiscoverTopic(searchQuery.trim())
+    if (searchQuery.trim()) {
+      setDiscoverTopic(searchQuery.trim())
+      setTopicSubCategory(null)
+    }
   }
 
   const handleDeepResearch = () => {
@@ -393,6 +416,7 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
 
   const openDiscoverTopic = (term: string) => {
     setDiscoverTopic(term)
+    setTopicSubCategory(null)
   }
 
   const handleAddTerm = (term: string) => {
@@ -409,7 +433,7 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
       <div className="h-full flex flex-col pb-24">
         <div className="px-6 pt-8 pb-4 flex-shrink-0">
           <button
-            onClick={() => { setDiscoverTopic(null); setTopicOpportunities(null) }}
+            onClick={() => { setDiscoverTopic(null); setTopicSubCategory(null); setTopicOpportunities(null) }}
             className="flex items-center gap-2 text-dim hover:text-white mb-3"
           >
             <ChevronDown size={20} className="rotate-90" />
@@ -420,6 +444,32 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
             Discover {discoverTopic}
           </h1>
           <p className="text-dim text-sm mt-0.5">Deals you can buy low or sell high</p>
+          {/* Sub-category filter: e.g. Chanel bags vs perfumes, Nike shoes, Pokemon cards vs plushies */}
+          <div className="flex gap-2 overflow-x-auto scroll-hide py-3 -mx-1">
+            <button
+              onClick={() => setTopicSubCategory(null)}
+              className={`flex-shrink-0 px-3.5 py-2 rounded-full text-[12px] font-semibold transition-colors ${
+                topicSubCategory === null
+                  ? 'bg-amber-brand text-black'
+                  : 'bg-white/8 text-white/80 hover:bg-white/12'
+              }`}
+            >
+              All
+            </button>
+            {SUB_CATEGORY_OPTIONS.map(({ label, searchTerm }) => (
+              <button
+                key={searchTerm}
+                onClick={() => setTopicSubCategory(searchTerm)}
+                className={`flex-shrink-0 px-3.5 py-2 rounded-full text-[12px] font-semibold transition-colors ${
+                  topicSubCategory === searchTerm
+                    ? 'bg-amber-brand text-black'
+                    : 'bg-white/8 text-white/80 hover:bg-white/12'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto scroll-hide px-6">
           {topicLoading ? (
