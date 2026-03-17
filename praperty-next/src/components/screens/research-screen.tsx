@@ -171,23 +171,30 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
     return { avg, low, high, count: prices.length, diff }
   }, [liveListingsToShow, data.avgValue])
 
-  // Merge live eBay data into Price Intelligence when community data is empty.
-  // Prefer marketIntel so total, avg, and sample size are from one source and accurate.
+  // Merge live eBay data into Price Intelligence. When community is thin or degenerate, use eBay for range and show eBay avg.
   const priceIntel = useMemo(() => {
     const hasComm = data.avgValue > 0 || data.avgCost > 0 || data.avgSold > 0
+    const ebayAvg = marketIntel?.market?.avgPrice ?? null
+    const ebayFloor = marketIntel?.priceRange?.floor ?? null
+    const ebayCeiling = marketIntel?.priceRange?.ceiling ?? null
+    const communityRangeDegenerate = data.lowValue === data.highValue && data.lowValue > 0
+    const communityThin = data.listings <= 2
+    const useEbayRange = (communityRangeDegenerate || communityThin) && ebayFloor != null && ebayCeiling != null
+
     if (hasComm) {
       return {
         avgValue: data.avgValue,
         avgCost: data.avgCost,
-        lowValue: data.lowValue,
-        highValue: data.highValue,
+        lowValue: useEbayRange ? ebayFloor : data.lowValue,
+        highValue: useEbayRange ? ebayCeiling : data.highValue,
         avgSold: data.avgSold,
         listings: data.listings,
         totalComps: data.totalComps,
         soldCount: data.soldCount,
         isEbayFallback: false,
-        ebayTotalListings: undefined as number | undefined,
-        ebaySampleSize: undefined as number | undefined,
+        ebayTotalListings: marketIntel?.market?.totalListings,
+        ebaySampleSize: marketIntel?.market?.sampleSize,
+        ebayAvgValue: ebayAvg ?? undefined,
       }
     }
     // Prefer market intel: same API call gives total, avg, floor/ceiling, and the sample we show
@@ -207,6 +214,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
         isEbayFallback: true,
         ebayTotalListings: marketIntel.market.totalListings,
         ebaySampleSize: marketIntel.market.sampleSize,
+        ebayAvgValue: avg,
       }
     }
     // Fallback: legacy live eBay comps (when market intel not loaded yet or zero results)
@@ -223,6 +231,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
         isEbayFallback: true,
         ebayTotalListings: ebayStats.count,
         ebaySampleSize: ebayStats.count,
+        ebayAvgValue: ebayStats.avg,
       }
     }
     if (trendData?.ebayPrices && trendData.ebayPrices.length > 0) {
@@ -240,6 +249,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
         isEbayFallback: true,
         ebayTotalListings: prices.length,
         ebaySampleSize: prices.length,
+        ebayAvgValue: avg,
       }
     }
     return {
@@ -247,6 +257,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
       isEbayFallback: false,
       ebayTotalListings: undefined as number | undefined,
       ebaySampleSize: undefined as number | undefined,
+      ebayAvgValue: undefined as number | undefined,
     }
   }, [data, marketIntel, ebayStats, trendData])
 
@@ -362,10 +373,12 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
               {[
                 { l: 'Market Value', tip: 'Typical asking price for this item based on active listings or community data.', v: priceIntel.avgValue, c: '#EB9C35' },
                 { l: 'Avg Cost', tip: 'Average cost people paid (from community data). Shown when available.', v: priceIntel.avgCost, c: '#3b82f6' },
-                { l: 'Price Range', tip: 'Low to high range of current asking prices so you can see the spread.', v: priceIntel.lowValue > 0 ? `${fmt(priceIntel.lowValue)} - ${fmt(priceIntel.highValue)}` : null, c: '#a855f7', raw: true },
-                ...(!priceIntel.isEbayFallback && priceIntel.avgSold > 0
-                  ? [{ l: 'Avg Sold Price', tip: 'Average price this item actually sold for (community verified sales).', v: priceIntel.avgSold, c: '#22c55e' }]
-                  : [{ l: 'eBay Avg Ask', tip: 'Average of current eBay listing prices (asking, not necessarily sold).', v: priceIntel.isEbayFallback ? priceIntel.avgValue : 0, c: '#22c55e' }]),
+                { l: 'Price Range', tip: 'Low to high range of current asking prices. Uses eBay range when community has too few listings.', v: priceIntel.lowValue > 0 ? `${fmt(priceIntel.lowValue)} - ${fmt(priceIntel.highValue)}` : null, c: '#a855f7', raw: true },
+                ...(priceIntel.ebayAvgValue != null && priceIntel.ebayAvgValue > 0
+                  ? [{ l: 'eBay Avg Ask', tip: 'Average of current eBay listing prices (same sample as Live eBay Prices below).', v: priceIntel.ebayAvgValue, c: '#22c55e' }]
+                  : !priceIntel.isEbayFallback && priceIntel.avgSold > 0
+                    ? [{ l: 'Avg Sold Price', tip: 'Average price this item actually sold for (community verified sales).', v: priceIntel.avgSold, c: '#22c55e' }]
+                    : [{ l: 'eBay Avg Ask', tip: 'Average of current eBay listing prices (asking, not necessarily sold).', v: priceIntel.isEbayFallback ? priceIntel.avgValue : 0, c: '#22c55e' }]),
               ].map((stat, i) => (
                 <div key={i} className="bg-white/[0.04] rounded-xl p-3 text-center relative">
                   <p className="text-dim text-[10px] uppercase tracking-wider flex items-center justify-center gap-1">
@@ -379,15 +392,26 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
               ))}
             </div>
             <div className="flex gap-2 flex-wrap items-center">
-              <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">
-                {priceIntel.isEbayFallback
-                  ? priceIntel.ebayTotalListings != null && priceIntel.ebaySampleSize != null && priceIntel.ebayTotalListings > priceIntel.ebaySampleSize
-                    ? `${priceIntel.ebayTotalListings.toLocaleString()} total on eBay · avg from ${priceIntel.ebaySampleSize} sampled`
-                    : `${priceIntel.listings || 0} active on eBay`
-                  : `${priceIntel.listings || 0} community listings`
-                }
-                <InfoTooltip size="sm" content="eBay total is the full count from search; avg and range are from the sampled listings we show below, so numbers match." ariaLabel="What are active listings?" />
-              </span>
+              {!priceIntel.isEbayFallback && priceIntel.listings > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">
+                  {priceIntel.listings} community listing{priceIntel.listings !== 1 ? 's' : ''}
+                  <InfoTooltip size="sm" content="Listings from community data. When we have few, range and eBay avg below use live eBay data." ariaLabel="Community listings" />
+                </span>
+              )}
+              {priceIntel.ebayTotalListings != null && priceIntel.ebayTotalListings > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">
+                  {priceIntel.ebayTotalListings > (priceIntel.ebaySampleSize ?? 0)
+                    ? `${priceIntel.ebayTotalListings.toLocaleString()} total on eBay · range/avg from ${priceIntel.ebaySampleSize ?? 0} sampled`
+                    : `${priceIntel.ebayTotalListings} active on eBay`
+                  }
+                  <InfoTooltip size="sm" content="eBay total is the full count from search; avg and range are from the sampled listings we show below." ariaLabel="eBay listings" />
+                </span>
+              )}
+              {priceIntel.isEbayFallback && priceIntel.ebayTotalListings == null && priceIntel.listings > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">
+                  {priceIntel.listings} active on eBay
+                </span>
+              )}
               {priceIntel.totalComps > 0 && (
                 <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">
                   {priceIntel.totalComps} comps

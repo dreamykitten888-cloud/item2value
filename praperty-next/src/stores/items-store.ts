@@ -4,8 +4,7 @@ import type { Item, WatchlistItem, EbayListing, Comp, ResearchData, MarketSignal
 import type { Database } from '@/types/database'
 
 // Helpers to parse JSON fields from DB
-// Build a smart eBay search query: dedupe words, cap at 6 words max
-// Overly specific queries return zero results on eBay
+// Build a smart eBay search query: dedupe words, cap at 8 words so variant names (e.g. Panda) stay in
 function buildSmartQuery(item: { name?: string; brand?: string; model?: string }): string {
   const seen = new Set<string>()
   const words = [item.name, item.brand, item.model]
@@ -18,8 +17,7 @@ function buildSmartQuery(item: { name?: string; brand?: string; model?: string }
       seen.add(l)
       return true
     })
-  // Cap at 6 words: eBay search works best with concise queries
-  return words.slice(0, 6).join(' ')
+  return words.slice(0, 8).join(' ')
 }
 
 // Helpers to parse JSON fields from DB
@@ -532,16 +530,12 @@ export const useItemsStore = create<ItemsState>((set, get) => ({
     if (!item) return
     set({ ebayLoading: true, ebayError: null })
     try {
-      const seen = new Set<string>()
-      const baseQuery = [item.name, item.brand, item.model].filter(Boolean).join(' ')
-        .split(/\s+/).filter(w => {
-          const l = w.toLowerCase()
-          if (seen.has(l)) return false
-          seen.add(l)
-          return true
-        }).join(' ')
-      // Exclude common accessories/junk via negative keywords
-      const query = `${baseQuery} -case -cover -protector -adapter -charger -cable -mount -holder -skin -film -sticker`
+      const baseQuery = buildSmartQuery(item)
+      let query = `${baseQuery} -case -cover -protector -adapter -charger -cable -mount -holder -skin -film -sticker`
+      const qLower = baseQuery.toLowerCase()
+      if (!/\b(gs|grade\s*school|youth|kids?|child|toddler|preschool)\b/.test(qLower)) {
+        query += ' -GS -youth -kids -grade school'
+      }
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ebay-proxy?q=${encodeURIComponent(query)}&limit=12`
       )

@@ -43,7 +43,12 @@ export async function GET(req: NextRequest) {
   const ebayCondition = conditionMap[condition] || ''
 
   // Exclude common accessories/junk from eBay queries
-  const cleanQuery = `${query} -case -cover -protector -adapter -charger -cable -mount -holder -skin -film`
+  let cleanQuery = `${query} -case -cover -protector -adapter -charger -cable -mount -holder -skin -film`
+  // Exclude kids/GS sizes when query doesn't mention them (keeps results for the variant user asked for, e.g. Nike Dunk Panda)
+  const qLower = query.toLowerCase()
+  if (!/\b(gs|grade\s*school|youth|kids?|child|toddler|preschool)\b/.test(qLower)) {
+    cleanQuery += ' -GS -youth -kids -grade school'
+  }
 
   try {
     // Fire all 4 calls in parallel for speed
