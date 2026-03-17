@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 
     // Extract and clean product suggestions from eBay listing titles
     const seen = new Set<string>()
-    const results: { name: string; brand: string; category: string; emoji: string; price?: number; source: string }[] = []
+    const results: { name: string; brand: string; category: string; emoji: string; price?: number; image?: string; source: string }[] = []
 
     for (const item of items) {
       if (results.length >= limit) break
@@ -71,12 +71,21 @@ export async function GET(req: NextRequest) {
       const priceObj = item.price as Record<string, unknown> | undefined
       const price = priceObj?.value ? Number(priceObj.value) : undefined
 
+      // Representative image (best-effort; depends on eBay proxy payload)
+      const anyItem = item as Record<string, any>
+      const image =
+        anyItem?.image?.imageUrl ||
+        anyItem?.image?.url ||
+        anyItem?.thumbnailUrl ||
+        undefined
+
       results.push({
         name: cleaned,
         brand: match?.brand || extractBrandFromTitle(cleaned, query),
         category: match?.category || guessCategoryFromTitle(cleaned),
         emoji: match?.emoji || guessCategoryEmoji(cleaned),
         price,
+        image,
         source: 'ebay',
       })
     }

@@ -99,6 +99,7 @@ interface LiveProduct {
   category: string
   emoji: string
   price?: number
+  image?: string
   source: string
 }
 
@@ -195,7 +196,9 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
         const sellThreshold = marketAvg * 0.95
         for (const p of listings) {
           const price = p.price ?? 0
+          // Skip obvious junk / low-ticket noise
           if (price <= 0) continue
+          if (price < Math.max(15, marketAvg * 0.3)) continue
           const diffPct = marketAvg > 0 ? Math.round(((price - marketAvg) / marketAvg) * 100) : 0
           if (price < buyThreshold) {
             buy.push({ ...p, opportunity: 'buy', marketAvg, diffPct })
@@ -426,49 +429,16 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
             </div>
           ) : topicOpportunities ? (
             <div className="space-y-6 pb-6">
-              {/* Buy opportunities */}
-              <section>
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  Buy opportunities
-                </h2>
-                <p className="text-dim text-[11px] mb-3">Listings below market — good to buy</p>
-                {topicOpportunities.buy.length === 0 ? (
-                  <div className="glass rounded-xl py-6 text-center">
-                    <p className="text-dim text-sm">No buy deals right now</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {topicOpportunities.buy.map((p, i) => (
-                      <button
-                        key={i}
-                        onClick={() => { if (onResearch) onResearch(p.name); onNavigate('research') }}
-                        className="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:bg-white/8 transition-colors"
-                      >
-                        <span className="text-lg">{p.emoji}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-semibold text-white truncate">{p.name}</p>
-                          <p className="text-dim text-[10px]">{p.brand} · eBay</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-bold text-white">{p.price ? fmt(p.price) : '—'}</p>
-                          <span className="text-[10px] font-semibold text-emerald-400">Below market</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-              {/* Sell opportunities */}
+              {/* Trending now (strong market / hype) */}
               <section>
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-brand" />
-                  Sell opportunities
+                  Trending now
                 </h2>
-                <p className="text-dim text-[11px] mb-3">Strong market — list here to sell</p>
+                <p className="text-dim text-[11px] mb-3">High-interest items with strong markets</p>
                 {topicOpportunities.sell.length === 0 ? (
                   <div className="glass rounded-xl py-6 text-center">
-                    <p className="text-dim text-sm">No sell opportunities right now</p>
+                    <p className="text-dim text-sm">No trending items right now</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -478,7 +448,17 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                         onClick={() => { if (onResearch) onResearch(p.name); onNavigate('research') }}
                         className="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:bg-white/8 transition-colors"
                       >
-                        <span className="text-lg">{p.emoji}</span>
+                        {p.image ? (
+                          <img
+                            src={p.image}
+                            alt={p.name}
+                            className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-white/10"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center text-xl flex-shrink-0">
+                            {p.emoji}
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-semibold text-white truncate">{p.name}</p>
                           <p className="text-dim text-[10px]">{p.brand} · eBay</p>
@@ -486,6 +466,49 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
                         <div className="text-right flex-shrink-0">
                           <p className="text-sm font-bold text-white">{p.price ? fmt(p.price) : '—'}</p>
                           <span className="text-[10px] font-semibold text-amber-brand">Strong market</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+              {/* Value plays (below market but still in strong category) */}
+              <section>
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Value plays
+                </h2>
+                <p className="text-dim text-[11px] mb-3">Listings below market in active categories</p>
+                {topicOpportunities.buy.length === 0 ? (
+                  <div className="glass rounded-xl py-6 text-center">
+                    <p className="text-dim text-sm">No value plays right now</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {topicOpportunities.buy.map((p, i) => (
+                      <button
+                        key={i}
+                        onClick={() => { if (onResearch) onResearch(p.name); onNavigate('research') }}
+                        className="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:bg-white/8 transition-colors"
+                      >
+                        {p.image ? (
+                          <img
+                            src={p.image}
+                            alt={p.name}
+                            className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-white/10"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center text-xl flex-shrink-0">
+                            {p.emoji}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-white truncate">{p.name}</p>
+                          <p className="text-dim text-[10px]">{p.brand} · eBay</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-white">{p.price ? fmt(p.price) : '—'}</p>
+                          <span className="text-[10px] font-semibold text-emerald-400">Below market</span>
                         </div>
                       </button>
                     ))}
