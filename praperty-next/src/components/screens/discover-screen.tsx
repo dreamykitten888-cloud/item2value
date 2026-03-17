@@ -102,6 +102,14 @@ interface LiveProduct {
   source: string
 }
 
+type DiscoveryOpportunity = LiveProduct & {
+  opportunity: 'buy' | 'sell'
+  marketAvg: number
+  diffPct: number
+}
+
+// TODO: Revisit "your list" (saved products per brand for discovery) vs Watchlist — user to decide later.
+
 // Cache for fetched products
 const productCache: Record<string, { products: LiveProduct[]; fetchedAt: number }> = {}
 const CACHE_TTL = 5 * 60 * 1000
@@ -130,6 +138,15 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
   const productSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mounted, setMounted] = useState(false)
 
+  // Discover [topic] view: Buy / Sell opportunities (no "your list" — discovery only)
+  const [discoverTopic, setDiscoverTopic] = useState<string | null>(null)
+  const [topicLoading, setTopicLoading] = useState(false)
+  const [topicOpportunities, setTopicOpportunities] = useState<{
+    buy: DiscoveryOpportunity[]
+    sell: DiscoveryOpportunity[]
+    marketAvg: number
+  } | null>(null)
+
   // Load on mount
   useEffect(() => {
     setBrowseCats(loadSavedCategories())
@@ -146,6 +163,57 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
   useEffect(() => {
     if (mounted) saveCuratedProducts(curatedProducts)
   }, [curatedProducts, mounted])
+
+  // Fetch Buy/Sell opportunities when user opens Discover [topic]
+  useEffect(() => {
+    if (!discoverTopic?.trim()) {
+      setTopicOpportunities(null)
+      return
+    }
+    const q = discoverTopic.trim()
+    setTopicLoading(true)
+    setTopicOpportunities(null)
+    Promise.all([
+      fetch(`/api/ebay-search?q=${encodeURIComponent(q)}&limit=20`).then(r => r.json()),
+      fetch(`/api/market-signal?q=${encodeURIComponent(q)}`).then(r => r.json()),
+    ])
+      .then(([ebayData, signalData]) => {
+        const listings: LiveProduct[] = ebayData.results || []
+        let marketAvg = signalData.ebayAvgPrice || 0
+        if (listings.length === 0) {
+          setTopicOpportunities({ buy: [], sell: [], marketAvg: 0 })
+          setTopicLoading(false)
+          return
+        }
+        if (marketAvg <= 0) {
+          const prices = listings.map(p => p.price ?? 0).filter(Boolean)
+          marketAvg = prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0
+        }
+        const buy: DiscoveryOpportunity[] = []
+        const sell: DiscoveryOpportunity[] = []
+        const buyThreshold = marketAvg * 0.9
+        const sellThreshold = marketAvg * 0.95
+        for (const p of listings) {
+          const price = p.price ?? 0
+          if (price <= 0) continue
+          const diffPct = marketAvg > 0 ? Math.round(((price - marketAvg) / marketAvg) * 100) : 0
+          if (price < buyThreshold) {
+            buy.push({ ...p, opportunity: 'buy', marketAvg, diffPct })
+          } else if (price >= sellThreshold) {
+            sell.push({ ...p, opportunity: 'sell', marketAvg, diffPct })
+          }
+        }
+        buy.sort((a, b) => (a.price ?? 0) - (b.price ?? 0))
+        sell.sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
+        setTopicOpportunities({
+          buy: buy.slice(0, 8),
+          sell: sell.slice(0, 8),
+          marketAvg,
+        })
+      })
+      .catch(() => setTopicOpportunities({ buy: [], sell: [], marketAvg: 0 }))
+      .finally(() => setTopicLoading(false))
+  }, [discoverTopic])
 
   // Trigger a price snapshot for products (background, non-blocking)
   const triggerSnapshot = useCallback(async (products: LiveProduct[]) => {
@@ -309,11 +377,19 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
     return results
   }, [addQuery, browseCats])
 
-  const handleSearch = () => {
+  const handleSearchMarket = () => {
+    if (searchQuery.trim()) setDiscoverTopic(searchQuery.trim())
+  }
+
+  const handleDeepResearch = () => {
     if (searchQuery.trim() && onResearch) {
       onResearch(searchQuery)
       onNavigate('research')
     }
+  }
+
+  const openDiscoverTopic = (term: string) => {
+    setDiscoverTopic(term)
   }
 
   const handleAddTerm = (term: string) => {
@@ -323,35 +399,139 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
     setAddQuery('')
   }
 
+  // ─── Discover [topic] view: Buy / Sell opportunities ─────────────────
+  if (discoverTopic) {
+    const meta = getTermMeta(discoverTopic)
+    return (
+      <div className="h-full flex flex-col pb-24">
+        <div className="px-6 pt-8 pb-4 flex-shrink-0">
+          <button
+            onClick={() => { setDiscoverTopic(null); setTopicOpportunities(null) }}
+            className="flex items-center gap-2 text-dim hover:text-white mb-3"
+          >
+            <ChevronDown size={20} className="rotate-90" />
+            Back
+          </button>
+          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <span>{meta.emoji}</span>
+            Discover {discoverTopic}
+          </h1>
+          <p className="text-dim text-sm mt-0.5">Deals you can buy low or sell high</p>
+        </div>
+        <div className="flex-1 overflow-y-auto scroll-hide px-6">
+          {topicLoading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <Loader2 size={28} className="text-amber-brand animate-spin" />
+              <p className="text-dim text-sm">Finding opportunities...</p>
+            </div>
+          ) : topicOpportunities ? (
+            <div className="space-y-6 pb-6">
+              {/* Buy opportunities */}
+              <section>
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Buy opportunities
+                </h2>
+                <p className="text-dim text-[11px] mb-3">Listings below market — good to buy</p>
+                {topicOpportunities.buy.length === 0 ? (
+                  <div className="glass rounded-xl py-6 text-center">
+                    <p className="text-dim text-sm">No buy deals right now</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {topicOpportunities.buy.map((p, i) => (
+                      <button
+                        key={i}
+                        onClick={() => { if (onResearch) onResearch(p.name); onNavigate('research') }}
+                        className="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:bg-white/8 transition-colors"
+                      >
+                        <span className="text-lg">{p.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-white truncate">{p.name}</p>
+                          <p className="text-dim text-[10px]">{p.brand} · eBay</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-white">{p.price ? fmt(p.price) : '—'}</p>
+                          <span className="text-[10px] font-semibold text-emerald-400">Below market</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+              {/* Sell opportunities */}
+              <section>
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-brand" />
+                  Sell opportunities
+                </h2>
+                <p className="text-dim text-[11px] mb-3">Strong market — list here to sell</p>
+                {topicOpportunities.sell.length === 0 ? (
+                  <div className="glass rounded-xl py-6 text-center">
+                    <p className="text-dim text-sm">No sell opportunities right now</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {topicOpportunities.sell.map((p, i) => (
+                      <button
+                        key={i}
+                        onClick={() => { if (onResearch) onResearch(p.name); onNavigate('research') }}
+                        className="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:bg-white/8 transition-colors"
+                      >
+                        <span className="text-lg">{p.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-white truncate">{p.name}</p>
+                          <p className="text-dim text-[10px]">{p.brand} · eBay</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-white">{p.price ? fmt(p.price) : '—'}</p>
+                          <span className="text-[10px] font-semibold text-amber-brand">Strong market</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+              {topicOpportunities.marketAvg > 0 && (
+                <p className="text-dim text-[10px] text-center">
+                  Market avg {fmt(topicOpportunities.marketAvg)} for this search
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
+
+  // ─── Main Discover: search + tracked brands (no expanded table) ─────────────────
   return (
     <div className="h-full overflow-y-auto scroll-hide pb-24">
-      {/* Header */}
       <div className="px-6 pt-8 pb-2">
         <h1 className="text-2xl font-bold text-white mb-1">Discover</h1>
         <p className="text-dim text-sm">Track brands, find the best investments</p>
       </div>
 
-      {/* Search Bar */}
       <div className="px-6 py-3">
         <div className="relative mb-3">
           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           <input
             ref={searchInputRef}
             type="text"
-            placeholder="Search any item (e.g. Chanel Classic Flap)"
+            placeholder="Search any item (e.g. Selkie dresses, Chanel flap)"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            onKeyDown={e => e.key === 'Enter' && handleSearchMarket()}
             className="w-full pl-10 pr-3.5 py-3.5 rounded-xl bg-white/6 border border-white/10 text-white placeholder-slate-500 focus:border-amber-brand/50 focus:outline-none transition-colors text-sm"
           />
         </div>
         <div className="flex gap-2">
-          <button onClick={handleSearch} className="flex-1 gradient-amber rounded-lg py-3 font-bold text-black text-sm">
+          <button onClick={handleSearchMarket} className="flex-1 gradient-amber rounded-lg py-3 font-bold text-black text-sm">
             Search Market
           </button>
           {searchQuery.trim() && (
             <button
-              onClick={handleSearch}
+              onClick={handleDeepResearch}
               className="flex-1 bg-white/6 border border-amber-brand/40 rounded-lg py-3 font-bold text-amber-brand text-sm hover:bg-white/10"
             >
               Deep Research
@@ -417,212 +597,29 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
           </div>
         )}
 
-        {/* Brand/Category sections */}
+        {/* Tracked brands: tap to discover deals (no expanded list) */}
         {browseCats.map(term => {
           const meta = getTermMeta(term)
-          const isExpanded = expandedCats.includes(term)
-          const isLoading = loadingCats.has(term)
-          const products = getDisplayProducts(term)
-          const productCount = products.length
-          const isAddingProduct = addingProductTo === term
-
           return (
-            <div key={term} className="mb-2.5">
-              {/* Collapsible header */}
-              <div
-                className="w-full flex items-center justify-between px-2 py-2.5 rounded-lg transition-colors"
-                style={{ background: isExpanded ? 'rgba(255,255,255,0.04)' : 'transparent' }}
-              >
+            <div key={term} className="mb-2">
+              <div className="w-full flex items-center justify-between gap-2">
                 <button
-                  onClick={() => toggleExpand(term)}
-                  className="flex items-center gap-2 flex-1 text-left"
+                  onClick={() => openDiscoverTopic(term)}
+                  className="flex-1 flex items-center gap-3 px-3 py-3 rounded-xl glass hover:bg-white/8 transition-colors text-left"
                 >
-                  <span className="text-sm">{meta.emoji}</span>
-                  <p className="text-[13px] font-bold" style={{ color: meta.color }}>{term}</p>
-                  {isExpanded && productCount > 0 && (
-                    <span className="text-dim text-[11px]">({productCount})</span>
-                  )}
-                  {isLoading && <Loader2 size={12} className="text-dim animate-spin" />}
+                  <span className="text-lg">{meta.emoji}</span>
+                  <span className="text-[13px] font-bold flex-1" style={{ color: meta.color }}>{term}</span>
+                  <span className="text-[11px] text-amber-brand font-semibold">See deals</span>
                 </button>
-                <div className="flex items-center gap-1.5">
-                  {/* Delete category X: only visible in edit mode */}
-                  {editing && (
-                    <button
-                      onClick={() => setBrowseCats(prev => prev.filter(c => c !== term))}
-                      className="p-1 rounded hover:bg-red-500/20 transition-colors"
-                    >
-                      <X size={14} className="text-red-400" />
-                    </button>
-                  )}
-                  <button onClick={() => toggleExpand(term)}>
-                    <ChevronDown
-                      size={14}
-                      className={`text-dim transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                    />
+                {editing && (
+                  <button
+                    onClick={() => setBrowseCats(prev => prev.filter(c => c !== term))}
+                    className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"
+                  >
+                    <X size={16} className="text-red-400" />
                   </button>
-                </div>
+                )}
               </div>
-
-              {/* Expanded product list */}
-              {isExpanded && (
-                <div className="animate-fade-up mt-1">
-                  {isLoading && products.length === 0 ? (
-                    <div className="flex items-center justify-center py-6 gap-2">
-                      <Loader2 size={16} className="text-amber-brand animate-spin" />
-                      <span className="text-dim text-[12px]">Finding {term} products...</span>
-                    </div>
-                  ) : products.length === 0 && !isAddingProduct ? (
-                    <div className="text-center py-4">
-                      <p className="text-dim text-[12px]">No products yet.</p>
-                      <button
-                        onClick={() => { setAddingProductTo(term); setTimeout(() => productSearchRef.current?.focus(), 100) }}
-                        className="mt-2 text-amber-brand text-[12px] font-semibold"
-                      >
-                        + Add products
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Table header */}
-                      <div className="grid grid-cols-[1fr_auto_auto] gap-1 px-2 pb-1.5 border-b border-white/8">
-                        <span className="text-dim text-[9px] uppercase tracking-wider">Item</span>
-                        <span className="text-dim text-[9px] uppercase tracking-wider text-right min-w-[70px]">Price</span>
-                        <span className="w-6" />
-                      </div>
-                      {products.map((p, pi) => {
-                        const owned = items.find(it => it.name.toLowerCase() === p.name.toLowerCase())
-                        const price = owned ? (owned.value || owned.cost) : p.price
-                        const pKey = makeProductKey(p.name, p.brand)
-                        const changeData = priceChanges[pKey]
-                        return (
-                          <div
-                            key={pi}
-                            className="w-full grid grid-cols-[1fr_auto_auto] gap-1 items-center px-2 py-2 hover:bg-white/4 transition-colors rounded-lg"
-                            style={{ borderBottom: pi < products.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}
-                          >
-                            {/* Tappable product name -> research */}
-                            <button
-                              onClick={() => {
-                                if (onResearch) onResearch(p.name)
-                                onNavigate('research')
-                              }}
-                              className="flex items-center gap-2 min-w-0 text-left"
-                            >
-                              <span className="text-sm flex-shrink-0">{p.emoji}</span>
-                              <div className="min-w-0">
-                                <p className="text-[12px] font-semibold text-white truncate">{p.name}</p>
-                                <p className="text-dim text-[10px]">{p.brand}{p.source === 'ebay' ? ' · eBay' : ''}</p>
-                              </div>
-                              {owned && (
-                                <span className="flex-shrink-0 text-[8px] font-bold text-amber-brand bg-amber-brand/10 px-1.5 py-0.5 rounded">OWNED</span>
-                              )}
-                            </button>
-                            <div className="text-right min-w-[80px]">
-                              <p className="text-[13px] font-bold text-white">
-                                {price ? fmt(price) : '---'}
-                              </p>
-                              {changeData?.changePct !== null && changeData?.changePct !== undefined && (
-                                <div className="flex items-center justify-end gap-0.5">
-                                  {changeData.changePct >= 0 ? (
-                                    <TrendingUp size={9} className="text-emerald-400" />
-                                  ) : (
-                                    <TrendingDown size={9} className="text-red-400" />
-                                  )}
-                                  <span className={`text-[10px] font-semibold ${changeData.changePct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                    {changeData.changePct >= 0 ? '+' : ''}{changeData.changePct.toFixed(1)}%
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            {/* Delete individual product */}
-                            <button
-                              onClick={() => removeProduct(term, p.name)}
-                              className="p-1 rounded hover:bg-red-500/20 transition-colors opacity-40 hover:opacity-100"
-                            >
-                              <X size={12} className="text-red-400" />
-                            </button>
-                          </div>
-                        )
-                      })}
-
-                      {/* Add product to this category */}
-                      {isAddingProduct ? (
-                        <div className="px-2 pt-2 pb-1">
-                          <div className="relative">
-                            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input
-                              ref={productSearchRef}
-                              placeholder={`Search ${term} products...`}
-                              value={productSearchQuery}
-                              onChange={e => handleProductSearchChange(e.target.value, term)}
-                              onKeyDown={e => {
-                                if (e.key === 'Escape') {
-                                  setAddingProductTo(null)
-                                  setProductSearchQuery('')
-                                  setProductSearchResults([])
-                                }
-                              }}
-                              className="w-full py-2 pl-8 pr-8 rounded-lg border border-white/12 bg-white/6 text-white text-[12px] focus:border-amber-brand/50 focus:outline-none placeholder-slate-500"
-                              autoFocus
-                            />
-                            <button
-                              onClick={() => { setAddingProductTo(null); setProductSearchQuery(''); setProductSearchResults([]) }}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2"
-                            >
-                              <X size={13} className="text-slate-500 hover:text-white" />
-                            </button>
-                          </div>
-                          {/* Search results */}
-                          {productSearchLoading && (
-                            <div className="flex items-center gap-2 py-2 px-1">
-                              <Loader2 size={12} className="text-amber-brand animate-spin" />
-                              <span className="text-dim text-[11px]">Searching...</span>
-                            </div>
-                          )}
-                          {!productSearchLoading && productSearchResults.length > 0 && (
-                            <div className="mt-1 rounded-lg border border-white/8 overflow-hidden" style={{ background: '#1a1a2e' }}>
-                              {productSearchResults.map((r, ri) => {
-                                const alreadyAdded = products.some(p => p.name.toLowerCase() === r.name.toLowerCase())
-                                return (
-                                  <button
-                                    key={ri}
-                                    onClick={() => { if (!alreadyAdded) addProductToCategory(term, r) }}
-                                    disabled={alreadyAdded}
-                                    className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${alreadyAdded ? 'opacity-40' : 'hover:bg-white/6'}`}
-                                    style={{ borderBottom: ri < productSearchResults.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
-                                  >
-                                    <span className="text-sm">{r.emoji}</span>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-[12px] text-white font-medium truncate">{r.name}</p>
-                                      {r.price ? <p className="text-dim text-[10px]">{fmt(r.price)}</p> : null}
-                                    </div>
-                                    {alreadyAdded ? (
-                                      <span className="text-[10px] text-dim">Added</span>
-                                    ) : (
-                                      <Plus size={14} className="text-amber-brand flex-shrink-0" />
-                                    )}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          )}
-                          {!productSearchLoading && productSearchQuery.trim().length >= 2 && productSearchResults.length === 0 && (
-                            <p className="text-dim text-[11px] py-2 px-1">No results. Try a different search.</p>
-                          )}
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => { setAddingProductTo(term); setProductSearchQuery(''); setProductSearchResults([]) }}
-                          className="w-full flex items-center justify-center gap-1.5 py-2 text-amber-brand/60 hover:text-amber-brand text-[11px] font-semibold hover:bg-white/4 rounded-lg transition-colors mt-0.5"
-                        >
-                          <Plus size={12} />
-                          Add item
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
             </div>
           )
         })}
