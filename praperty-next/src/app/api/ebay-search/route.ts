@@ -71,13 +71,11 @@ export async function GET(req: NextRequest) {
       const priceObj = item.price as Record<string, unknown> | undefined
       const price = priceObj?.value ? Number(priceObj.value) : undefined
 
-      // Representative image (best-effort; depends on eBay proxy payload)
-      const anyItem = item as Record<string, any>
+      // ebay-proxy returns item.image as string URL (thumbnailImages[0].imageUrl or image.imageUrl)
+      const rawImage = (item as { image?: string | null }).image
       const image =
-        anyItem?.image?.imageUrl ||
-        anyItem?.image?.url ||
-        anyItem?.thumbnailUrl ||
-        undefined
+        typeof rawImage === 'string' && rawImage ? rawImage
+        : undefined
 
       results.push({
         name: cleaned,
