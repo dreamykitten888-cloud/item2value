@@ -23,7 +23,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Musical Instruments': '#ef4444', Jewelry: '#ec4899', Collectibles: '#a855f7',
   Sports: '#22c55e', 'Vinyl & Music': '#6366f1', Art: '#f43f5e',
   Automotive: '#64748b', Books: '#78716c', Toys: '#f59e0b',
-  Tools: '#475569', Sneakers: '#3b82f6', Bags: '#ec4899',
+  Tools: '#475569', Shoes: '#3b82f6', Sneakers: '#3b82f6', Bags: '#ec4899',
   Clothing: '#a855f7', Fragrance: '#f43f5e', Accessories: '#EB9C35',
   Other: '#94a3b8',
 }
@@ -34,7 +34,7 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   'Musical Instruments': '🎸', Jewelry: '💎', Collectibles: '🏆',
   Sports: '⚽', 'Vinyl & Music': '🎵', Art: '🎨',
   Automotive: '🚗', Books: '📚', Toys: '🧸',
-  Tools: '🔧', Sneakers: '👟', Bags: '👜',
+  Tools: '🔧', Shoes: '👟', Sneakers: '👟', Bags: '👜',
   Clothing: '👕', Fragrance: '🧴', Accessories: '🕶️',
   Other: '📦',
 }
@@ -43,7 +43,7 @@ const ALL_CATEGORIES = [
   'Fashion', 'Electronics', 'Home', 'Watches', 'Sports',
   'Collectibles', 'Trading Cards', 'Vinyl & Music', 'Musical Instruments',
   'LEGO', 'Art', 'Automotive', 'Books', 'Toys', 'Tools',
-  'Sneakers', 'Bags', 'Clothing', 'Jewelry', 'Fragrance', 'Accessories',
+  'Shoes', 'Bags', 'Clothing', 'Jewelry', 'Fragrance', 'Accessories',
 ]
 
 const DEFAULT_BROWSE_TERMS = ['Chanel', 'Gucci', 'Rolex', 'Nike']
@@ -53,7 +53,6 @@ const SUB_CATEGORY_OPTIONS: { label: string; searchTerm: string }[] = [
   { label: 'Bags', searchTerm: 'bags' },
   { label: 'Perfume', searchTerm: 'perfume' },
   { label: 'Shoes', searchTerm: 'shoes' },
-  { label: 'Sneakers', searchTerm: 'sneakers' },
   { label: 'Clothing', searchTerm: 'clothing' },
   { label: 'Watches', searchTerm: 'watches' },
   { label: 'Trading Cards', searchTerm: 'trading cards' },
