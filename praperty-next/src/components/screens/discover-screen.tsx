@@ -563,6 +563,39 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
         </div>
       </div>
 
+      {/* Trending across your brands */}
+      {browseCats.length > 0 && (
+        <div className="px-6 pt-1">
+          <p className="text-dim text-[11px] uppercase tracking-wider font-semibold mb-2">
+            Trending across your brands
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1 scroll-hide">
+            {browseCats.slice(0, 4).map(term => {
+              const meta = getTermMeta(term)
+              return (
+                <button
+                  key={term}
+                  onClick={() => openDiscoverTopic(term)}
+                  className="min-w-[160px] max-w-[200px] flex-shrink-0 glass rounded-2xl p-3 flex items-center gap-3 hover:bg-white/8 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-lg flex-shrink-0">
+                    {meta.emoji}
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-[13px] font-semibold truncate" style={{ color: meta.color }}>
+                      {term}
+                    </p>
+                    <p className="text-dim text-[10px] truncate">
+                      Tap to see hot items and value plays
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Brand/Category Tracking Section */}
       <div className="px-6 pt-4">
         <div className="flex justify-between items-center mb-3">
