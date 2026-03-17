@@ -40,6 +40,8 @@ export default function AppShell() {
   const [researchImageUrl, setResearchImageUrl] = useState<string | undefined>(undefined)
   const [scanData, setScanData] = useState<any>(null)
   const [showAddSheet, setShowAddSheet] = useState(false)
+  // Persist discover drill state so back from research returns to brand/category view (e.g. Gucci > Perfume)
+  const [discoverContext, setDiscoverContext] = useState<{ topic: string | null; subCategory: string | null }>({ topic: null, subCategory: null })
 
   // Show tutorial for first-time users
   useEffect(() => {
@@ -96,7 +98,15 @@ export default function AppShell() {
       case 'scan':
         return <ScanScreen onNavigate={setScreen} onScanData={handleScanData} />
       case 'discover':
-        return <DiscoverScreen onNavigate={setScreen} onResearch={handleResearch} />
+        return (
+          <DiscoverScreen
+            onNavigate={setScreen}
+            onResearch={handleResearch}
+            initialDiscoverTopic={discoverContext.topic}
+            initialTopicSubCategory={discoverContext.subCategory}
+            onDiscoverContextChange={setDiscoverContext}
+          />
+        )
       case 'research':
         return <ResearchScreen onNavigate={setScreen} query={researchQuery} imageUrl={researchImageUrl} />
       case 'pricing':

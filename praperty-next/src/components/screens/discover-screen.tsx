@@ -10,6 +10,10 @@ import type { Screen } from '@/types'
 interface Props {
   onNavigate: (screen: Screen) => void
   onResearch?: (query: string, imageUrl?: string) => void
+  /** Restore discover topic/sub when returning from research (e.g. Gucci > Perfume) */
+  initialDiscoverTopic?: string | null
+  initialTopicSubCategory?: string | null
+  onDiscoverContextChange?: (ctx: { topic: string | null; subCategory: string | null }) => void
 }
 
 // Category metadata
@@ -131,7 +135,13 @@ type DiscoveryOpportunity = LiveProduct & {
 const productCache: Record<string, { products: LiveProduct[]; fetchedAt: number }> = {}
 const CACHE_TTL = 5 * 60 * 1000
 
-export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
+export default function DiscoverScreen({
+  onNavigate,
+  onResearch,
+  initialDiscoverTopic = null,
+  initialTopicSubCategory = null,
+  onDiscoverContextChange,
+}: Props) {
   const { items } = useItemsStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [browseCats, setBrowseCats] = useState<string[]>(DEFAULT_BROWSE_TERMS)
@@ -155,9 +165,31 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
   const productSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mounted, setMounted] = useState(false)
 
-  // Discover [topic] view: Buy / Sell opportunities (no "your list" — discovery only)
-  const [discoverTopic, setDiscoverTopic] = useState<string | null>(null)
-  const [topicSubCategory, setTopicSubCategory] = useState<string | null>(null) // searchTerm or null = All
+  // Discover [topic] view: Buy / Sell opportunities (no "your list" — discovery only). Sync from parent when returning from research.
+  const [discoverTopic, setDiscoverTopicState] = useState<string | null>(initialDiscoverTopic ?? null)
+  const [topicSubCategory, setTopicSubCategoryState] = useState<string | null>(initialTopicSubCategory ?? null)
+  // Restore topic view when navigating back from research
+  useEffect(() => {
+    if (initialDiscoverTopic != null) {
+      setDiscoverTopicState(initialDiscoverTopic)
+      setTopicSubCategoryState(initialTopicSubCategory ?? null)
+    }
+  }, [initialDiscoverTopic, initialTopicSubCategory])
+  const setDiscoverTopic = useCallback(
+    (topic: string | null) => {
+      setDiscoverTopicState(topic)
+      setTopicSubCategoryState(null)
+      onDiscoverContextChange?.({ topic, subCategory: null })
+    },
+    [onDiscoverContextChange]
+  )
+  const setTopicSubCategory = useCallback(
+    (sub: string | null) => {
+      setTopicSubCategoryState(sub)
+      onDiscoverContextChange?.({ topic: discoverTopic, subCategory: sub })
+    },
+    [onDiscoverContextChange, discoverTopic]
+  )
   const [topicLoading, setTopicLoading] = useState(false)
   const [topicOpportunities, setTopicOpportunities] = useState<{
     buy: DiscoveryOpportunity[]
@@ -440,7 +472,12 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
       <div className="h-full flex flex-col pb-24">
         <div className="px-6 pt-8 pb-4 flex-shrink-0">
           <button
-            onClick={() => { setDiscoverTopic(null); setTopicSubCategory(null); setTopicOpportunities(null) }}
+            onClick={() => {
+              setDiscoverTopicState(null)
+              setTopicSubCategoryState(null)
+              setTopicOpportunities(null)
+              onDiscoverContextChange?.({ topic: null, subCategory: null })
+            }}
             className="flex items-center gap-2 text-dim hover:text-white mb-3"
           >
             <ChevronDown size={20} className="rotate-90" />
