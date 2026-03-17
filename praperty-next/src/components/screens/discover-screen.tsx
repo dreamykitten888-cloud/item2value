@@ -163,6 +163,8 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
     buy: DiscoveryOpportunity[]
     sell: DiscoveryOpportunity[]
     marketAvg: number
+    trendScore: number | null
+    trendDirection: 'rising' | 'stable' | 'declining' | null
   } | null>(null)
 
   // Load on mount
@@ -192,20 +194,23 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
       return
     }
     const q = topicEffectiveQuery
+    const category = (discoverTopic && BRAND_DB[discoverTopic]?.category) || ''
     setTopicLoading(true)
     setTopicOpportunities(null)
     Promise.all([
       fetch(`/api/ebay-search?q=${encodeURIComponent(q)}&limit=20`).then(r => r.json()),
-      fetch(`/api/market-signal?q=${encodeURIComponent(q)}`).then(r => r.json()),
+      fetch(`/api/market-signal?q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}`).then(r => r.json()),
     ])
       .then(([ebayData, signalData]) => {
         const listings: LiveProduct[] = ebayData.results || []
-        let marketAvg = signalData.ebayAvgPrice || 0
+        const trendScore = signalData.trendScore ?? null
+        const trendDirection = signalData.trendDirection || null
         if (listings.length === 0) {
-          setTopicOpportunities({ buy: [], sell: [], marketAvg: 0 })
+          setTopicOpportunities({ buy: [], sell: [], marketAvg: 0, trendScore, trendDirection })
           setTopicLoading(false)
           return
         }
+        let marketAvg = signalData.ebayAvgPrice || 0
         if (marketAvg <= 0) {
           const prices = listings.map(p => p.price ?? 0).filter(Boolean)
           marketAvg = prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0
@@ -232,9 +237,11 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
           buy: buy.slice(0, 8),
           sell: sell.slice(0, 8),
           marketAvg,
+          trendScore,
+          trendDirection,
         })
       })
-      .catch(() => setTopicOpportunities({ buy: [], sell: [], marketAvg: 0 }))
+      .catch(() => setTopicOpportunities({ buy: [], sell: [], marketAvg: 0, trendScore: null, trendDirection: null }))
       .finally(() => setTopicLoading(false))
   }, [discoverTopic, topicSubCategory])
 
@@ -479,6 +486,48 @@ export default function DiscoverScreen({ onNavigate, onResearch }: Props) {
             </div>
           ) : topicOpportunities ? (
             <div className="space-y-6 pb-6">
+              {/* Google Trends: interest before buying/selling */}
+              {(topicOpportunities.trendScore != null || topicOpportunities.trendDirection) && (
+                <div className="glass rounded-xl p-4 border border-white/10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">📈</span>
+                    <h3 className="text-sm font-bold text-white">Search interest</h3>
+                  </div>
+                  <p className="text-dim text-[11px] mb-3">
+                    Google Trends — see if people are interested before buying/selling picks up
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {topicOpportunities.trendScore != null && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-2xl font-bold text-white">{topicOpportunities.trendScore}</span>
+                        <span className="text-dim text-xs">/ 100 interest</span>
+                      </div>
+                    )}
+                    {topicOpportunities.trendDirection && (
+                      <span
+                        className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                          topicOpportunities.trendDirection === 'rising'
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : topicOpportunities.trendDirection === 'declining'
+                              ? 'bg-red-500/20 text-red-400'
+                              : 'bg-white/10 text-white/70'
+                        }`}
+                      >
+                        {topicOpportunities.trendDirection === 'rising'
+                          ? 'Rising'
+                          : topicOpportunities.trendDirection === 'declining'
+                            ? 'Declining'
+                            : 'Stable'}
+                      </span>
+                    )}
+                  </div>
+                  {topicOpportunities.trendDirection === 'rising' && (
+                    <p className="text-emerald-400/90 text-[11px] font-medium mt-2">
+                      People are searching for this more — demand may be building.
+                    </p>
+                  )}
+                </div>
+              )}
               {/* Trending now (strong market / hype) */}
               <section>
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
