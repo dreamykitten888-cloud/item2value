@@ -198,6 +198,8 @@ export default function DiscoverScreen({
     trendScore: number | null
     trendDirection: 'rising' | 'stable' | 'declining' | null
   } | null>(null)
+  // Per-item Google Trends (key = item name, value = score + direction)
+  const [itemTrends, setItemTrends] = useState<Record<string, { score: number; direction: 'rising' | 'stable' | 'declining' }>>({})
 
   // Load on mount
   useEffect(() => {
@@ -272,10 +274,42 @@ export default function DiscoverScreen({
           trendScore,
           trendDirection,
         })
+        setItemTrends({}) // clear so we don't show stale per-item trends from previous topic
       })
       .catch(() => setTopicOpportunities({ buy: [], sell: [], marketAvg: 0, trendScore: null, trendDirection: null }))
       .finally(() => setTopicLoading(false))
   }, [discoverTopic, topicSubCategory])
+
+  // Fetch per-item Google Trends for each listed item (so user sees trend for exact item, not just category)
+  useEffect(() => {
+    if (!topicOpportunities) return
+    const items = [...topicOpportunities.sell, ...topicOpportunities.buy]
+    const toFetch = items.slice(0, 8) // limit to 8 items to avoid hammering Trends API
+    const category = (discoverTopic && BRAND_DB[discoverTopic]?.category) || ''
+
+    const run = async () => {
+      for (let i = 0; i < toFetch.length; i += 2) {
+        const batch = toFetch.slice(i, i + 2)
+        const results = await Promise.allSettled(
+          batch.map(async (p) => {
+            const query = p.name.split(/\s+/).slice(0, 6).join(' ') // first 6 words for better Trends match
+            const res = await fetch(
+              `/api/market-signal?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}`
+            )
+            const data = await res.json()
+            return { name: p.name, score: data.trendScore ?? 0, direction: data.trendDirection || 'stable' as const }
+          })
+        )
+        results.forEach((r, idx) => {
+          if (r.status === 'fulfilled') {
+            setItemTrends((prev) => ({ ...prev, [r.value.name]: { score: r.value.score, direction: r.value.direction } }))
+          }
+        })
+        if (i + 2 < toFetch.length) await new Promise((r) => setTimeout(r, 400)) // small delay between batches
+      }
+    }
+    run()
+  }, [topicOpportunities, discoverTopic])
 
   // Trigger a price snapshot for products (background, non-blocking)
   const triggerSnapshot = useCallback(async (products: LiveProduct[]) => {
@@ -523,15 +557,15 @@ export default function DiscoverScreen({
             </div>
           ) : topicOpportunities ? (
             <div className="space-y-6 pb-6">
-              {/* Google Trends: interest before buying/selling */}
+              {/* Google Trends: category-level (e.g. "Chanel sneakers") — not per item */}
               {(topicOpportunities.trendScore != null || topicOpportunities.trendDirection) && (
                 <div className="glass rounded-xl p-4 border border-white/10">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-lg">📈</span>
-                    <h3 className="text-sm font-bold text-white">Search interest</h3>
+                    <h3 className="text-sm font-bold text-white">Search interest (this category)</h3>
                   </div>
-                  <p className="text-dim text-[11px] mb-3">
-                    Google Trends — see if people are interested before buying/selling picks up
+                  <p className="text-dim text-[11px] mb-2">
+                    Overall Google search trend for &quot;{topicEffectiveQuery}&quot; — not for individual items below
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
                     {topicOpportunities.trendScore != null && (
@@ -578,33 +612,43 @@ export default function DiscoverScreen({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {topicOpportunities.sell.map((p, i) => (
-                      <button
-                        key={i}
-                        onClick={() => { if (onResearch) onResearch(p.name, p.image); onNavigate('research') }}
-                        className="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:bg-white/8 transition-colors"
-                      >
-                        {p.image ? (
-                          <img
-                            src={p.image}
-                            alt={p.name}
-                            className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-white/10"
-                          />
-                        ) : (
-                          <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center text-xl flex-shrink-0">
-                            {p.emoji}
+                    {topicOpportunities.sell.map((p, i) => {
+                      const trend = itemTrends[p.name]
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => { if (onResearch) onResearch(p.name, p.image); onNavigate('research') }}
+                          className="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:bg-white/8 transition-colors"
+                        >
+                          {p.image ? (
+                            <img
+                              src={p.image}
+                              alt={p.name}
+                              className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-white/10"
+                            />
+                          ) : (
+                            <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center text-xl flex-shrink-0">
+                              {p.emoji}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold text-white truncate">{p.name}</p>
+                            <p className="text-dim text-[10px]">{p.brand} · eBay</p>
                           </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-semibold text-white truncate">{p.name}</p>
-                          <p className="text-dim text-[10px]">{p.brand} · eBay</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-bold text-white">{p.price ? fmt(p.price) : '—'}</p>
-                          <span className="text-[10px] font-semibold text-amber-brand">Strong market</span>
-                        </div>
-                      </button>
-                    ))}
+                          <div className="text-right flex-shrink-0 flex flex-col items-end gap-0.5">
+                            <p className="text-sm font-bold text-white">{p.price ? fmt(p.price) : '—'}</p>
+                            <span className="text-[10px] font-semibold text-amber-brand">Strong market</span>
+                            {trend ? (
+                              <span className="text-[10px] text-white/70" title="Google search trend for this exact item">
+                                Search {trend.score}{trend.direction === 'rising' ? ' ↑' : trend.direction === 'declining' ? ' ↓' : ''}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-white/40">Search —</span>
+                            )}
+                          </div>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </section>
@@ -621,33 +665,43 @@ export default function DiscoverScreen({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {topicOpportunities.buy.map((p, i) => (
-                      <button
-                        key={i}
-                        onClick={() => { if (onResearch) onResearch(p.name, p.image); onNavigate('research') }}
-                        className="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:bg-white/8 transition-colors"
-                      >
-                        {p.image ? (
-                          <img
-                            src={p.image}
-                            alt={p.name}
-                            className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-white/10"
-                          />
-                        ) : (
-                          <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center text-xl flex-shrink-0">
-                            {p.emoji}
+                    {topicOpportunities.buy.map((p, i) => {
+                      const trend = itemTrends[p.name]
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => { if (onResearch) onResearch(p.name, p.image); onNavigate('research') }}
+                          className="w-full glass rounded-xl p-3 flex items-center gap-3 text-left hover:bg-white/8 transition-colors"
+                        >
+                          {p.image ? (
+                            <img
+                              src={p.image}
+                              alt={p.name}
+                              className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-white/10"
+                            />
+                          ) : (
+                            <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center text-xl flex-shrink-0">
+                              {p.emoji}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold text-white truncate">{p.name}</p>
+                            <p className="text-dim text-[10px]">{p.brand} · eBay</p>
                           </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-semibold text-white truncate">{p.name}</p>
-                          <p className="text-dim text-[10px]">{p.brand} · eBay</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-bold text-white">{p.price ? fmt(p.price) : '—'}</p>
-                          <span className="text-[10px] font-semibold text-emerald-400">Below market</span>
-                        </div>
-                      </button>
-                    ))}
+                          <div className="text-right flex-shrink-0 flex flex-col items-end gap-0.5">
+                            <p className="text-sm font-bold text-white">{p.price ? fmt(p.price) : '—'}</p>
+                            <span className="text-[10px] font-semibold text-emerald-400">Below market</span>
+                            {trend ? (
+                              <span className="text-[10px] text-white/70" title="Google search trend for this exact item">
+                                Search {trend.score}{trend.direction === 'rising' ? ' ↑' : trend.direction === 'declining' ? ' ↓' : ''}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-white/40">Search —</span>
+                            )}
+                          </div>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </section>
