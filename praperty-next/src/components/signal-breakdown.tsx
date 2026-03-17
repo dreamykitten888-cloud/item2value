@@ -195,9 +195,9 @@ export default function SignalBreakdown({ result, fetchedAt, compact = false }: 
         </div>
       </div>
 
-      {/* Gauge bar */}
+      {/* Gauge bar: neutral (pass) → consider → opportunity (amber). No red/green = good/bad. */}
       <div className="h-2 rounded-full mb-2 relative" style={{
-        background: 'linear-gradient(90deg, #ef4444, #f59e0b, #EB9C35, #22c55e)',
+        background: 'linear-gradient(90deg, #475569, #64748b, #94a3b8, #d4a574, #EB9C35)',
       }}>
         <div className="absolute -top-1 w-4 h-4 rounded-full bg-white transition-all duration-700" style={{
           left: `${needlePercent}%`, transform: 'translateX(-50%)',
@@ -206,11 +206,11 @@ export default function SignalBreakdown({ result, fetchedAt, compact = false }: 
         }} />
       </div>
 
-      {/* Labels */}
+      {/* Labels: neutral for pass/hold, amber only for BUY */}
       <div className="flex justify-between mb-3">
-        <span className="text-[9px] font-semibold text-red-400/60">{isBrowse ? 'SKIP' : 'SELL'}</span>
-        <span className="text-[9px] font-semibold text-amber-brand/60">{isBrowse ? 'MAYBE' : 'HOLD'}</span>
-        <span className="text-[9px] font-semibold text-green-400/60">BUY</span>
+        <span className="text-[9px] font-semibold text-slate-400">{isBrowse ? 'SKIP' : 'SELL'}</span>
+        <span className="text-[9px] font-semibold text-slate-300">{isBrowse ? 'MAYBE' : 'HOLD'}</span>
+        <span className="text-[9px] font-semibold text-amber-brand/90">BUY</span>
       </div>
 
       {/* Headline */}

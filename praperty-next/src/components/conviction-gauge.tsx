@@ -44,18 +44,12 @@ export default function ConvictionGauge({ result }: Props) {
         </div>
       </div>
 
-      {/* Gauge bar */}
+      {/* Gauge bar: neutral (pass) → consider → opportunity (amber). No red/green = good/bad. */}
       <div className="mb-3">
-        {/* Track + Needle wrapper */}
         <div className="relative h-3">
-          {/* Track */}
-          <div className="absolute inset-0 rounded-full overflow-hidden flex">
-            <div className="flex-1 bg-gradient-to-r from-red-500/60 via-red-400/40 to-red-400/20" />
-            <div className="flex-1 bg-gradient-to-r from-amber-500/20 via-amber-400/40 to-amber-500/20" />
-            <div className="flex-1 bg-gradient-to-r from-green-400/20 via-green-400/40 to-green-500/60" />
-          </div>
-
-          {/* Needle */}
+          <div className="absolute inset-0 rounded-full overflow-hidden" style={{
+            background: 'linear-gradient(90deg, #475569, #64748b, #94a3b8, #d4a574, #EB9C35)',
+          }} />
           <div
             className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-700 ease-out"
             style={{ left: `${needlePercent}%` }}
@@ -70,12 +64,10 @@ export default function ConvictionGauge({ result }: Props) {
             />
           </div>
         </div>
-
-        {/* Labels */}
         <div className="flex justify-between mt-2">
-          <span className="text-[10px] font-semibold text-red-400/70">SELL</span>
-          <span className="text-[10px] font-semibold text-amber-brand/70">HOLD</span>
-          <span className="text-[10px] font-semibold text-green-400/70">BUY</span>
+          <span className="text-[10px] font-semibold text-slate-400">SELL</span>
+          <span className="text-[10px] font-semibold text-slate-300">HOLD</span>
+          <span className="text-[10px] font-semibold text-amber-brand/90">BUY</span>
         </div>
       </div>
 
