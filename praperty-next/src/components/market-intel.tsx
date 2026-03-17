@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { BarChart3, TrendingUp, TrendingDown, Minus, Layers, Tag, Activity } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
+import InfoTooltip from '@/components/info-tooltip'
 import { fmtFull } from '@/lib/utils'
 import type { Item, MarketIntelData } from '@/types'
 
@@ -58,6 +59,7 @@ export default function MarketIntel({ item }: Props) {
       <div className="flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-[#EB9C35]" />
         <span className="text-sm font-semibold text-white/90">Market Intelligence</span>
+        <InfoTooltip size="sm" content="Enriched eBay data: listing depth, price range, condition pricing, and categories. Refreshed when you open this item." ariaLabel="What is Market Intelligence?" />
         <span className="text-[10px] text-white/30 ml-auto">via eBay Browse API</span>
       </div>
 
@@ -65,7 +67,10 @@ export default function MarketIntel({ item }: Props) {
       <div className="grid grid-cols-2 gap-2">
         {/* Market Depth */}
         <div className={`rounded-lg border p-3 ${depthBgs[market.depth.level]}`}>
-          <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Market Depth</div>
+          <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1 flex items-center gap-1">
+            Market Depth
+            <InfoTooltip size="sm" content="How many active listings exist: saturated (many), healthy, limited, or rare. Affects how easy it is to sell and at what price." ariaLabel="What is Market Depth?" />
+          </div>
           <div className={`text-sm font-bold ${depthColors[market.depth.level]}`}>
             {market.depth.label}
           </div>
@@ -76,7 +81,10 @@ export default function MarketIntel({ item }: Props) {
 
         {/* Price Range */}
         <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
-          <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Price Range</div>
+          <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1 flex items-center gap-1">
+            Price Range
+            <InfoTooltip size="sm" content="Low to high of current eBay asking prices. The bar shows where the average and your price sit within that range." ariaLabel="What is Price Range?" />
+          </div>
           {priceRange.floor !== null && priceRange.ceiling !== null ? (
             <>
               <div className="text-sm font-bold text-white/90">
@@ -98,8 +106,9 @@ export default function MarketIntel({ item }: Props) {
       {/* Row 2: Condition Pricing */}
       {conditionPricing.breakdown.length > 0 && (
         <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
-          <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">
+          <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2 flex items-center gap-1">
             Pricing by Condition
+            <InfoTooltip size="sm" content="Average prices by item condition (e.g. New, Used). Your condition’s avg and % vs overall help you price accurately." ariaLabel="What is Pricing by Condition?" />
           </div>
 
           {/* Your condition highlight */}
@@ -145,16 +154,19 @@ export default function MarketIntel({ item }: Props) {
       <div className="grid grid-cols-3 gap-2">
         <StatCard
           label="Avg Price"
+          tip="Average of sampled eBay listing prices for this item."
           value={market.avgPrice !== null ? fmtFull(market.avgPrice) : '--'}
           sub={`${market.sampleSize} sampled`}
         />
         <StatCard
           label="Median"
+          tip="Middle price: half of listings are above, half below. Less affected by outliers than the average."
           value={market.medianPrice !== null ? fmtFull(market.medianPrice) : '--'}
           sub="middle price"
         />
         <StatCard
           label="Your Price"
+          tip="Your asking or estimated value. Position (e.g. above/below average) is shown underneath."
           value={item.asking || item.value ? fmtFull(item.asking || item.value) : '--'}
           sub={getPricePosition(item.asking || item.value, market.avgPrice)}
           subColor={getPricePositionColor(item.asking || item.value, market.avgPrice)}
@@ -198,10 +210,13 @@ export default function MarketIntel({ item }: Props) {
 
 // --- Subcomponents ---
 
-function StatCard({ label, value, sub, subColor }: { label: string; value: string; sub: string; subColor?: string }) {
+function StatCard({ label, value, sub, subColor, tip }: { label: string; value: string; sub: string; subColor?: string; tip?: string }) {
   return (
     <div className="rounded-lg border border-white/5 bg-white/[0.03] p-2 text-center">
-      <div className="text-[10px] text-white/40 uppercase tracking-wider">{label}</div>
+      <div className="text-[10px] text-white/40 uppercase tracking-wider flex items-center justify-center gap-1">
+        {label}
+        {tip && <InfoTooltip size="sm" content={tip} ariaLabel={`Info: ${label}`} />}
+      </div>
       <div className="text-sm font-bold text-white/90 mt-0.5">{value}</div>
       <div className={`text-[10px] ${subColor || 'text-white/30'} mt-0.5`}>{sub}</div>
     </div>

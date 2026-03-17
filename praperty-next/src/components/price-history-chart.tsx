@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useCallback } from 'react'
+import InfoTooltip from '@/components/info-tooltip'
 
 interface PricePoint {
   avg_price: number
@@ -145,6 +146,7 @@ export default function PriceHistoryChart({ history, productName, accentColor = 
         <div className="flex items-center gap-2 mb-3">
           <span className="text-lg">📈</span>
           <h3 className="text-base font-bold text-white">Price History</h3>
+          <InfoTooltip size="sm" content="Tracked average prices over time from daily snapshots and comps. Data builds as you and the community track this product." ariaLabel="What is Price History?" />
         </div>
         <div className="text-center py-6">
           <p className="text-dim text-xs">No price history available yet.</p>
@@ -162,6 +164,7 @@ export default function PriceHistoryChart({ history, productName, accentColor = 
         <div className="flex items-center gap-2">
           <span className="text-lg">📈</span>
           <h3 className="text-base font-bold text-white">Price History</h3>
+          <InfoTooltip size="sm" content="Tracked average prices over time from daily snapshots and comps. Use 7D/30D/90D/1Y to see different ranges." ariaLabel="What is Price History?" />
         </div>
         {overallChange && (
           <span className={`text-[12px] font-bold ${overallChange.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>

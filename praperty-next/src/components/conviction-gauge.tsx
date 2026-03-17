@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import type { ConvictionResult } from '@/lib/conviction'
 import { getConvictionColor, getScoreColor } from '@/lib/conviction'
+import InfoTooltip from '@/components/info-tooltip'
 
 interface Props {
   result: ConvictionResult
@@ -29,15 +30,17 @@ export default function ConvictionGauge({ result }: Props) {
           <span className="text-lg font-black tracking-tight" style={{ color }}>
             {level}
           </span>
-          <span className="text-dim text-xs font-medium">
+          <span className="text-dim text-xs font-medium flex items-center gap-1">
             Score: {score}/100
+            <InfoTooltip size="sm" content="Combined signal score. SELL/HOLD/BUY indicate where this item sits; use with price and trend data to decide." ariaLabel="What is the score?" />
           </span>
         </div>
-        <div className="text-dim text-[10px] font-medium">
+        <div className="text-dim text-[10px] font-medium flex items-center gap-1">
           {dataPoints > 0
             ? `Based on ${dataPoints} data point${dataPoints !== 1 ? 's' : ''}`
             : 'No data yet'
           }
+          {dataPoints > 0 && <InfoTooltip size="sm" content="Number of underlying data points (listings, comps, snapshots) used to compute this signal." ariaLabel="What are data points?" />}
           {confidence < 0.5 && dataPoints > 0 && (
             <span className="text-amber-brand/70 ml-1">(low confidence)</span>
           )}

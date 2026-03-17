@@ -8,6 +8,7 @@ import { getMarketplacesForCategory, getSocialLinks, getTrendLinks } from '@/lib
 import { calculateConviction } from '@/lib/conviction'
 import SignalBreakdown from '@/components/signal-breakdown'
 import MarketIntel from '@/components/market-intel'
+import InfoTooltip from '@/components/info-tooltip'
 import TrendIndicator from '@/components/trend-indicator'
 import PriceHistoryChart from '@/components/price-history-chart'
 import type { Screen, ResearchData, Item, MarketSignalData } from '@/types'
@@ -323,37 +324,47 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
             <div className="flex items-center gap-2 mb-3.5">
               <span className="text-lg">💰</span>
               <h3 className="text-base font-bold text-white">Price Intelligence</h3>
+              <InfoTooltip size="sm" content="Market value and price context from community data or active eBay listings. Use these to judge whether a listing is above or below typical asking prices." ariaLabel="What is Price Intelligence?" />
             </div>
             <div className="grid grid-cols-2 gap-2 mb-3">
               {[
-                { l: 'Market Value', v: priceIntel.avgValue, c: '#EB9C35' },
-                { l: 'Avg Cost', v: priceIntel.avgCost, c: '#3b82f6' },
-                { l: 'Price Range', v: priceIntel.lowValue > 0 ? `${fmt(priceIntel.lowValue)} - ${fmt(priceIntel.highValue)}` : null, c: '#a855f7', raw: true },
-                // Only show "Avg Sold" if we have real sold data (community), not eBay fallback
+                { l: 'Market Value', tip: 'Typical asking price for this item based on active listings or community data.', v: priceIntel.avgValue, c: '#EB9C35' },
+                { l: 'Avg Cost', tip: 'Average cost people paid (from community data). Shown when available.', v: priceIntel.avgCost, c: '#3b82f6' },
+                { l: 'Price Range', tip: 'Low to high range of current asking prices so you can see the spread.', v: priceIntel.lowValue > 0 ? `${fmt(priceIntel.lowValue)} - ${fmt(priceIntel.highValue)}` : null, c: '#a855f7', raw: true },
                 ...(!priceIntel.isEbayFallback && priceIntel.avgSold > 0
-                  ? [{ l: 'Avg Sold Price', v: priceIntel.avgSold, c: '#22c55e' }]
-                  : [{ l: 'eBay Avg Ask', v: priceIntel.isEbayFallback ? priceIntel.avgValue : 0, c: '#22c55e' }]),
+                  ? [{ l: 'Avg Sold Price', tip: 'Average price this item actually sold for (community verified sales).', v: priceIntel.avgSold, c: '#22c55e' }]
+                  : [{ l: 'eBay Avg Ask', tip: 'Average of current eBay listing prices (asking, not necessarily sold).', v: priceIntel.isEbayFallback ? priceIntel.avgValue : 0, c: '#22c55e' }]),
               ].map((stat, i) => (
-                <div key={i} className="bg-white/[0.04] rounded-xl p-3 text-center">
-                  <p className="text-dim text-[10px] uppercase tracking-wider">{stat.l}</p>
+                <div key={i} className="bg-white/[0.04] rounded-xl p-3 text-center relative">
+                  <p className="text-dim text-[10px] uppercase tracking-wider flex items-center justify-center gap-1">
+                    {stat.l}
+                    {'tip' in stat && <InfoTooltip size="sm" content={(stat as { tip: string }).tip} ariaLabel={`Info: ${stat.l}`} />}
+                  </p>
                   <p className="text-base font-bold mt-1" style={{ color: stat.c }}>
                     {stat.raw ? (stat.v || '--') : (typeof stat.v === 'number' && stat.v > 0 ? fmt(stat.v) : '--')}
                   </p>
                 </div>
               ))}
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">
+            <div className="flex gap-2 flex-wrap items-center">
+              <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">
                 {priceIntel.isEbayFallback
                   ? `${marketIntel?.market?.totalListings?.toLocaleString() || priceIntel.listings || 0} active on eBay`
                   : `${priceIntel.listings || 0} community listings`
                 }
+                <InfoTooltip size="sm" content="Number of current listings we used to compute market value. More listings usually means more reliable averages." ariaLabel="What are active listings?" />
               </span>
               {priceIntel.totalComps > 0 && (
-                <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{priceIntel.totalComps} comps</span>
+                <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">
+                  {priceIntel.totalComps} comps
+                  <InfoTooltip size="sm" content="Comparable sales or listings you or the community have added for this item." ariaLabel="What are comps?" />
+                </span>
               )}
               {priceIntel.soldCount > 0 && (
-                <span className="text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">{priceIntel.soldCount} sold</span>
+                <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 bg-white/[0.06] px-2.5 py-1 rounded-lg">
+                  {priceIntel.soldCount} sold
+                  <InfoTooltip size="sm" content="Number of verified sold items in the community data for this product." ariaLabel="What does sold mean?" />
+                </span>
               )}
             </div>
           </div>
@@ -364,6 +375,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
               <div className="flex items-center gap-2">
                 <span className="text-lg">🔍</span>
                 <h3 className="text-base font-bold text-white">Live eBay Prices</h3>
+                <InfoTooltip size="sm" content="Current eBay listings for this search. Tap Search eBay to load; we filter out accessories and unrelated items when possible." ariaLabel="What are Live eBay Prices?" />
               </div>
               <button
                 onClick={() => fetchEbayComps(syntheticItem)}
@@ -513,6 +525,7 @@ export default function ResearchScreen({ onNavigate, query = 'Item', imageUrl, i
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-lg">📈</span>
                 <h3 className="text-base font-bold text-white">Price History</h3>
+                <InfoTooltip size="sm" content="Tracked average prices over time. Data builds as products are tracked daily." ariaLabel="What is Price History?" />
               </div>
               <div className="flex items-center justify-center py-6 gap-2">
                 <div className="w-4 h-4 border-2 border-amber-brand/20 border-t-amber-brand rounded-full animate-spin" />

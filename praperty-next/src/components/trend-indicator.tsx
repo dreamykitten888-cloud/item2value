@@ -2,6 +2,7 @@
 
 import { TrendingUp, TrendingDown, Minus, Search, Activity } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
+import InfoTooltip from '@/components/info-tooltip'
 import type { MarketSignalData } from '@/types'
 
 interface Props {
@@ -77,6 +78,7 @@ export default function TrendIndicator({ signal, loading }: Props) {
       <div className="flex items-center gap-2">
         <Search className="w-4 h-4 text-[#EB9C35]" />
         <span className="text-sm font-semibold text-white/90">Search Trends</span>
+        <InfoTooltip size="sm" content="Google Trends search interest for this item: rising, stable, or declining. The score (0–100) reflects how much people are searching; demand is steady when in the middle range." ariaLabel="What are Search Trends?" />
         <span className="text-[10px] text-white/30 ml-auto">via Google Trends</span>
       </div>
 
@@ -89,9 +91,10 @@ export default function TrendIndicator({ signal, loading }: Props) {
             <span className="text-[10px] text-white/40 ml-1">{cfg.desc}</span>
           </div>
           {/* Score number */}
-          <div className="text-right">
+          <div className="text-right flex items-center gap-1">
             <span className="text-lg font-bold text-white/90">{score}</span>
-            <span className="text-[10px] text-white/40 ml-0.5">/100</span>
+            <span className="text-[10px] text-white/40">/100</span>
+            <InfoTooltip size="sm" content="Relative search interest: higher = more people searching; lower = less interest. Use with price data to gauge demand." ariaLabel="What does the trend score mean?" />
           </div>
         </div>
 

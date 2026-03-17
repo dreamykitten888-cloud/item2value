@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Info, Clock } from 'lucide-react'
+import InfoTooltip from '@/components/info-tooltip'
 import type { ConvictionResult, ConvictionSignal } from '@/lib/conviction'
 import { getConvictionColor, getScoreColor } from '@/lib/conviction'
 
@@ -180,7 +181,14 @@ export default function SignalBreakdown({ result, fetchedAt, compact = false }: 
       {/* Header: Score + Label */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <p className="text-dim text-[11px] uppercase tracking-widest">{isBrowse ? 'Buy Signal' : 'Market Signal'}</p>
+          <p className="text-dim text-[11px] uppercase tracking-widest flex items-center gap-1">
+            {isBrowse ? 'Buy Signal' : 'Market Signal'}
+            <InfoTooltip
+              size="sm"
+              content="Combined score from market depth, price vs average, search trends, and other signals. SKIP/MAYBE/BUY suggest pass, consider, or opportunity—not a guarantee."
+              ariaLabel="What is Buy Signal?"
+            />
+          </p>
           <div className="flex items-center gap-2.5 mt-1">
             <span className="text-3xl font-extrabold font-heading" style={{ color }}>
               {isBrowse ? (level === 'SELL' ? 'SKIP' : level === 'HOLD' ? 'MAYBE' : 'BUY') : level}
@@ -217,22 +225,31 @@ export default function SignalBreakdown({ result, fetchedAt, compact = false }: 
       <p className="text-sm text-white/80 mb-3 leading-snug">{headline}</p>
 
       {/* Meta row: confidence + data points + freshness */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        <span
-          className="text-[10px] font-semibold px-2 py-0.5 rounded-lg"
-          style={{
-            color: confLabel.color,
-            background: `${confLabel.color}12`,
-            border: `1px solid ${confLabel.color}25`,
-          }}
-        >
-          {confLabel.label} confidence
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <span className="inline-flex items-center gap-1">
+          <span
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-lg"
+            style={{
+              color: confLabel.color,
+              background: `${confLabel.color}12`,
+              border: `1px solid ${confLabel.color}25`,
+            }}
+          >
+            {confLabel.label} confidence
+          </span>
+          <InfoTooltip size="sm" content="How reliable this score is based on how much data we have (listings, comps, trends). High = more data; low = use with caution." ariaLabel="What is confidence?" />
         </span>
-        <span className="text-[10px] text-dim bg-white/[0.06] px-2 py-0.5 rounded-lg">
-          {availableCount}/{signals.length} signals active
+        <span className="inline-flex items-center gap-1">
+          <span className="text-[10px] text-dim bg-white/[0.06] px-2 py-0.5 rounded-lg">
+            {availableCount}/{signals.length} signals active
+          </span>
+          <InfoTooltip size="sm" content="Each signal (e.g. market depth, price vs avg, search trends) is scored separately. More active signals usually mean a more complete picture." ariaLabel="What are signals?" />
         </span>
-        <span className="text-[10px] text-dim bg-white/[0.06] px-2 py-0.5 rounded-lg">
-          {dataPoints} data point{dataPoints !== 1 ? 's' : ''}
+        <span className="inline-flex items-center gap-1">
+          <span className="text-[10px] text-dim bg-white/[0.06] px-2 py-0.5 rounded-lg">
+            {dataPoints} data point{dataPoints !== 1 ? 's' : ''}
+          </span>
+          <InfoTooltip size="sm" content="Number of underlying data points (e.g. active listings, comps, price snapshots) used to compute this signal." ariaLabel="What are data points?" />
         </span>
         {fetchedAt && (
           <span className="text-[10px] text-dim bg-white/[0.06] px-2 py-0.5 rounded-lg flex items-center gap-1">
