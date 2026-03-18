@@ -4,6 +4,7 @@ import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import { Search, ChevronDown, Plus, X, Edit3, Loader2, TrendingUp, TrendingDown } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
 import { BRAND_DB } from '@/lib/product-db'
+import { BRAND_FACETS, type BrandFacetOption } from '@/lib/brand-facets'
 import { fmt, makeProductKey } from '@/lib/utils'
 import type { Screen } from '@/types'
 
@@ -47,21 +48,6 @@ const ALL_CATEGORIES = [
 ]
 
 const DEFAULT_BROWSE_TERMS = ['Chanel', 'Gucci', 'Rolex', 'Nike']
-
-// Sub-category filter for Discover [brand]: label shown in UI, searchTerm appended to query (e.g. "Chanel" + " perfume")
-const SUB_CATEGORY_OPTIONS: { label: string; searchTerm: string }[] = [
-  { label: 'Bags', searchTerm: 'bags' },
-  { label: 'Perfume', searchTerm: 'perfume' },
-  { label: 'Shoes', searchTerm: 'shoes' },
-  { label: 'Clothing', searchTerm: 'clothing' },
-  { label: 'Watches', searchTerm: 'watches' },
-  { label: 'Trading Cards', searchTerm: 'trading cards' },
-  { label: 'Plushies', searchTerm: 'plush' },
-  { label: 'Collectibles', searchTerm: 'collectibles' },
-  { label: 'Electronics', searchTerm: 'electronics' },
-  { label: 'Jewelry', searchTerm: 'jewelry' },
-  { label: 'Accessories', searchTerm: 'accessories' },
-]
 
 // Persistence keys
 const CATS_KEY = 'praperty_discover_categories'
@@ -163,6 +149,19 @@ export default function DiscoverScreen({
   const productSearchRef = useRef<HTMLInputElement>(null)
   const productSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [mounted, setMounted] = useState(false)
+
+  const getFacetsForTopic = useCallback(
+    (topic: string | null): BrandFacetOption[] => {
+      if (!topic) return []
+      const direct = BRAND_FACETS[topic]
+      if (direct) return direct
+
+      // Case-insensitive fallback for user-added brands.
+      const matchKey = Object.keys(BRAND_FACETS).find(k => k.toLowerCase() === topic.toLowerCase())
+      return matchKey ? BRAND_FACETS[matchKey] : []
+    },
+    []
+  )
 
   // Discover [topic] view: Buy / Sell opportunities (no "your list" — discovery only). Sync from parent when returning from research.
   const [discoverTopic, setDiscoverTopicState] = useState<string | null>(initialDiscoverTopic ?? null)
@@ -500,6 +499,7 @@ export default function DiscoverScreen({
 
   // ─── Discover [topic] view: Buy / Sell opportunities ─────────────────
   if (discoverTopic) {
+    const topicFacets = getFacetsForTopic(discoverTopic)
     const meta = getTermMeta(discoverTopic)
     return (
       <div className="h-full flex flex-col pb-24">
@@ -521,7 +521,7 @@ export default function DiscoverScreen({
             Discover {discoverTopic}
           </h1>
           <p className="text-dim text-sm mt-0.5">Deals you can buy low or sell high</p>
-          {/* Sub-category filter: e.g. Chanel bags vs perfumes, Nike shoes, Pokemon cards vs plushies */}
+          {/* Curated facets per brand/topic */}
           <div className="flex gap-2 overflow-x-auto scroll-hide py-3 -mx-1">
             <button
               onClick={() => setTopicSubCategory(null)}
@@ -533,7 +533,7 @@ export default function DiscoverScreen({
             >
               All
             </button>
-            {SUB_CATEGORY_OPTIONS.map(({ label, searchTerm }) => (
+            {topicFacets.map(({ label, searchTerm }) => (
               <button
                 key={searchTerm}
                 onClick={() => setTopicSubCategory(searchTerm)}
