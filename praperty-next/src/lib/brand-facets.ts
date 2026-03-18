@@ -199,5 +199,54 @@ export const BRAND_FACETS: Record<string, BrandFacetOption[]> = {
     { label: 'Beds', searchTerm: 'bed' },
     { label: 'Lighting', searchTerm: 'lamp' },
   ],
+
+  // Anime figurines / characters
+  'Good Smile Company': [
+    { label: 'Nendoroid', searchTerm: 'nendoroid' },
+    { label: 'Pop Up Parade', searchTerm: 'pop up parade' },
+    { label: 'Scale Figures', searchTerm: 'scale figure' },
+    { label: 'Action Figures', searchTerm: 'action figure' },
+  ],
+  'Good Smile Company (GSC)': [
+    { label: 'Nendoroid', searchTerm: 'nendoroid' },
+    { label: 'Pop Up Parade', searchTerm: 'pop up parade' },
+    { label: 'Scale Figures', searchTerm: 'scale figure' },
+    { label: 'Action Figures', searchTerm: 'action figure' },
+  ],
+  GSC: [
+    { label: 'Nendoroid', searchTerm: 'nendoroid' },
+    { label: 'Pop Up Parade', searchTerm: 'pop up parade' },
+    { label: 'Scale Figures', searchTerm: 'scale figure' },
+    { label: 'Action Figures', searchTerm: 'action figure' },
+  ],
+
+  Alter: [
+    { label: 'Scale Figures', searchTerm: 'scale figure' },
+    { label: 'Statues', searchTerm: 'statue' },
+    { label: 'Resin Statues', searchTerm: 'resin statue' },
+  ],
+
+  'Max Factory': [
+    { label: 'figma', searchTerm: 'figma' },
+    { label: 'Model Kits', searchTerm: 'model kit' },
+    { label: 'Scale Figures', searchTerm: 'scale figure' },
+  ],
+
+  'Aniplex+': [
+    { label: 'Anime Figures', searchTerm: 'anime figure' },
+    { label: 'Scale Figures', searchTerm: 'scale figure' },
+    { label: 'Fate', searchTerm: 'Fate' },
+  ],
+
+  MegaHous: [
+    { label: 'G.E.M.', searchTerm: 'G.E.M.' },
+    { label: 'Scale Figures', searchTerm: 'scale figure' },
+    { label: 'Statues', searchTerm: 'statue' },
+  ],
+  'MegaHouse': [
+    { label: 'G.E.M.', searchTerm: 'G.E.M.' },
+    { label: 'Scale Figures', searchTerm: 'scale figure' },
+    { label: 'Statues', searchTerm: 'statue' },
+  ],
 }
 
