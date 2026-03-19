@@ -92,6 +92,81 @@ export const BRAND_FACETS: Record<string, BrandFacetOption[]> = {
     { label: 'Earrings', searchTerm: 'earrings' },
   ],
 
+  // Jewelry (rings/necklaces/bracelets/earrings + a few signatures)
+  Cartier: [
+    { label: 'Rings', searchTerm: 'ring' },
+    { label: 'Necklaces', searchTerm: 'necklace' },
+    { label: 'Bracelets', searchTerm: 'bracelet' },
+    { label: 'Earrings', searchTerm: 'earrings' },
+    { label: 'Pendants', searchTerm: 'pendant' },
+    { label: 'Tank Watches', searchTerm: 'Tank watch' },
+  ],
+
+  'Van Cleef': [
+    { label: 'Alhambra', searchTerm: 'Alhambra' },
+    { label: 'Rings', searchTerm: 'ring' },
+    { label: 'Necklaces', searchTerm: 'necklace' },
+    { label: 'Bracelets', searchTerm: 'bracelet' },
+    { label: 'Earrings', searchTerm: 'earrings' },
+  ],
+  'Van Cleef & Arpels': [
+    { label: 'Alhambra', searchTerm: 'Alhambra' },
+    { label: 'Rings', searchTerm: 'ring' },
+    { label: 'Necklaces', searchTerm: 'necklace' },
+    { label: 'Bracelets', searchTerm: 'bracelet' },
+    { label: 'Earrings', searchTerm: 'earrings' },
+  ],
+  'Van Cleef and Arpels': [
+    { label: 'Alhambra', searchTerm: 'Alhambra' },
+    { label: 'Rings', searchTerm: 'ring' },
+    { label: 'Necklaces', searchTerm: 'necklace' },
+    { label: 'Bracelets', searchTerm: 'bracelet' },
+    { label: 'Earrings', searchTerm: 'earrings' },
+  ],
+
+  Tiffany: [
+    { label: 'Rings', searchTerm: 'ring' },
+    { label: 'Engagement Rings', searchTerm: 'engagement ring' },
+    { label: 'Necklaces', searchTerm: 'necklace' },
+    { label: 'Bracelets', searchTerm: 'bracelet' },
+    { label: 'Earrings', searchTerm: 'earrings' },
+    { label: 'Sterling Silver', searchTerm: 'sterling silver' },
+  ],
+  'Tiffany & Co.': [
+    { label: 'Rings', searchTerm: 'ring' },
+    { label: 'Engagement Rings', searchTerm: 'engagement ring' },
+    { label: 'Necklaces', searchTerm: 'necklace' },
+    { label: 'Bracelets', searchTerm: 'bracelet' },
+    { label: 'Earrings', searchTerm: 'earrings' },
+    { label: 'Sterling Silver', searchTerm: 'sterling silver' },
+  ],
+
+  Bvlgari: [
+    { label: 'Serpenti', searchTerm: 'Serpenti' },
+    { label: 'Rings', searchTerm: 'ring' },
+    { label: 'Necklaces', searchTerm: 'necklace' },
+    { label: 'Bracelets', searchTerm: 'bracelet' },
+    { label: 'Earrings', searchTerm: 'earrings' },
+    { label: 'B.Zero1', searchTerm: 'B.Zero1' },
+  ],
+  Bulgari: [
+    { label: 'Serpenti', searchTerm: 'Serpenti' },
+    { label: 'Rings', searchTerm: 'ring' },
+    { label: 'Necklaces', searchTerm: 'necklace' },
+    { label: 'Bracelets', searchTerm: 'bracelet' },
+    { label: 'Earrings', searchTerm: 'earrings' },
+    { label: 'B.Zero1', searchTerm: 'B.Zero1' },
+  ],
+
+  'Harry Winston': [
+    { label: 'Diamond Jewelry', searchTerm: 'diamond' },
+    { label: 'Rings', searchTerm: 'ring' },
+    { label: 'Necklaces', searchTerm: 'necklace' },
+    { label: 'Bracelets', searchTerm: 'bracelet' },
+    { label: 'Earrings', searchTerm: 'earrings' },
+    { label: 'Engagement Rings', searchTerm: 'engagement ring' },
+  ],
+
   // Luxury fashion: broaden facets so chips map to clothing/shoes/accessories
   Celine: [
     { label: 'Bags', searchTerm: 'bag' },
