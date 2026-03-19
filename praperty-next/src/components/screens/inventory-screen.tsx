@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { Search, Plus, SlidersHorizontal, LayoutList, LayoutGrid } from 'lucide-react'
 import { useItemsStore } from '@/stores/items-store'
 import { fmt, CATEGORIES } from '@/lib/utils'
+import { generateAlerts, ALERT_COLORS } from '@/lib/alerts-engine'
 import type { Screen } from '@/types'
 
 interface Props {
@@ -12,16 +13,50 @@ interface Props {
 }
 
 type SortOption = 'newest' | 'value-high' | 'value-low' | 'name'
+type ListFilter = 'all' | 'attention' | 'gainers' | 'losers'
+
+// Short label for status pill on inventory row
+const ALERT_PILL_LABEL: Record<string, string> = {
+  'Needs Comps': 'Needs comps',
+  'Set Market Value': 'Set value',
+  'Add Photo': 'Add photo',
+  'Below Cost': 'Below cost',
+  'Priced High': 'High',
+  'Underpriced': 'Low',
+  'Ready to Sell': 'Ready',
+  'Sell Signal': 'Sell',
+  'Buy Signal': 'Buy',
+  'Stale Item': 'Stale',
+  'Strong Performer': 'Strong',
+  'Price Surge': 'Surge',
+  'Price Drop': 'Drop',
+  'Market Hot': 'Hot',
+  'New Item Added': 'New',
+  'High Concentration': 'Concentration',
+}
 
 export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
-  const { items } = useItemsStore()
+  const { items, storedSignals } = useItemsStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [listFilter, setListFilter] = useState<ListFilter>('all')
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
 
   const activeItems = items.filter(i => !i.dateSold)
+
+  const alerts = useMemo(
+    () => generateAlerts(items, storedSignals),
+    [items, storedSignals]
+  )
+  const alertByItemId = useMemo(() => {
+    const map = new Map<string, (typeof alerts)[0]>()
+    for (const a of alerts) {
+      if (a.itemId && !map.has(a.itemId)) map.set(a.itemId, a)
+    }
+    return map
+  }, [alerts])
 
   const filteredItems = useMemo(() => {
     let result = [...activeItems]
@@ -42,6 +77,16 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
       result = result.filter(i => i.category === selectedCategory)
     }
 
+    // List filter (All / Needs attention / Gainers / Losers)
+    if (listFilter === 'attention') {
+      const attentionIds = new Set(alerts.filter(a => a.itemId).map(a => a.itemId))
+      result = result.filter(i => attentionIds.has(i.id))
+    } else if (listFilter === 'gainers') {
+      result = result.filter(i => i.cost > 0 && i.value >= i.cost)
+    } else if (listFilter === 'losers') {
+      result = result.filter(i => i.cost > 0 && i.value < i.cost)
+    }
+
     // Sort
     switch (sortBy) {
       case 'newest':
@@ -59,7 +104,7 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
     }
 
     return result
-  }, [activeItems, searchQuery, selectedCategory, sortBy])
+  }, [activeItems, searchQuery, selectedCategory, listFilter, sortBy, alerts])
 
   // Get categories that have items
   const usedCategories = useMemo(() => {
@@ -112,6 +157,32 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
           >
             <SlidersHorizontal size={18} />
           </button>
+        </div>
+
+        {/* Quick filter chips: All / Needs attention / Gainers / Losers */}
+        <div className="flex gap-2 flex-wrap mb-3">
+          {(['all', 'attention', 'gainers', 'losers'] as const).map((key) => {
+            const label = key === 'all' ? 'All' : key === 'attention' ? 'Needs attention' : key === 'gainers' ? 'Gainers' : 'Losers'
+            const count = key === 'all'
+              ? activeItems.length
+              : key === 'attention'
+                ? new Set(alerts.filter(a => a.itemId).map(a => a.itemId)).size
+                : key === 'gainers'
+                  ? activeItems.filter(i => i.cost > 0 && i.value >= i.cost).length
+                  : activeItems.filter(i => i.cost > 0 && i.value < i.cost).length
+            return (
+              <button
+                key={key}
+                onClick={() => setListFilter(key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  listFilter === key ? 'gradient-amber text-black' : 'glass text-dim hover:text-white'
+                }`}
+              >
+                {label}
+                {count > 0 && <span className="ml-1 opacity-80">({count})</span>}
+              </button>
+            )
+          })}
         </div>
 
         {/* Filters */}
@@ -201,6 +272,19 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
                   <p className="text-xs text-dim mt-0.5">
                     {item.brand && `${item.brand} · `}{item.category} · {item.condition}
                   </p>
+                  {alertByItemId.has(item.id) && (() => {
+                    const a = alertByItemId.get(item.id)!
+                    const pillLabel = ALERT_PILL_LABEL[a.type] || a.type
+                    const color = ALERT_COLORS[a.type] || '#94a3b8'
+                    return (
+                      <span
+                        className="inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-md"
+                        style={{ background: `${color}22`, color }}
+                      >
+                        {pillLabel}
+                      </span>
+                    )
+                  })()}
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm font-bold text-white">{fmt(item.value || item.cost)}</p>
@@ -238,6 +322,17 @@ export default function InventoryScreen({ onNavigate, onViewItem }: Props) {
                   <p className="text-xs text-dim mt-0.5 truncate">
                     {item.brand && `${item.brand} · `}{item.category}
                   </p>
+                  {alertByItemId.has(item.id) && (
+                    <span
+                      className="inline-block mt-1 text-[9px] font-semibold px-1.5 py-0.5 rounded"
+                      style={{
+                        background: `${ALERT_COLORS[alertByItemId.get(item.id)!.type] || '#94a3b8'}22`,
+                        color: ALERT_COLORS[alertByItemId.get(item.id)!.type] || '#94a3b8',
+                      }}
+                    >
+                      {ALERT_PILL_LABEL[alertByItemId.get(item.id)!.type] || alertByItemId.get(item.id)!.type}
+                    </span>
+                  )}
                   <div className="flex items-center justify-between mt-1.5">
                     <p className="text-sm font-bold text-white">{fmt(item.value || item.cost)}</p>
                     {item.cost > 0 && item.value > 0 && (

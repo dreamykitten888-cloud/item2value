@@ -253,6 +253,37 @@ export default function HomeScreen({ onNavigate, onViewItem, onResearch }: Props
         </div>
       </div>
 
+      {/* Next steps: quick actions so users know what to do */}
+      {(alertCount > 0 || activeItems.length > 0) && (
+        <div className="px-6 pb-3">
+          <p className="text-[11px] text-dim uppercase tracking-wider mb-2">Next steps</p>
+          <div className="flex gap-2 flex-wrap">
+            {alertCount > 0 && (
+              <button
+                onClick={() => onNavigate('alerts')}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-brand/15 text-amber-brand border border-amber-brand/30 hover:bg-amber-brand/25 transition-colors"
+              >
+                Alerts ({alertCount})
+              </button>
+            )}
+            {activeItems.length > 0 && (
+              <button
+                onClick={() => onNavigate('inventory')}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold glass text-white/90 hover:bg-white/10 transition-colors"
+              >
+                Inventory ({activeItems.length})
+              </button>
+            )}
+            <button
+              onClick={() => onNavigate('discover')}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold glass text-white/90 hover:bg-white/10 transition-colors"
+            >
+              Discover
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Conviction Banners - "AYOOO SELL" / "YO BUY" */}
       {convictionAlerts.length > 0 && (
         <div className="px-6 pb-3">

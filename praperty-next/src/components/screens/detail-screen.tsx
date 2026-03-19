@@ -25,7 +25,8 @@ export default function DetailScreen({ itemId, onBack, onNavigate, onResearch }:
 
   const item = items.find(i => i.id === itemId)
 
-  // UI state
+  // UI state (Research & market data collapsed by default for less TMI)
+  const [showResearchMarket, setShowResearchMarket] = useState(false)
   const [showComps, setShowComps] = useState(false)
   const [showEbay, setShowEbay] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
@@ -255,117 +256,123 @@ export default function DetailScreen({ itemId, onBack, onNavigate, onResearch }:
         </div>
       </div>
 
-      {/* ─── Market Intel (condensed) ─── */}
+      {/* ─── Research & market data (collapsible, collapsed by default) ─── */}
       <div className="px-6 pb-4">
-        <div className="glass rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-white">Market Intel</h3>
-            <button
-              onClick={() => fetchEbayComps(item)}
-              disabled={ebayLoading}
-              className="text-[11px] font-semibold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg"
-            >
-              {ebayLoading ? 'Searching...' : ebayComps.length > 0 ? '↻ Refresh' : 'Search eBay'}
-            </button>
-          </div>
+        <button
+          onClick={() => setShowResearchMarket(!showResearchMarket)}
+          className="w-full flex items-center justify-between glass rounded-2xl p-4"
+        >
+          <h3 className="text-sm font-bold text-white">Research & market data</h3>
+          {showResearchMarket ? <ChevronUp size={16} className="text-dim" /> : <ChevronDown size={16} className="text-dim" />}
+        </button>
 
-          {ebayLoading && (
-            <div className="py-4 text-center">
-              <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin mx-auto" />
-              <p className="text-dim text-[10px] mt-2">Searching eBay...</p>
-            </div>
-          )}
-
-          {ebayError && !ebayLoading && (
-            <p className="text-red-400 text-xs text-center py-2">{ebayError}</p>
-          )}
-
-          {!ebayLoading && !ebayError && ebayComps.length === 0 && !avgComp && (
-            <p className="text-dim text-xs py-1">Tap &quot;Search eBay&quot; for live market prices.</p>
-          )}
-
-          {/* eBay summary line */}
-          {!ebayLoading && ebayComps.length > 0 && (() => {
-            const prices = ebayComps.map(c => c.price?.value).filter((p): p is number => !!p && p > 0)
-            if (prices.length === 0) return null
-            const avg = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length)
-            const low = Math.round(Math.min(...prices))
-            const high = Math.round(Math.max(...prices))
-            const diff = item.value > 0 ? ((avg - item.value) / item.value) * 100 : 0
-            return (
-              <div className="space-y-1.5 py-1">
-                <div className="flex justify-between items-center">
-                  <span className="text-dim text-xs">eBay avg ({prices.length} listings)</span>
-                  <span className="text-base font-bold text-blue-400">{fmtFull(avg)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-dim text-xs">Range</span>
-                  <span className="text-xs text-white/70">{fmtFull(low)} - {fmtFull(high)}</span>
-                </div>
-                {item.value > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-dim text-xs">vs. your value</span>
-                    <span className={`text-xs font-bold ${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {diff >= 0 ? '+' : ''}{diff.toFixed(0)}% {diff >= 0 ? 'above' : 'below'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )
-          })()}
-
-          {/* Comp summary */}
-          {avgComp && (
-            <div className="flex justify-between items-center pt-1.5 mt-1.5 border-t border-white/5">
-              <span className="text-dim text-xs">My comps avg ({compPrices.length})</span>
-              <span className="text-sm font-bold text-amber-brand">{fmtFull(avgComp)}</span>
-            </div>
-          )}
-
-          {/* Quick marketplace links */}
-          {marketplaces.length > 0 && (
-            <div className="flex gap-1.5 flex-wrap mt-3 pt-3 border-t border-white/5">
-              {marketplaces.slice(0, 5).map(m => (
-                <a
-                  key={m.name}
-                  href={m.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] font-semibold px-2 py-1 rounded-lg no-underline"
-                  style={{ background: m.bg, color: m.color, border: `1px solid ${m.color}22` }}
+        {showResearchMarket && (
+          <div className="mt-2 space-y-4 animate-fade-up">
+            <div className="glass rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-bold text-white">Market Intel</h4>
+                <button
+                  onClick={() => fetchEbayComps(item)}
+                  disabled={ebayLoading}
+                  className="text-[11px] font-semibold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg"
                 >
-                  {m.name} ↗
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
+                  {ebayLoading ? 'Searching...' : ebayComps.length > 0 ? '↻ Refresh' : 'Search eBay'}
+                </button>
+              </div>
 
-        {/* ─── Market Intelligence (enriched eBay analytics) ─── */}
-        <MarketIntel item={item} />
-
-        {/* ─── Search Trends (Google Trends) ─── */}
-        <div className="mt-4">
-          <TrendIndicator />
-        </div>
-
-        {/* ─── Price Tools (external links) ─── */}
-        <div className="mt-4 space-y-2">
-          <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider">Price Tools</h4>
-          <div className="flex flex-col gap-1.5">
-            {getTrendLinks(buildSearchTerms(item.name, item.brand, item.model)).slice(0, 3).map(t => (
-              <a key={t.name} href={t.url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-between bg-white/[0.04] border border-white/[0.08] rounded-xl px-3.5 py-2.5 no-underline hover:border-white/20 transition-colors">
-                <div>
-                  <span className="text-sm font-semibold text-white">{t.name}</span>
-                  <br />
-                  <span className="text-[10px] text-white/40">{t.desc}</span>
+              {ebayLoading && (
+                <div className="py-4 text-center">
+                  <div className="w-5 h-5 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin mx-auto" />
+                  <p className="text-dim text-[10px] mt-2">Searching eBay...</p>
                 </div>
-                <ExternalLink size={14} className="text-white/30" />
-              </a>
-            ))}
+              )}
+
+              {ebayError && !ebayLoading && (
+                <p className="text-red-400 text-xs text-center py-2">{ebayError}</p>
+              )}
+
+              {!ebayLoading && !ebayError && ebayComps.length === 0 && !avgComp && (
+                <p className="text-dim text-xs py-1">Tap &quot;Search eBay&quot; for live market prices.</p>
+              )}
+
+              {!ebayLoading && ebayComps.length > 0 && (() => {
+                const prices = ebayComps.map(c => c.price?.value).filter((p): p is number => !!p && p > 0)
+                if (prices.length === 0) return null
+                const avg = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length)
+                const low = Math.round(Math.min(...prices))
+                const high = Math.round(Math.max(...prices))
+                const diff = item.value > 0 ? ((avg - item.value) / item.value) * 100 : 0
+                return (
+                  <div className="space-y-1.5 py-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-dim text-xs">eBay avg ({prices.length} listings)</span>
+                      <span className="text-base font-bold text-blue-400">{fmtFull(avg)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-dim text-xs">Range</span>
+                      <span className="text-xs text-white/70">{fmtFull(low)} - {fmtFull(high)}</span>
+                    </div>
+                    {item.value > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-dim text-xs">vs. your value</span>
+                        <span className={`text-xs font-bold ${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {diff >= 0 ? '+' : ''}{diff.toFixed(0)}% {diff >= 0 ? 'above' : 'below'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {avgComp && (
+                <div className="flex justify-between items-center pt-1.5 mt-1.5 border-t border-white/5">
+                  <span className="text-dim text-xs">My comps avg ({compPrices.length})</span>
+                  <span className="text-sm font-bold text-amber-brand">{fmtFull(avgComp)}</span>
+                </div>
+              )}
+
+              {marketplaces.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap mt-3 pt-3 border-t border-white/5">
+                  {marketplaces.slice(0, 5).map(m => (
+                    <a
+                      key={m.name}
+                      href={m.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-semibold px-2 py-1 rounded-lg no-underline"
+                      style={{ background: m.bg, color: m.color, border: `1px solid ${m.color}22` }}
+                    >
+                      {m.name} ↗
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <MarketIntel item={item} />
+
+            <div>
+              <TrendIndicator />
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider">Price Tools</h4>
+              <div className="flex flex-col gap-1.5">
+                {getTrendLinks(buildSearchTerms(item.name, item.brand, item.model)).slice(0, 3).map(t => (
+                  <a key={t.name} href={t.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-between bg-white/[0.04] border border-white/[0.08] rounded-xl px-3.5 py-2.5 no-underline hover:border-white/20 transition-colors">
+                    <div>
+                      <span className="text-sm font-semibold text-white">{t.name}</span>
+                      <br />
+                      <span className="text-[10px] text-white/40">{t.desc}</span>
+                    </div>
+                    <ExternalLink size={14} className="text-white/30" />
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ─── Comps (collapsible) ─── */}
