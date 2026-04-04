@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Home, Package, Search, Settings, Camera, Plus, Keyboard, Sparkles, X } from 'lucide-react'
+import { Home, Package, Search, Settings, Camera, Plus, Keyboard, Sparkles, ScanLine } from 'lucide-react'
 import type { Screen } from '@/types'
 import SetupScreen from '@/components/screens/setup-screen'
 import HomeScreen from '@/components/screens/home-screen'
@@ -11,6 +11,7 @@ import SettingsScreen from '@/components/screens/settings-screen'
 import AddItemScreen from '@/components/screens/add-item-screen'
 import EditItemScreen from '@/components/screens/edit-item-screen'
 import ScanScreen from '@/components/screens/scan-screen'
+import LiveScanScreen from '@/components/screens/live-scan-screen'
 import DiscoverScreen from '@/components/screens/discover-screen'
 import ResearchScreen from '@/components/screens/research-screen'
 import PricingScreen from '@/components/screens/pricing-screen'
@@ -97,6 +98,8 @@ export default function AppShell() {
         ) : null
       case 'scan':
         return <ScanScreen onNavigate={setScreen} onScanData={handleScanData} />
+      case 'live-scan':
+        return <LiveScanScreen onNavigate={setScreen} onScanData={handleScanData} />
       case 'discover':
         return (
           <DiscoverScreen
@@ -132,7 +135,7 @@ export default function AppShell() {
   // Determine which tab is active
   const activeTab = (() => {
     if (['home', 'sold-items', 'alerts'].includes(screen)) return 'home'
-    if (['inventory', 'detail', 'edit-item', 'add-item', 'pricing', 'scan'].includes(screen)) return 'inventory'
+    if (['inventory', 'detail', 'edit-item', 'add-item', 'pricing', 'scan', 'live-scan'].includes(screen)) return 'inventory'
     if (['discover', 'research'].includes(screen)) return 'discover'
     if (screen === 'watchlist') return 'watchlist'
     if (screen === 'settings') return 'settings'
@@ -140,7 +143,7 @@ export default function AppShell() {
   })()
 
   // Check if we should show tabs (hide for scan, add-item, edit-item, and setup)
-  const showTabs = !showSetup && !['scan', 'add-item', 'edit-item'].includes(screen)
+  const showTabs = !showSetup && !['scan', 'live-scan', 'add-item', 'edit-item'].includes(screen)
 
   return (
     <div className="h-full flex flex-col">
@@ -182,6 +185,20 @@ export default function AppShell() {
                   <p className="text-xs text-dim">AI identifies your item instantly</p>
                 </div>
                 <span className="ml-auto text-[10px] font-bold text-amber-brand bg-amber-brand/15 px-2 py-1 rounded-md">NEW</span>
+              </button>
+
+              {/* Live room scan */}
+              <button
+                onClick={() => { setShowAddSheet(false); setScreen('live-scan') }}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.98]"
+              >
+                <div className="w-12 h-12 rounded-xl bg-white/10 border border-amber-brand/30 flex items-center justify-center flex-shrink-0">
+                  <ScanLine size={22} className="text-amber-brand" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[15px] font-semibold text-white">Scan room (live)</p>
+                  <p className="text-xs text-dim">Pan around — see items, prices, tap to add</p>
+                </div>
               </button>
 
               {/* Scan barcode */}

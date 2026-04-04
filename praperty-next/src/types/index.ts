@@ -111,6 +111,7 @@ export type Screen =
   | 'add-item'
   | 'edit-item'
   | 'scan'
+  | 'live-scan'
   | 'discover'
   | 'research'
   | 'pricing'
